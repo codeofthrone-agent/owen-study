@@ -1,0 +1,514 @@
+# Robot Framework 多平台自動化測試系統 - 任務清單 (todo.md)
+
+## 專案進度總覽
+
+**專案狀態**: 🟡 開發中  
+**當前階段**: Phase 1 - 基礎架構  
+**完成進度**: 25% (基礎語音模組已完成)  
+**預計完成時間**: 2025年4月  
+
+---
+
+## Phase 1: 基礎架構建設 (4週) - 🟡 進行中
+
+### ✅ 已完成任務
+
+#### 週 1-2: 專案架構設計、環境設置
+- [x] **專案目錄結構規劃** - 2025-06-17 ✅
+  - [x] 建立基本目錄結構
+  - [x] 設置 pipenv 環境管理
+  - [x] 建立 config 統一配置目錄
+  - [x] 完成 voice_config.py 重構與合併
+
+- [x] **規格文件撰寫** - 2025-06-17 ✅
+  - [x] 完成 spec.md 系統架構設計
+  - [x] 定義各子系統功能規格
+  - [x] 建立資料流程與介面標準
+  - [x] 制定技術棧與時程規劃
+
+- [x] **語音控制模組基礎** - 2025-06-17 ✅
+  - [x] LocalVoiceVerifyingLibrary 整合
+  - [x] 語音識別與 TTS 功能驗證
+  - [x] 音訊錄製與播放功能
+  - [x] 配置文件統一管理
+
+### 🔄 進行中任務
+
+#### 週 3-4: 核心框架整合、基本關鍵字開發
+- [ ] **Robot Framework 核心關鍵字庫**
+  - [ ] 建立 `resources/core_keywords.robot`
+  - [ ] 實作設備初始化關鍵字
+  - [ ] 建立測試案例範本
+  - [ ] 設定測試報告格式
+
+- [ ] **配置管理系統**
+  - [ ] 擴展 config 系統支援所有子模組
+  - [ ] 建立環境變數管理
+  - [ ] 實作配置驗證機制
+  - [ ] 建立設備配置檔案範本
+
+- [ ] **TestLink 整合基礎架構** (新增)
+  - [ ] 建立 `libraries/testlink_integration/`
+    - [ ] `testlink_connector.py` - TestLink API 連接器
+    - [ ] `case_synchronizer.py` - 測試案例同步器
+    - [ ] `result_reporter.py` - 結果回報器
+  - [ ] 設計 TestLink 配置結構
+  - [ ] 實作基本 API 認證與連接
+  - [ ] 建立測試案例映射機制
+
+---
+
+## Phase 2: 設備整合 (6週) - ⏳ 待開始
+
+### 📱 移動設備測試模組 (週 5-6)
+
+#### iOS 測試環境
+- [ ] **iOS 開發環境設置**
+  - [ ] 安裝 Xcode 和 iOS Deploy 工具
+  - [ ] 設置 WebDriverAgent
+  - [ ] 配置 iOS 測試設備
+  - [ ] 建立 iOS 應用安裝/卸載流程
+
+- [ ] **iOS 測試關鍵字開發**
+  - [ ] `libraries/mobile_testing/ios_testing/`
+    - [ ] `ios_test_library.py` - iOS 設備控制
+    - [ ] `ios_keywords.robot` - iOS 操作關鍵字
+    - [ ] `ios_locators.py` - iOS 元素定位器
+  - [ ] 實作基本 UI 操作 (點擊、滑動、輸入)
+  - [ ] 應用生命週期管理
+  - [ ] 設備功能測試 (攝影機、GPS、通知)
+
+#### Android 測試環境
+- [ ] **Android 開發環境設置**
+  - [ ] 安裝 Android SDK 和 ADB
+  - [ ] 設置 UIAutomator2
+  - [ ] 配置 Android 測試設備
+  - [ ] 建立 APK 安裝/卸載流程
+
+- [ ] **Android 測試關鍵字開發**
+  - [ ] `libraries/mobile_testing/android_testing/`
+    - [ ] `android_test_library.py` - Android 設備控制
+    - [ ] `android_keywords.robot` - Android 操作關鍵字
+    - [ ] `android_locators.py` - Android 元素定位器
+  - [ ] 實作系統互動 (設定、通知欄)
+  - [ ] 硬體功能測試 (感測器、藍牙、NFC)
+  - [ ] 效能監控 (CPU、記憶體、電池)
+
+#### 通用移動測試框架
+- [ ] **共用功能開發**
+  - [ ] `libraries/mobile_testing/common/`
+    - [ ] `mobile_common_keywords.robot` - 通用關鍵字
+    - [ ] `device_management.py` - 設備管理
+  - [ ] Appium 服務管理
+  - [ ] 測試資料管理
+  - [ ] 截圖與日誌記錄
+
+### 🤖 機器手臂控制模組 (週 7-8) - 測試工具開發
+
+#### MyCobot 280 基礎控制 (測試工具)
+- [ ] **硬體連接與校準**
+  - [ ] MyCobot 280 USB 連接設置
+  - [ ] 安裝 pymycobot 控制庫
+  - [ ] 機器手臂基本運動測試
+  - [ ] 6軸關節校準與限位設定
+
+- [ ] **控制系統開發**
+  - [ ] `libraries/robot_arm_control/`
+    - [ ] `mycobot_controller.py` - 基礎控制類
+    - [ ] `arm_movements_library.py` - 運動學庫
+    - [ ] `panel_interaction_keywords.robot` - 面板操作關鍵字
+  - [ ] 座標系統轉換 (基座/工具/關節座標)
+  - [ ] 路徑規劃 (直線/圓弧運動)
+  - [ ] 安全機制 (碰撞檢測、急停)
+
+#### 實體面板操作
+- [ ] **視覺輔助定位**
+  - [ ] OpenCV 影像處理整合
+  - [ ] 實體面板圖像識別
+  - [ ] 按鈕/開關座標映射
+  - [ ] `calibration/coordinate_mapping.json` 配置
+
+- [ ] **精確操作實作**
+  - [ ] 按鈕點擊操作 (單擊、長按、連續點擊)
+  - [ ] 觸控面板操作 (滑動、縮放)
+  - [ ] 物理開關操作 (撥動、旋轉)
+  - [ ] 操作結果驗證 (LED 狀態、回饋檢測)
+
+### 🔌 智慧插座電源管理 (週 9-10)
+
+#### 多品牌智慧插座支援
+- [ ] **TP-Link Kasa 整合**
+  - [ ] 安裝 python-kasa 庫
+  - [ ] `power_management/network_devices/tp_link_kasa.py`
+  - [ ] API 連接與設備發現
+  - [ ] 開關控制與狀態監控
+
+- [ ] **小米智慧插座整合**
+  - [ ] 安裝 miio 庫
+  - [ ] `power_management/network_devices/xiaomi_smart_plug.py`
+  - [ ] 設備配對與控制
+  - [ ] 功率監測功能
+
+- [ ] **通用智慧插座框架**
+  - [ ] `power_management/network_devices/generic_smart_socket.py`
+  - [ ] 統一控制介面設計
+  - [ ] 設備類型自動識別
+  - [ ] 故障檢測與重連機制
+
+#### 電源管理系統
+- [ ] **設備電源控制**
+  - [ ] `power_management/smart_socket_controller.py`
+  - [ ] `power_management/power_keywords.robot`
+  - [ ] `power_management/device_power_states.py`
+  - [ ] 開機檢測 (網路 Ping、設備回應)
+  - [ ] 關機確認與強制斷電
+  - [ ] 重啟循環測試
+
+- [ ] **電源狀態監控**
+  - [ ] 即時功率監測與記錄
+  - [ ] 開關機時間統計
+  - [ ] 電力消耗分析
+  - [ ] 異常狀態告警
+
+---
+
+## Phase 3: 檢測系統開發 (4週) - ⏳ 待開始
+
+### 🎤 音訊檢測系統 (週 11-12)
+
+#### 雙向音訊互動功能
+- [ ] **音訊發音系統**
+  - [ ] `detection_systems/audio_detection/audio_output/`
+    - [ ] `tts_synthesis_engine.py` - 多語言 TTS 語音合成
+    - [ ] `test_tone_generator.py` - 測試音效產生器
+    - [ ] `audio_output_manager.py` - 音訊輸出設備管理
+  - [ ] 多語言語音合成 (中文、英文、日文)
+  - [ ] 語音參數調整 (語速、音調、音量)
+  - [ ] 標準測試音頻產生 (1kHz, 440Hz, 白噪音)
+  - [ ] 音訊設備自動切換與控制
+
+#### 高品質錄音與分析系統
+- [ ] **進階錄音系統**
+  - [ ] `detection_systems/audio_detection/audio_input/`
+    - [ ] `high_quality_recorder.py` - 48kHz/24bit 高品質錄音
+    - [ ] `speech_recognition_engine.py` - 語音識別與 ASR
+    - [ ] `audio_signal_processor.py` - 音訊信號處理
+    - [ ] `environmental_sound_detector.py` - 環境音檢測
+  - [ ] 即時音訊擷取與多軌道錄製
+  - [ ] 語音識別與關鍵字檢測
+  - [ ] 噪音抑制與回音消除
+  - [ ] 頻譜分析與音訊特徵提取 (MFCC, 頻譜質心)
+
+#### 音訊回饋驗證功能
+- [ ] **回饋分析系統**
+  - [ ] `detection_systems/audio_detection/feedback_analysis/`
+    - [ ] `audio_feedback_analyzer.py` - 音訊回饋分析器
+    - [ ] `audio_quality_assessor.py` - 音訊品質評估
+    - [ ] `response_timing_analyzer.py` - 回應時間分析
+  - [ ] 發音後設備回應檢測
+  - [ ] 音訊回饋延遲時間測量
+  - [ ] THD (總諧波失真) 與 SNR (信噪比) 分析
+  - [ ] 多輪對話式互動測試
+
+#### 整合與關鍵字開發
+- [ ] **音訊檢測關鍵字**
+  - [ ] `audio_detection_keywords.robot` - 音訊檢測關鍵字
+  - [ ] 整合現有語音模組 (LocalVoiceVerifyingLibrary)
+  - [ ] 環境音模式識別與分類
+  - [ ] 音訊事件時間戳記錄
+
+### 👁️ 視覺檢測系統 (週 13-14)
+
+#### YOLO 燈號檢測系統
+- [ ] **YOLO 深度學習檢測**
+  - [ ] `detection_systems/visual_detection/yolo_detection/`
+    - [ ] `yolo_light_detector.py` - YOLOv8 燈號檢測器
+    - [ ] `led_status_analyzer.py` - LED 狀態分析器
+    - [ ] `light_pattern_recognizer.py` - 燈號模式識別
+    - [ ] `yolo_model_trainer.py` - 自定義模型訓練
+  - [ ] YOLOv8 多色 LED 檢測模型訓練
+  - [ ] 燈號狀態分類 (亮燈/熄燈/閃爍/半亮)
+  - [ ] ROI 區域高精度檢測
+  - [ ] 多燈號同時檢測與狀態關聯分析
+  - [ ] 信心度閾值動態調整
+
+#### 動態角度變化檢測系統
+- [ ] **標記追蹤與運動分析**
+  - [ ] `detection_systems/visual_detection/motion_tracking/`
+    - [ ] `marker_tracker.py` - 標記中心點追蹤器
+    - [ ] `angle_calculator.py` - 角度變化計算器
+    - [ ] `motion_analyzer.py` - 運動模式分析器
+    - [ ] `trajectory_recorder.py` - 軌跡記錄與可視化
+  - [ ] 高頻影像擷取 (30-120 FPS)
+  - [ ] 多標記物同時追蹤 (KCF, CSRT, MOSSE)
+  - [ ] 角度變化計算與旋轉方向判斷
+  - [ ] 運動軌跡記錄與統計分析
+  - [ ] 軌跡可視化與熱力圖生成
+
+#### 傳統影像檢測功能
+- [ ] **基礎影像處理**
+  - [ ] `detection_systems/visual_detection/traditional_detection/`
+    - [ ] `screen_capture_manager.py` - 螢幕擷取管理
+    - [ ] `ocr_text_recognizer.py` - OCR 文字識別
+    - [ ] `template_matcher.py` - 模板匹配
+    - [ ] `color_change_detector.py` - 色彩變化檢測
+  - [ ] 螢幕即時擷取與多螢幕監控
+  - [ ] 多語言 OCR 文字識別 (Tesseract)
+  - [ ] 圖標符號檢測與模板匹配
+  - [ ] 色彩變化檢測與分析
+
+#### 整合與關鍵字開發
+- [ ] **視覺檢測關鍵字**
+  - [ ] `visual_detection_keywords.robot` - 視覺檢測關鍵字
+  - [ ] 多模態檢測整合關鍵字
+  - [ ] 影像品質優化與預處理
+  - [ ] 檢測結果融合與分析
+
+- [ ] **圖像匹配與檢測**
+  - [ ] 圖標匹配演算法
+  - [ ] 色彩檢測與分析
+  - [ ] LED 燈狀態識別
+  - [ ] UI 元素變化檢測
+
+#### 實體環境監控
+- [ ] **攝影機監控功能**
+  - [ ] USB 攝影機整合
+  - [ ] 實體環境監控
+  - [ ] 設備狀態觀察
+  - [ ] 異常狀況記錄
+
+### 📋 TestLink 整合完善 (週 13-14)
+
+#### 測試案例管理系統
+- [ ] **TestLink API 整合完善**
+  - [ ] `libraries/testlink_integration/api_client/`
+    - [ ] `testlink_api.py` - API 客戶端完整實作
+    - [ ] `auth_manager.py` - 認證管理
+    - [ ] `data_mapper.py` - 資料映射轉換
+  - [ ] XML-RPC 和 REST API 雙重支援
+  - [ ] 錯誤處理與重試機制
+  - [ ] API 速率限制處理
+
+#### 測試案例同步系統
+- [ ] **Robot Framework 案例解析**
+  - [ ] `case_synchronizer.py` 完整實作
+  - [ ] Robot Framework 測試案例自動解析
+  - [ ] TestLink 案例結構映射
+  - [ ] 案例分類與標籤管理
+  - [ ] 增量同步機制
+
+- [ ] **TestLink 關鍵字庫**
+  - [ ] `libraries/testlink_integration/keywords/`
+    - [ ] `testlink_keywords.robot` - TestLink 操作關鍵字
+    - [ ] `sync_keywords.robot` - 同步作業關鍵字
+  - [ ] 測試計劃建立與管理
+  - [ ] 執行結果即時回報
+  - [ ] 附件上傳與管理
+
+#### 自動化執行整合
+- [ ] **測試執行追蹤**
+  - [ ] `result_reporter.py` 完整實作
+  - [ ] 測試執行狀態即時更新
+  - [ ] 失敗案例自動建立 Bug 報告
+  - [ ] 測試覆蓋率統計
+  - [ ] 歷史數據比較分析
+
+- [ ] **定時同步機制**
+  - [ ] APScheduler 任務調度整合
+  - [ ] 配置文件驅動的同步規則
+  - [ ] 同步日誌與錯誤監控
+  - [ ] 同步狀態儀表板
+
+---
+
+## Phase 4: 整合測試與最佳化 (4週) - ⏳ 待開始
+
+### 🔗 系統整合 (週 15-16)
+
+#### 端到端測試案例
+- [ ] **綜合測試場景設計**
+  - [ ] 建立完整測試案例 `tests/integration/`
+  - [ ] 多設備協同操作測試
+  - [ ] 異常情況處理測試
+  - [ ] 壓力測試與穩定性驗證
+
+- [ ] **TestLink 整合測試** (新增)
+  - [ ] TestLink 同步功能端到端測試
+  - [ ] 測試案例自動匯入驗證
+  - [ ] 執行結果回報準確性測試
+  - [ ] 大量案例同步效能測試
+  - [ ] TestLink API 容錯機制測試
+
+- [ ] **資料流整合**
+  - [ ] `detection_systems/analysis/`
+    - [ ] `result_correlation.py` - 結果關聯分析
+    - [ ] `detection_reports.py` - 檢測報告生成
+  - [ ] 多感官資料融合
+  - [ ] 測試結果統一格式
+  - [ ] 報告自動生成
+
+#### 錯誤處理與恢復
+- [ ] **例外處理機制**
+  - [ ] 設備連接失敗處理
+  - [ ] 網路中斷恢復機制
+  - [ ] 硬體故障自動檢測
+  - [ ] 測試中斷恢復功能
+
+- [ ] **監控與告警系統**
+  - [ ] 系統健康監控
+  - [ ] 異常狀態告警
+  - [ ] 效能監控與分析
+  - [ ] 資源使用統計
+
+### ⚡ 效能最佳化 (週 17-18)
+
+#### 效能調整
+- [ ] **執行效能最佳化**
+  - [ ] 並發執行機制優化
+  - [ ] 記憶體使用最佳化
+  - [ ] 回應時間改善
+  - [ ] 資源競用處理
+
+- [ ] **穩定性改善**
+  - [ ] 連續執行穩定性測試
+  - [ ] 記憶體洩漏檢測與修復
+  - [ ] 設備重連機制優化
+  - [ ] 測試可靠性提升
+
+#### 文檔與培訓
+- [ ] **完整文檔撰寫**
+  - [ ] 使用者操作手冊
+  - [ ] 開發者指南
+  - [ ] API 文檔
+  - [ ] 故障排除指南
+
+- [ ] **測試案例文檔**
+  - [ ] 測試案例設計文檔
+  - [ ] 測試資料準備指南
+  - [ ] 測試環境設置指南
+  - [ ] 最佳實踐文檔
+
+---
+
+## Phase 5: 部署上線 (2週) - ⏳ 待開始
+
+### 🚀 正式部署 (週 19-20)
+
+#### 生產環境準備
+- [ ] **環境配置**
+  - [ ] 生產環境硬體準備
+  - [ ] 軟體環境部署
+  - [ ] 網路環境配置
+  - [ ] 安全設定檢查
+
+- [ ] **部署流程**
+  - [ ] 自動化部署腳本
+  - [ ] 環境遷移測試
+  - [ ] 資料備份機制
+  - [ ] 回滾計劃準備
+
+#### 使用者培訓與支援
+- [ ] **培訓計劃**
+  - [ ] 使用者培訓課程設計
+  - [ ] 實作練習環境準備
+  - [ ] 操作示範影片製作
+  - [ ] Q&A 支援文檔
+
+- [ ] **上線支援**
+  - [ ] 上線後監控
+  - [ ] 問題快速回應
+  - [ ] 使用回饋收集
+  - [ ] 持續改善計劃
+
+---
+
+## 🎯 里程碑檢查點
+
+### Milestone 1: 基礎架構完成 (第4週)
+- [ ] 核心框架整合完成
+- [ ] 基本配置系統建立
+- [ ] 語音控制模組驗證通過
+- [ ] 開發環境完全設置
+
+### Milestone 2: 設備整合完成 (第10週)
+- [ ] 所有設備控制模組開發完成
+- [ ] 基本操作功能驗證通過
+- [ ] 設備間通訊測試成功
+- [ ] 初步整合測試通過
+
+### Milestone 3: 檢測系統完成 (第14週)
+- [ ] 音訊/視覺檢測系統完成
+- [ ] 多感官資料融合實現
+- [ ] 檢測準確率達標 (>90%)
+- [ ] 效能指標達標
+
+### Milestone 4: 系統整合完成 (第18週)
+- [ ] 端到端測試案例完成
+- [ ] 效能最佳化達標
+- [ ] 文檔撰寫完成
+- [ ] 穩定性測試通過
+
+### Milestone 5: 正式上線 (第20週)
+- [ ] 生產環境部署完成
+- [ ] 使用者培訓完成
+- [ ] 上線監控正常
+- [ ] 專案交付完成
+
+---
+
+## 📊 當前週報告
+
+### 本週完成項目 (2025-06-17)
+1. ✅ **配置系統重構完成**
+   - 合併並統一 voice_config.py 至 config 目錄
+   - 更新所有模組的匯入邏輯
+   - 驗證系統運作正常
+
+2. ✅ **規格文件完成**
+   - 完成詳細的 spec.md 系統架構文檔
+   - 定義各子系統功能與介面
+   - 制定技術棧與開發時程
+
+3. ✅ **任務清單建立**
+   - 建立詳細的 todo.md 任務管理
+   - 劃分5個開發階段與里程碑
+   - 設定具體任務與完成標準
+
+### 下週計劃 (2025-06-24)
+1. **核心關鍵字庫開發**
+   - 建立 Robot Framework 核心關鍵字
+   - 實作設備初始化流程
+   - 設計測試案例範本
+
+2. **配置管理系統擴展**
+   - 支援所有子模組配置
+   - 建立環境變數管理
+   - 實作配置驗證機制
+
+3. **TestLink 整合基礎架構** (新增)
+   - 建立 TestLink 整合模組目錄結構
+   - 實作基本 API 連接功能
+   - 設計測試案例映射機制
+   - 建立 TestLink 配置文件範本
+
+### 風險與問題
+- 🟡 **設備採購進度**: MyCobot 280 機器手臂採購時程待確認
+- 🟡 **iOS 開發環境**: Xcode 與 iOS Deploy 環境設置複雜度較高
+- 🟡 **網路設備相容性**: 智慧插座品牌選擇需要實際測試驗證
+
+---
+
+## 📝 更新記錄
+
+| 日期 | 版本 | 更新內容 | 更新人 |
+|------|------|----------|--------|
+| 2025-06-17 | v1.0 | 建立初始任務清單，劃分5個開發階段 | System |
+| 2025-06-17 | v1.1 | 完成 Phase 1 基礎架構部分任務 | System |
+| 2025-06-17 | v1.2 | 新增 TestLink 整合模組規劃與相關任務 | System |
+
+---
+
+**文檔版本**: v1.1  
+**建立日期**: 2025-06-17  
+**最後更新**: 2025-06-17  
+**負責人**: [專案負責人]

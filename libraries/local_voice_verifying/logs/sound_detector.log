@@ -1,0 +1,356 @@
+2025-06-16 15:35:17 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-16 15:35:17 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-16 15:35:17 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-16 15:35:18 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-16 15:35:18 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-16 15:35:18 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-16 15:35:31 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-16 15:35:31 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-16 15:35:31 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-16 15:36:02 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-16 15:36:02 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-16 15:36:02 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-16 15:39:30 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-16 15:39:30 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-16 15:39:30 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-16 15:39:30 | INFO | LocalVoiceVerifyingLibrary | 開始語音檢測流程: 播放='Hey Power Pro', 檢測='登登', 時長=10秒
+2025-06-16 15:39:30 | ERROR | voice_sound_detector | 找不到參考聲音檔案: 登登
+2025-06-16 15:39:30 | WARNING | LocalVoiceVerifyingLibrary | 參考聲音 '登登' 載入失敗，嘗試建立範例檔案
+2025-06-16 15:39:30 | INFO | LocalVoiceVerifyingLibrary | 已建立參考聲音指引檔案: /Users/owenke/source/github.com/robot-test-project/libraries/local_voice_verifying/audio_samples/reference_sounds/登登_sample.txt
+2025-06-16 15:39:30 | ERROR | voice_sound_detector | 找不到參考聲音檔案: 登登
+2025-06-16 15:39:30 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-16 15:39:30 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-16 15:39:30 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-16 15:39:30 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-16 15:39:49 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-16 15:39:49 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-16 15:39:49 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-16 15:40:19 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-16 15:40:19 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-16 15:40:19 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-16 15:40:19 | INFO | LocalVoiceVerifyingLibrary | 開始語音檢測流程: 播放='Hey Power Pro', 檢測='登登', 時長=10秒
+2025-06-16 15:40:19 | ERROR | voice_sound_detector | 找不到參考聲音檔案: 登登
+2025-06-16 15:40:19 | WARNING | LocalVoiceVerifyingLibrary | 參考聲音 '登登' 載入失敗，嘗試建立範例檔案
+2025-06-16 15:40:19 | INFO | LocalVoiceVerifyingLibrary | 已建立參考聲音指引檔案: /Users/owenke/source/github.com/robot-test-project/libraries/local_voice_verifying/audio_samples/reference_sounds/登登_sample.txt
+2025-06-16 15:40:19 | ERROR | voice_sound_detector | 找不到參考聲音檔案: 登登
+2025-06-16 15:40:19 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-16 15:40:19 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-16 15:40:19 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-16 15:40:19 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:31:43 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:31:43 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:31:43 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:31:43 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:31:43 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:31:43 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:31:43 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:31:43 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:31:43 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:31:44 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:31:44 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:31:44 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:31:44 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:31:44 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:31:44 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:31:44 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:31:44 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:32:20 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:32:20 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:32:20 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:32:20 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:32:20 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:32:20 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:32:20 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:32:20 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:32:20 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:32:20 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:32:20 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:32:20 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:32:20 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:32:20 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:32:20 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:32:20 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:32:20 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:32:20 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:32:20 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:32:20 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:32:20 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:32:20 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:32:21 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:32:21 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:32:21 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:32:21 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:32:21 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:32:21 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:32:21 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:32:21 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:32:21 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:32:21 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:32:21 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:32:52 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:32:52 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:32:52 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:32:52 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:32:52 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:32:52 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:32:52 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:32:52 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:32:52 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:32:52 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:32:52 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:32:52 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:32:52 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:32:52 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:32:52 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:32:52 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:32:52 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:32:52 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:32:52 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:32:52 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:32:52 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:32:52 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:32:52 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:32:52 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:32:52 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:32:52 | INFO | LocalVoiceVerifyingLibrary | 開始播放文字: 'Testing voice synthesis'
+2025-06-17 09:32:52 | INFO | voice_tts_manager | 開始語音合成: 'Testing voice synthesis'
+2025-06-17 09:32:55 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-17 09:32:55 | INFO | LocalVoiceVerifyingLibrary | 開始播放文字: 'Hello World'
+2025-06-17 09:32:55 | INFO | voice_tts_manager | 開始語音合成: 'Hello World'
+2025-06-17 09:32:56 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-17 09:32:57 | INFO | LocalVoiceVerifyingLibrary | 開始播放文字: 'Robot Framework Test'
+2025-06-17 09:32:57 | INFO | voice_tts_manager | 開始語音合成: 'Robot Framework Test'
+2025-06-17 09:32:59 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-17 09:33:00 | INFO | LocalVoiceVerifyingLibrary | 開始播放文字: 'Language verification system'
+2025-06-17 09:33:00 | INFO | voice_tts_manager | 開始語音合成: 'Language verification system'
+2025-06-17 09:33:03 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-17 09:33:04 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:33:04 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:33:04 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:33:04 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:33:04 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:33:04 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:33:04 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:33:04 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:33:32 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:33:32 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:33:32 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:33:51 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:33:51 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:33:51 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:33:51 | INFO | voice_tts_manager | TTS 語言設定為: en
+2025-06-17 09:33:51 | INFO | voice_tts_manager | 語音速度設定為: 150.0
+2025-06-17 09:33:51 | INFO | LocalVoiceVerifyingLibrary | 開始播放文字: 'Hey Power Pro'
+2025-06-17 09:33:51 | INFO | voice_tts_manager | 開始語音合成: 'Hey Power Pro'
+2025-06-17 09:33:53 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-17 09:33:53 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:33:53 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:33:53 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:33:53 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:34:06 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:34:06 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:34:06 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:34:08 | INFO | voice_audio_recorder | 開始錄音，預定時長: 5秒
+2025-06-17 09:34:10 | INFO | voice_audio_recorder | 錄音完成，實際時長: 2.01秒
+2025-06-17 09:34:10 | INFO | voice_audio_recorder | 錄音已停止
+2025-06-17 09:34:10 | ERROR | voice_audio_recorder | 保存音訊檔案失敗: 'recorded_audio'
+2025-06-17 09:34:10 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:34:10 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:34:10 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:34:10 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:36:22 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:36:22 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:36:22 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:36:22 | INFO | voice_audio_recorder | 開始錄音，預定時長: 3秒
+2025-06-17 09:36:25 | INFO | voice_audio_recorder | 錄音完成，實際時長: 3.03秒
+2025-06-17 09:36:26 | WARNING | voice_audio_recorder | 目前沒有在錄音
+2025-06-17 09:36:26 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:36:26 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:36:26 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:36:26 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:36:26 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:36:26 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:36:26 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:36:26 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:37:03 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:37:03 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:37:03 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:37:03 | INFO | voice_audio_recorder | 開始錄音，預定時長: 3秒
+2025-06-17 09:37:06 | INFO | voice_audio_recorder | 錄音完成，實際時長: 3.03秒
+2025-06-17 09:37:07 | WARNING | voice_audio_recorder | 目前沒有在錄音
+2025-06-17 09:37:07 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:37:07 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:37:07 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:37:07 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:37:07 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:37:07 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:37:07 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:37:07 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:38:03 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:38:03 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:38:03 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:38:13 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:38:13 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:38:13 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:38:13 | INFO | voice_audio_recorder | 開始錄音，預定時長: 3秒
+2025-06-17 09:38:16 | INFO | voice_audio_recorder | 錄音完成，實際時長: 3.03秒
+2025-06-17 09:38:17 | WARNING | voice_audio_recorder | 目前沒有在錄音
+2025-06-17 09:38:17 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:38:17 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:38:17 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:38:17 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:38:17 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:38:17 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:38:17 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:38:17 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:38:43 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:38:43 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:38:43 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:38:43 | INFO | voice_audio_recorder | 開始錄音，預定時長: 3秒
+2025-06-17 09:38:46 | INFO | voice_audio_recorder | 錄音完成，實際時長: 3.03秒
+2025-06-17 09:38:47 | WARNING | voice_audio_recorder | 目前沒有在錄音
+2025-06-17 09:38:47 | INFO | voice_audio_recorder | 音訊檔案已保存: /Users/owenke/source/github.com/robot-test-project/libraries/local_voice_verifying/audio_samples/recorded/recording_20250617_093847.wav
+2025-06-17 09:38:47 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:38:47 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:38:47 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:38:47 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:38:47 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:38:47 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:38:47 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:38:47 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:39:16 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:39:16 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:39:16 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:39:16 | INFO | voice_audio_recorder | 開始錄音，預定時長: 3秒
+2025-06-17 09:39:19 | INFO | voice_audio_recorder | 錄音完成，實際時長: 3.03秒
+2025-06-17 09:39:20 | WARNING | voice_audio_recorder | 目前沒有在錄音
+2025-06-17 09:39:20 | INFO | voice_audio_recorder | 音訊檔案已保存: /Users/owenke/source/github.com/robot-test-project/libraries/local_voice_verifying/audio_samples/recorded/recording_20250617_093920.wav
+2025-06-17 09:39:20 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:39:20 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:39:20 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:39:20 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:39:20 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:39:20 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:39:20 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:39:20 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:39:44 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:39:44 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:39:44 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:39:44 | INFO | voice_audio_recorder | 開始錄音，預定時長: 5秒
+2025-06-17 09:39:46 | INFO | voice_audio_recorder | 錄音完成，實際時長: 2.01秒
+2025-06-17 09:39:46 | INFO | voice_audio_recorder | 錄音已停止
+2025-06-17 09:39:46 | INFO | voice_audio_recorder | 音訊檔案已保存: /Users/owenke/source/github.com/robot-test-project/libraries/local_voice_verifying/audio_samples/recorded/recording_20250617_093946.wav
+2025-06-17 09:39:46 | ERROR | voice_sound_detector | 找不到參考聲音檔案: 登登
+2025-06-17 09:39:46 | WARNING | LocalVoiceVerifyingLibrary | 參考聲音 '登登' 載入失敗，嘗試建立範例檔案
+2025-06-17 09:39:46 | INFO | LocalVoiceVerifyingLibrary | 已建立參考聲音指引檔案: /Users/owenke/source/github.com/robot-test-project/libraries/local_voice_verifying/audio_samples/reference_sounds/登登_sample.txt
+2025-06-17 09:39:46 | ERROR | voice_sound_detector | 找不到參考聲音檔案: 登登
+2025-06-17 09:39:46 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:39:46 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:39:46 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:39:46 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:40:48 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:40:48 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:40:48 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 09:40:48 | INFO | voice_tts_manager | TTS 語言設定為: en
+2025-06-17 09:40:48 | INFO | voice_tts_manager | 語音速度設定為: 150.0
+2025-06-17 09:40:48 | INFO | LocalVoiceVerifyingLibrary | 開始播放文字: 'Hey Power Pro'
+2025-06-17 09:40:48 | INFO | voice_tts_manager | 開始語音合成: 'Hey Power Pro'
+2025-06-17 09:40:50 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-17 09:40:50 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:40:50 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:40:50 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:40:50 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:40:50 | INFO | voice_tts_manager | TTS 語言設定為: en
+2025-06-17 09:40:50 | INFO | voice_tts_manager | 語音速度設定為: 150.0
+2025-06-17 09:40:50 | INFO | voice_sound_detector | 檢測閾值設定為: 0.75
+2025-06-17 09:40:50 | INFO | LocalVoiceVerifyingLibrary | 開始語音檢測流程: 播放='Hey Power Pro', 檢測='登登', 時長=10秒
+2025-06-17 09:40:50 | ERROR | voice_sound_detector | 找不到參考聲音檔案: 登登
+2025-06-17 09:40:50 | WARNING | LocalVoiceVerifyingLibrary | 參考聲音 '登登' 載入失敗，嘗試建立範例檔案
+2025-06-17 09:40:50 | INFO | LocalVoiceVerifyingLibrary | 已建立參考聲音指引檔案: /Users/owenke/source/github.com/robot-test-project/libraries/local_voice_verifying/audio_samples/reference_sounds/登登_sample.txt
+2025-06-17 09:40:50 | ERROR | voice_sound_detector | 找不到參考聲音檔案: 登登
+2025-06-17 09:40:50 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:40:50 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:40:50 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:40:50 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:40:50 | ERROR | voice_audio_recorder | 音訊設備未初始化
+2025-06-17 09:40:52 | WARNING | voice_audio_recorder | 目前沒有在錄音
+2025-06-17 09:40:52 | WARNING | voice_audio_recorder | 音訊緩衝區為空
+2025-06-17 09:40:52 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:40:52 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:40:52 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:40:52 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:40:52 | INFO | voice_tts_manager | TTS 語言設定為: en
+2025-06-17 09:40:52 | INFO | voice_sound_detector | 檢測閾值設定為: 0.75
+2025-06-17 09:40:52 | INFO | LocalVoiceVerifyingLibrary | 開始語音檢測流程: 播放='Hey Power Pro', 檢測='登登', 時長=5秒
+2025-06-17 09:40:52 | ERROR | voice_sound_detector | 找不到參考聲音檔案: 登登
+2025-06-17 09:40:52 | WARNING | LocalVoiceVerifyingLibrary | 參考聲音 '登登' 載入失敗，嘗試建立範例檔案
+2025-06-17 09:40:52 | INFO | LocalVoiceVerifyingLibrary | 已建立參考聲音指引檔案: /Users/owenke/source/github.com/robot-test-project/libraries/local_voice_verifying/audio_samples/reference_sounds/登登_sample.txt
+2025-06-17 09:40:52 | ERROR | voice_sound_detector | 找不到參考聲音檔案: 登登
+2025-06-17 09:40:52 | INFO | voice_sound_detector | 檢測閾值設定為: 0.6
+2025-06-17 09:40:52 | INFO | voice_sound_detector | 檢測閾值設定為: 0.7
+2025-06-17 09:40:53 | INFO | voice_sound_detector | 檢測閾值設定為: 0.8
+2025-06-17 09:40:53 | INFO | voice_sound_detector | 檢測閾值設定為: 0.9
+2025-06-17 09:40:54 | INFO | voice_sound_detector | 檢測閾值設定為: 0.75
+2025-06-17 09:40:54 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:40:54 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:40:54 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:40:54 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:40:54 | INFO | voice_tts_manager | TTS 語言設定為: en
+2025-06-17 09:40:54 | INFO | voice_tts_manager | TTS 語言設定為: en
+2025-06-17 09:40:54 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:40:54 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:40:54 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:40:54 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:40:54 | ERROR | voice_sound_detector | 無效的閾值: 1.5，應在 0-1 範圍內
+2025-06-17 09:40:54 | ERROR | voice_sound_detector | 無效的閾值: -0.1，應在 0-1 範圍內
+2025-06-17 09:40:54 | ERROR | voice_sound_detector | 找不到參考聲音檔案: 不存在的聲音
+2025-06-17 09:40:54 | WARNING | LocalVoiceVerifyingLibrary | 參考聲音 '不存在的聲音' 載入失敗，嘗試建立範例檔案
+2025-06-17 09:40:54 | INFO | LocalVoiceVerifyingLibrary | 已建立參考聲音指引檔案: /Users/owenke/source/github.com/robot-test-project/libraries/local_voice_verifying/audio_samples/reference_sounds/不存在的聲音_sample.txt
+2025-06-17 09:40:54 | ERROR | voice_sound_detector | 找不到參考聲音檔案: 不存在的聲音
+2025-06-17 09:40:54 | ERROR | voice_sound_detector | 音訊檔案不存在: /不存在的路徑/test.wav
+2025-06-17 09:40:54 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:40:54 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:40:54 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:40:54 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:40:54 | ERROR | voice_sound_detector | 找不到參考聲音檔案: 登登
+2025-06-17 09:40:54 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:40:54 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:40:54 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:40:54 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:40:54 | ERROR | voice_audio_recorder | 音訊設備未初始化
+2025-06-17 09:40:56 | WARNING | voice_audio_recorder | 目前沒有在錄音
+2025-06-17 09:40:56 | WARNING | voice_audio_recorder | 音訊緩衝區為空
+2025-06-17 09:40:56 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 09:40:56 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 09:40:56 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 09:40:56 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 09:51:51 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 09:51:51 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 09:51:51 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 11:01:41 | INFO | libraries.local_voice_verifying.voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 11:01:41 | INFO | libraries.local_voice_verifying.voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 11:01:41 | INFO | libraries.local_voice_verifying.LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 11:04:38 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 11:04:38 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 11:04:38 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 11:04:48 | INFO | libraries.local_voice_verifying.voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 11:04:48 | INFO | libraries.local_voice_verifying.voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 11:04:48 | INFO | libraries.local_voice_verifying.LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 11:05:01 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 11:05:01 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 11:05:01 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 11:05:13 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 11:05:13 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 11:05:13 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成
+2025-06-17 11:05:13 | INFO | voice_tts_manager | TTS 語言設定為: en
+2025-06-17 11:05:13 | INFO | voice_tts_manager | 語音速度設定為: 150.0
+2025-06-17 11:05:13 | INFO | LocalVoiceVerifyingLibrary | 開始播放文字: 'Hey Power Pro'
+2025-06-17 11:05:13 | INFO | voice_tts_manager | 開始語音合成: 'Hey Power Pro'
+2025-06-17 11:05:14 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-17 11:05:14 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-17 11:05:14 | INFO | voice_audio_recorder | 音訊資源清理完成
+2025-06-17 11:05:14 | INFO | voice_sound_detector | 檢測歷史已清空
+2025-06-17 11:05:14 | INFO | voice_sound_detector | 聲音檢測器資源清理完成
+2025-06-17 11:07:51 | INFO | voice_sound_detector | 特徵提取器初始化成功
+2025-06-17 11:07:51 | INFO | voice_sound_detector | SoundDetector 初始化完成
+2025-06-17 11:07:51 | INFO | LocalVoiceVerifyingLibrary | 所有核心模組初始化完成

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.3 (Python 3.13.4 on darwin)" generated="2025-06-16T16:58:42.599350" rpa="false" schemaversion="5">
+<suite id="s1" name="Robot-Test-Project" source="/Users/owenke/source/github.com/robot-test-project">
+<suite id="s1-s1" name="Tests" source="/Users/owenke/source/github.com/robot-test-project/tests">
+<suite id="s1-s1-s1" name="Physical Interaction" source="/Users/owenke/source/github.com/robot-test-project/tests/physical_interaction">
+<suite id="s1-s1-s1-s1" name="Voice Test" source="/Users/owenke/source/github.com/robot-test-project/tests/physical_interaction/voice_test.robot">
+<test id="s1-s1-s1-s1-t1" name="Test TTS Voice execution" line="17">
+<kw name="Set TTS Language" owner="LocalVoiceVerifyingLibrary">
+<msg time="2025-06-16T16:58:44.349566" level="ERROR">Library 尚未正確初始化</msg>
+<msg time="2025-06-16T16:58:44.349952" level="INFO">${language_result} = False</msg>
+<var>${language_result}</var>
+<arg>${TTS_LANGUAGE}</arg>
+<doc>設定 TTS 語言</doc>
+<status status="PASS" start="2025-06-16T16:58:44.349306" elapsed="0.000710"/>
+</kw>
+<kw name="Should Be True" owner="BuiltIn">
+<msg time="2025-06-16T16:58:44.350375" level="FAIL">TTS 語言設定失敗</msg>
+<arg>${language_result}</arg>
+<arg>msg=TTS 語言設定失敗</arg>
+<doc>Fails if the given condition is not true.</doc>
+<status status="FAIL" start="2025-06-16T16:58:44.350195" elapsed="0.000366">TTS 語言設定失敗</status>
+</kw>
+<kw name="Set TTS Speed" owner="LocalVoiceVerifyingLibrary">
+<var>${speed_result}</var>
+<arg>1.0</arg>
+<doc>設定 TTS 播放速度</doc>
+<status status="NOT RUN" start="2025-06-16T16:58:44.350715" elapsed="0.000043"/>
+</kw>
+<kw name="Should Be True" owner="BuiltIn">
+<arg>${speed_result}</arg>
+<arg>msg=TTS 語速設定失敗</arg>
+<doc>Fails if the given condition is not true.</doc>
+<status status="NOT RUN" start="2025-06-16T16:58:44.350848" elapsed="0.000040"/>
+</kw>
+<kw name="Speak Text" owner="LocalVoiceVerifyingLibrary">
+<arg>${TTS_TEXT}</arg>
+<doc>播放指定的文字內容</doc>
+<status status="NOT RUN" start="2025-06-16T16:58:44.350975" elapsed="0.000044"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<arg>TTS 語音播放成功: ${TTS_TEXT}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="NOT RUN" start="2025-06-16T16:58:44.351135" elapsed="0.000047"/>
+</kw>
+<kw name="Cleanup Audio Resources" owner="LocalVoiceVerifyingLibrary" type="TEARDOWN">
+<msg time="2025-06-16T16:58:44.439439" level="INFO">✓ 音訊資源清理完成</msg>
+<doc>清理音訊資源</doc>
+<status status="PASS" start="2025-06-16T16:58:44.351395" elapsed="0.088205"/>
+</kw>
+<doc>測試 TTS 語音執行功能</doc>
+<tag>execution</tag>
+<tag>tts</tag>
+<tag>voice</tag>
+<status status="FAIL" start="2025-06-16T16:58:44.348669" elapsed="0.091103">TTS 語言設定失敗</status>
+</test>
+<doc>本地語音驗證測試案例
+實現 "PC 利用 google tts 發出聲音 Hey Power Pro 並同時錄音 檢測 是否收到 登登的聲音" 的功能測試</doc>
+<status status="FAIL" start="2025-06-16T16:58:42.610151" elapsed="1.830111"/>
+</suite>
+<status status="FAIL" start="2025-06-16T16:58:42.609270" elapsed="1.832193"/>
+</suite>
+<status status="FAIL" start="2025-06-16T16:58:42.608742" elapsed="1.833112"/>
+</suite>
+<status status="FAIL" start="2025-06-16T16:58:42.601152" elapsed="1.841054"/>
+</suite>
+<statistics>
+<total>
+<stat pass="0" fail="1" skip="0">All Tests</stat>
+</total>
+<tag>
+<stat pass="0" fail="1" skip="0">execution</stat>
+<stat pass="0" fail="1" skip="0">tts</stat>
+<stat pass="0" fail="1" skip="0">voice</stat>
+</tag>
+<suite>
+<stat name="Robot-Test-Project" id="s1" pass="0" fail="1" skip="0">Robot-Test-Project</stat>
+<stat name="Tests" id="s1-s1" pass="0" fail="1" skip="0">Robot-Test-Project.Tests</stat>
+<stat name="Physical Interaction" id="s1-s1-s1" pass="0" fail="1" skip="0">Robot-Test-Project.Tests.Physical Interaction</stat>
+<stat name="Voice Test" id="s1-s1-s1-s1" pass="0" fail="1" skip="0">Robot-Test-Project.Tests.Physical Interaction.Voice Test</stat>
+</suite>
+</statistics>
+<errors>
+<msg time="2025-06-16T16:58:44.349566" level="ERROR">Library 尚未正確初始化</msg>
+</errors>
+</robot>

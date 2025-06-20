@@ -1,0 +1,40 @@
+2025-06-16 15:46:55 | WARNING | voice_tts_manager | 使用系統預設音訊播放器
+2025-06-16 15:46:55 | INFO | voice_tts_manager | Google TTS 引擎初始化成功
+2025-06-16 15:46:56 | INFO | voice_tts_manager | pyttsx3 引擎初始化成功
+2025-06-16 15:46:56 | INFO | voice_tts_manager | TTSManager 初始化完成，主要引擎: gtts
+2025-06-16 15:46:56 | INFO | voice_tts_manager | 開始語音合成: 'Hello World'
+2025-06-16 15:46:58 | INFO | voice_tts_manager | 開始語音合成: 'Hey Power Pro'
+2025-06-16 15:46:59 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-16 15:47:00 | INFO | voice_tts_manager | 開始語音合成: '本地語音驗證系統測試'
+2025-06-16 15:47:00 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-16 15:47:04 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-16 15:47:26 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-16 15:51:18 | WARNING | voice_tts_manager | 使用系統預設音訊播放器
+2025-06-16 15:51:18 | INFO | voice_tts_manager | Google TTS 引擎初始化成功
+2025-06-16 15:51:18 | INFO | voice_tts_manager | pyttsx3 引擎初始化成功
+2025-06-16 15:51:18 | INFO | voice_tts_manager | TTSManager 初始化完成，主要引擎: gtts
+2025-06-16 15:51:18 | INFO | voice_tts_manager | 開始語音合成: 'Hey Power Pro'
+2025-06-16 15:51:21 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-16 15:51:26 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-16 15:51:30 | WARNING | voice_tts_manager | 使用系統預設音訊播放器
+2025-06-16 15:51:30 | INFO | voice_tts_manager | Google TTS 引擎初始化成功
+2025-06-16 15:51:31 | INFO | voice_tts_manager | pyttsx3 引擎初始化成功
+2025-06-16 15:51:31 | INFO | voice_tts_manager | TTSManager 初始化完成，主要引擎: gtts
+2025-06-16 15:51:31 | INFO | voice_tts_manager | 開始語音合成: 'Hey Power Pro'
+2025-06-16 15:51:34 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-16 15:51:37 | INFO | voice_tts_manager | TTS 資源清理完成
+2025-06-16 15:53:31 | WARNING | voice_tts_manager | 使用系統預設音訊播放器
+2025-06-16 15:53:31 | INFO | voice_tts_manager | Google TTS 引擎初始化成功
+2025-06-16 15:53:32 | INFO | voice_tts_manager | pyttsx3 引擎初始化成功
+2025-06-16 15:53:32 | INFO | voice_tts_manager | TTSManager 初始化完成，主要引擎: gtts
+2025-06-16 15:53:32 | INFO | voice_tts_manager | TTS 語言設定為: en-US
+2025-06-16 15:53:32 | INFO | voice_tts_manager | 語音速度設定為: 100
+2025-06-16 15:53:32 | INFO | voice_tts_manager | 開始語音合成: 'Hey Power Pro'
+2025-06-16 15:53:35 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-16 15:53:35 | INFO | voice_tts_manager | 語音速度設定為: 140
+2025-06-16 15:53:35 | INFO | voice_tts_manager | 開始語音合成: 'Hey Power Pro'
+2025-06-16 15:53:38 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-16 15:53:38 | INFO | voice_tts_manager | 語音速度設定為: 180
+2025-06-16 15:53:38 | INFO | voice_tts_manager | 開始語音合成: 'Hey Power Pro'
+2025-06-16 15:53:40 | INFO | voice_tts_manager | Google TTS 播放完成
+2025-06-16 15:53:46 | INFO | voice_tts_manager | TTS 資源清理完成
