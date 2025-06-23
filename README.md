@@ -14,7 +14,7 @@
 - 📱 **移動應用測試**: iOS 和 Android 應用程式自動化測試
 - 🤖 **硬體操作測試**: MyCobot 280 機器手臂控制實體面板操作  
 - 🎤 **語音控制測試**: 本機語音識別和語音命令執行
-- 🔌 **電源管理測試**: 智慧插座控制被測設備開關機
+- 🔌 **電源管理測試**: SwitchBot 智慧插座控制被測設備開關機 ✅ **[已完成]**
 - 👁️ **多感官檢測**: 麥克風雙向音訊檢測（發音與錄音判斷）和視覺影像判斷（YOLO靜態燈號檢測與動態角度變化分析）
 - � **TestLink 整合**: 測試案例管理與執行結果追蹤
 - �🔄 **整合式測試**: 多設備協同操作的端到端測試流程
@@ -44,9 +44,9 @@ graph TB
     D --> O[高品質錄音 - 48kHz/24bit]
     D --> P[語音識別與環境音檢測]
     
-    E --> Q[SwitchBot 智慧插座]
-    E --> R[被測設備電源管理]
-    E --> S[設備狀態監控]
+    E --> Q[SwitchBot 智慧插座 ✅]
+    E --> R[被測設備電源管理 ✅]
+    E --> S[設備狀態監控 ✅]
     
     F --> T[音訊檢測 - 雙向互動]
     F --> U[YOLO 燈號檢測]
@@ -94,6 +94,15 @@ robot-test-project/
 │   │   ├── 📁 calibration/                 # 校準數據
 │   │   └── 📁 validation/                  # 工具驗證測試 (非TestLink案例)
 │   │
+│   ├── 📁 switchbot_smartplug_control/ ✅   # SwitchBot 智慧插座控制模組 [已完成]
+│   │   ├── SwitchBotSmartPlugLibrary.py    # Robot Framework Library
+│   │   ├── switchbot_config.py             # 配置管理模組
+│   │   ├── .env.example                    # 環境變數範本
+│   │   ├── get_device_id.py               # 設備查詢工具
+│   │   ├── plug_control.py                # 命令列控制工具
+│   │   ├── check_device.py                # 設備檢查工具
+│   │   └── README.md                       # 模組說明文件
+│   │
 │   ├── 📁 power_management/ (計劃中)        # 電源管理模組
 │   │   ├── smart_socket_controller.py      # 智慧插座控制
 │   │   └── 📁 network_devices/             # 網路設備支援
@@ -114,6 +123,8 @@ robot-test-project/
 ├── 📁 tests/                               # Robot Framework 測試案例
 │   ├── 📁 physical_interaction/            # 實體互動測試
 │   │   └── voice_test.robot               # 語音測試案例
+│   ├── 📁 power_management/ ✅              # 電源管理測試 [新增]
+│   │   └── switchbot_smartplug_test.robot # SwitchBot 插座測試案例
 │   ├── 📁 mobile/ (計劃中)                 # 移動應用測試
 │   ├── 📁 api/ (計劃中)                    # API 測試
 │   └── 📁 web/ (計劃中)                    # Web 測試
@@ -122,6 +133,7 @@ robot-test-project/
 │   ├── api_keywords.robot                  # API 關鍵字
 │   ├── common_keywords.robot               # 通用關鍵字
 │   ├── mobile_keywords.robot               # 移動設備關鍵字
+│   ├── switchbot_keywords.robot ✅          # SwitchBot 智慧插座關鍵字 [新增]
 │   └── web_keywords.robot                  # Web 關鍵字
 │
 ├── 📁 variables/                           # 測試變數與資料
@@ -153,10 +165,10 @@ robot-test-project/
 
 #### 擴展配置 (完整系統)
 - [ ] **MyCobot 280**: 機器手臂 (測試工具，用於操作實體面板)
-- [x] **智慧插座**: SwitchBot 智慧插座 (被測設備電源管理)
+- [x] **智慧插座**: SwitchBot 智慧插座 (被測設備電源管理) ✅ **[已完成]**
 - [ ] **測試設備**: 
   - iPhone/iPad (iOS 應用測試目標)
-  - Android 手機/平板 (Android 應用測試目標)
+  - Android 手機/平板 (Android 測試目標)
   - IoT 面板設備 (實體面板操作測試目標)
 - [ ] **USB 攝影機**: 視覺檢測用 (YOLO 燈號檢測與動態角度變化分析)
 
@@ -226,6 +238,26 @@ brew install android-platform-tools
    robot --test "Test TTS Voice execution" tests/physical_interaction/voice_test.robot
    ```
 
+4. **環境設定**
+   ```bash
+   # 複製環境變數範本
+   cp .env.example .env
+   
+   # 編輯配置檔案 (參考 SETUP_GUIDE.md 詳細說明)
+   nano .env
+   ```
+
+   📖 **詳細設定指南**: 請參閱 [SETUP_GUIDE.md](SETUP_GUIDE.md) 獲得完整的配置說明
+
+5. **設定 SwitchBot 智慧插座** (如需電源管理功能)
+   ```bash
+   # 取得設備 ID
+   pipenv run python libraries/switchbot_smartplug_control/get_device_id.py
+   
+   # 測試插座控制
+   pipenv run python libraries/switchbot_smartplug_control/plug_control.py status
+   ```
+
 ### 🔧 進階設置 (各子系統)
 
 #### 機器手臂設置 (MyCobot 280)
@@ -279,11 +311,16 @@ pip install xmlrpc3
 
 # 配置 TestLink 連接
 # 1. 取得 TestLink API Key (從 TestLink 個人設定頁面)
-# 2. 設定環境變數
+# 2. 設定環境變數 (在專案根目錄 .env 檔案中)
+
+# 首先複製環境變數範本
+cp .env.example .env
+
+# 編輯 .env 檔案，添加 TestLink 配置
 export TESTLINK_URL="http://your-testlink-server/lib/api/xmlrpc/v1/xmlrpc.php"
 export TESTLINK_API_KEY="your_api_key_here"
 
-# 3. 配置 TestLink 專案資訊 (在 config/voice_config.py 中)
+# 3. 配置 TestLink 專案資訊 (在 config/ 統一配置系統中)
 ```
 
 **TestLink 配置範例** (`config/testlink_config.json`):
@@ -355,197 +392,145 @@ robot --include hardware tests/physical_interaction/
 robot --include power tests/
 ```
 
-### 📱 移動應用測試 (計劃中)
+### 📱 移動應用測試 (Appium)
+
+本專案整合了 **Appium** 框架，提供跨平台的移動應用自動化測試能力。
+
+### 支援平台
+- **iOS**: 使用 XCUITest 驅動，支援真機和模擬器
+- **Android**: 使用 UiAutomator2 驅動，支援真機和模擬器
+
+### 環境需求
+
+#### macOS (推薦，支援 iOS + Android)
+```bash
+# Node.js 和 Appium
+brew install node
+npm install -g appium@next
+appium driver install xcuitest uiautomator2
+
+# iOS 環境
+# 安裝 Xcode (從 App Store)
+brew install ios-deploy
+brew install wix/brew/applesimutils
+
+# Android 環境
+# 安裝 Android Studio
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+
+# Java 環境
+brew install openjdk
+export JAVA_HOME="/opt/homebrew/opt/openjdk"
+```
+
+#### Windows/Linux (僅支援 Android)
+```bash
+# Node.js 和 Appium
+npm install -g appium@next
+appium driver install uiautomator2
+
+# Android 環境設置
+export ANDROID_HOME=/path/to/android-sdk
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+
+# Java 環境
+export JAVA_HOME=/path/to/java
+```
+
+### 快速開始
+
+#### 1. 環境檢查
+```bash
+# 檢查 Appium 環境
+appium-doctor --android --ios
+
+# 檢查設備連接
+adb devices                    # Android
+xcrun simctl list devices     # iOS
+```
+
+#### 2. 啟動 Appium 服務
+```bash
+# 啟動 Appium (背景執行)
+./scripts/start_appium.sh --background
+
+# 或前景執行進行除錯
+./scripts/start_appium.sh --debug
+```
+
+#### 3. 執行測試
+```bash
+# iOS 測試
+robot -v IOS_BUNDLE_ID:com.example.app tests/mobile/ios/
+
+# Android 測試  
+robot -v ANDROID_APP_PACKAGE:com.example.app tests/mobile/android/
+
+# 跨平台測試
+robot tests/mobile/common/
+```
+
+#### 4. 停止服務
+```bash
+./scripts/stop_appium.sh
+```
+
+### 測試案例範例
 
 #### iOS 應用測試
+```robotframework
+*** Test Cases ***
+iOS App Launch Test
+    Open Mobile Application    ios
+    ...    bundleId=com.example.app
+    ...    deviceName=iPhone 14
+    ...    platformVersion=16.0
+    
+    Wait For Element    accessibility_id=main_screen
+    Take Mobile Screenshot    ios_launch.png
+    Close Mobile Application
+```
+
+#### Android 應用測試
+```robotframework
+*** Test Cases ***
+Android Login Test
+    Open Mobile Application    android
+    ...    appPackage=com.example.app
+    ...    appActivity=.MainActivity
+    
+    Login To Mobile App
+    ...    username=testuser
+    ...    password=testpass
+    ...    username_field=id=username_input
+    ...    password_field=id=password_input
+    ...    login_button=id=login_btn
+    
+    Verify Element Text    id=welcome_text    歡迎回來
+    Close Mobile Application
+```
+
+### 環境配置
+
+複製 `.env.template` 為 `.env` 並根據你的測試環境修改：
+
 ```bash
-# 啟動 Appium 服務
-appium --port 4723
+# Appium 服務設定
+APPIUM_HOST=localhost
+APPIUM_PORT=4723
 
-# iOS 應用安裝與測試
-robot --variable PLATFORM:ios --variable APP_PATH:/path/to/app.ipa tests/mobile/ios/
+# iOS 設定
+IOS_DEVICE_NAME=iPhone 14
+IOS_PLATFORM_VERSION=16.0
+IOS_BUNDLE_ID=com.example.app
 
-# iPhone 特定測試
-robot --variable DEVICE_ID:auto tests/mobile/ios/iphone_tests.robot
+# Android 設定
+ANDROID_DEVICE_NAME=Android Emulator
+ANDROID_PLATFORM_VERSION=11
+ANDROID_APP_PACKAGE=com.example.app
+ANDROID_APP_ACTIVITY=.MainActivity
 ```
-
-#### Android 應用測試  
-```bash
-# Android 應用安裝與測試
-robot --variable PLATFORM:android --variable APP_PATH:/path/to/app.apk tests/mobile/android/
-
-# 特定 Android 設備測試
-robot --variable DEVICE_ID:emulator-5554 tests/mobile/android/phone_tests.robot
-```
-
-### 🤖 機器手臂操作 (計劃中)
-
-#### 基礎運動控制
-```bash
-# 機器手臂校準
-robot tests/physical_interaction/arm_calibration.robot
-
-# 實體面板操作測試
-robot tests/physical_interaction/panel_operation.robot
-
-# 精度驗證測試
-robot tests/physical_interaction/precision_test.robot
-```
-
-#### 複合操作測試
-```bash
-# 協同操作：手臂+移動設備
-robot --include coordination tests/integration/arm_mobile_test.robot
-
-# 視覺輔助操作
-robot --include vision tests/integration/visual_guided_operation.robot
-```
-
-### 🎤 語音控制應用
-
-#### Robot Framework 關鍵字
-
-```robotframework
-*** Test Cases ***
-語音控制設備測試
-    # 語音播放
-    Speak Text    開始測試
-    Set TTS Language    zh-TW
-    Speak Text    請確認設備狀態
-    
-    # 語音錄製
-    Start Voice Recording    10
-    Sleep    10s
-    ${recording_file}=    Stop Voice Recording
-    Log    錄音檔案: ${recording_file}
-    
-    # 語音檢測
-    Set Detection Threshold    0.8
-    Verify Sound Contains    ${recording_file}    特定聲音
-```
-
-#### Python 直接使用
-
-```python
-from libraries.local_voice_verifying.LocalVoiceVerifyingLibrary import LocalVoiceVerifyingLibrary
-
-# 初始化語音系統
-voice_lib = LocalVoiceVerifyingLibrary()
-
-if voice_lib.is_initialized:
-    # TTS 播放
-    voice_lib.speak_text("系統初始化完成")
-    voice_lib.set_tts_language("en")
-    voice_lib.speak_text("System ready")
-    
-    # 錄音功能
-    voice_lib.start_voice_recording(5)
-    time.sleep(5)
-    audio_file = voice_lib.stop_voice_recording()
-    print(f"Audio saved: {audio_file}")
-```
-
-### 🔌 電源管理控制 (計劃中)
-
-#### 智慧插座操作
-```robotframework
-*** Test Cases ***
-設備電源管理測試
-    # 設備開機
-    Power Control Device    測試設備    ON
-    Wait Until Device Online    測試設備    timeout=60s
-    
-    # 執行測試
-    Run Mobile App Test    測試應用
-    
-    # 設備關機
-    Power Control Device    測試設備    OFF
-    Wait Until Device Offline    測試設備    timeout=30s
-```
-
-#### 電源狀態監控
-```python
-from libraries.power_management.smart_socket_controller import SmartSocketController
-
-# 初始化電源控制器
-power_ctrl = SmartSocketController()
-
-# 設備電源操作
-power_ctrl.turn_on_device("test_device")
-power_ctrl.monitor_power_status("test_device")
-power_ctrl.turn_off_device("test_device")
-```
-
-### 👁️ 多感官檢測應用 (計劃中)
-
-#### 音訊檢測
-```robotframework
-*** Test Cases ***
-音訊環境監控
-    # 開始音訊監控
-    Monitor Audio During Test    60s    notification_sound,alarm_sound
-    
-    # 執行操作
-    Click Physical Button    確認按鈕
-    
-    # 驗證音訊反應
-    Wait For Sound Pattern    button_click_sound    timeout=5s
-    Verify Audio Quality    ${LAST_RECORDING}
-```
-
-#### 視覺檢測
-```robotframework
-*** Test Cases ***
-視覺狀態驗證
-    # 螢幕監控
-    Start Screen Recording    test_area
-    
-    # 執行操作
-    Robot Arm Press Button    power_button
-    
-    # 視覺驗證
-    Wait Until Screen Contains    開機畫面    timeout=30s
-    Verify LED Status    power_led    ON
-    Stop Screen Recording
-```
-
-### 🔗 整合測試流程
-
-#### 端到端測試範例
-```robotframework
-*** Test Cases ***
-完整自動化測試流程
-    [Documentation]    演示多系統協同操作
-    [Tags]    integration    end-to-end
-    
-    # 1. 環境準備
-    Power Control Device    測試設備    ON
-    Wait Until Device Online    測試設備
-    Initialize Robot Arm
-    Start Audio Monitoring
-    Start Video Recording
-    
-    # 2. 移動應用測試
-    Launch Mobile App    測試應用
-    Perform App Operations
-    
-    # 3. 物理操作
-    Robot Arm Press Physical Button    重啟按鈕
-    Wait For Sound Pattern    reboot_sound
-    
-    # 4. 語音互動
-    Speak Text    請確認系統狀態
-    Wait For Voice Response    系統正常
-    
-    # 5. 結果驗證
-    Verify Screen Status    正常運行
-    Verify Audio Response    確認音效
-    
-    # 6. 環境清理
-    Stop All Monitoring
-    Power Control Device    測試設備    OFF
-```
-
 ## 系統功能與特色
 
 ### ✅ 已實現功能 (v1.0)
@@ -612,17 +597,19 @@ power_ctrl.turn_off_device("test_device")
   - 操作結果驗證
 
 #### 🔌 電源管理模組
-- [ ] **智慧插座控制**
-  - TP-Link Kasa 整合
-  - 小米智慧插座支援
-  - 網路設備自動發現
-  - 即時功率監測
+- [x] **SwitchBot 智慧插座控制** - ✅ 已完成
+  - SwitchBot Smart Plug 完整整合
+  - HTTP API 認證與控制
+  - 設備自動發現與狀態查詢
+  - 開關控制與狀態監測
+  - 統一配置管理系統
 
-- [ ] **設備電源管理**
+- [x] **設備電源管理** - ✅ 已完成
   - 自動開關機控制
-  - 設備狀態檢測 (Ping + 回應)
-  - 電力消耗統計
-  - 異常狀態告警
+  - 設備狀態檢測與驗證
+  - Robot Framework 中文關鍵字支援
+  - Gherkin 風格測試案例
+  - 詳細錯誤處理與日誌記錄
 
 #### 👁️ 多感官檢測模組
 - [ ] **音訊檢測系統**
@@ -657,86 +644,17 @@ power_ctrl.turn_off_device("test_device")
     - 圖標符號檢測與模板匹配
     - 色彩變化檢測與分析
 
-### 🎯 核心 Robot Framework 關鍵字
+#### TestLink 整合模組
+- [ ] **TestLink API 整合**
+  - 測試案例自動匯入/匯出
+  - 測試執行結果自動回報
+  - 缺陷追蹤與管理整合
+  - 測試計劃與需求關聯
 
-#### 語音控制關鍵字 (已實現)
-| 關鍵字 | 功能說明 | 使用範例 |
-|--------|----------|----------|
-| `Speak Text` | TTS 語音播放 | `Speak Text    Hello World` |
-| `Set TTS Language` | 設定語音語言 | `Set TTS Language    zh-TW` |
-| `Set TTS Speed` | 調整語音速度 | `Set TTS Speed    1.2` |
-| `Start Voice Recording` | 開始錄音 | `Start Voice Recording    10` |
-| `Stop Voice Recording` | 停止錄音並保存 | `${file} =    Stop Voice Recording` |
-| `Set Detection Threshold` | 設定檢測閾值 | `Set Detection Threshold    0.8` |
-
-#### 移動設備關鍵字 (計劃中)
-| 關鍵字 | 功能說明 | 使用範例 |
-|--------|----------|----------|
-| `Launch Mobile App` | 啟動移動應用 | `Launch Mobile App    com.example.app` |
-| `Click Mobile Element` | 點擊移動元素 | `Click Mobile Element    login_button` |
-| `Input Mobile Text` | 移動設備文字輸入 | `Input Mobile Text    username_field    testuser` |
-| `Swipe Mobile Screen` | 移動設備滑動 | `Swipe Mobile Screen    up` |
-| `Install Mobile App` | 安裝移動應用 | `Install Mobile App    /path/to/app.apk` |
-
-#### 機器手臂關鍵字 (計劃中)
-| 關鍵字 | 功能說明 | 使用範例 |
-|--------|----------|----------|
-| `Move Arm To Position` | 移動到指定位置 | `Move Arm To Position    [100, 200, 300]` |
-| `Press Physical Button` | 按下實體按鈕 | `Press Physical Button    power_button` |
-| `Robot Arm Calibrate` | 機器手臂校準 | `Robot Arm Calibrate` |
-| `Set Arm Speed` | 設定手臂速度 | `Set Arm Speed    50` |
-| `Move To Safe Position` | 移動到安全位置 | `Move To Safe Position` |
-
-#### 電源管理關鍵字 (計劃中)
-| 關鍵字 | 功能說明 | 使用範例 |
-|--------|----------|----------|
-| `Power Control Device` | 控制設備電源 | `Power Control Device    test_device    ON` |
-| `Wait Until Device Online` | 等待設備上線 | `Wait Until Device Online    test_device    60s` |
-| `Monitor Power Usage` | 監控電力使用 | `Monitor Power Usage    test_device` |
-| `Schedule Power Control` | 排程電源控制 | `Schedule Power Control    test_device    OFF    300s` |
-
-#### 檢測系統關鍵字 (計劃中)
-
-##### 音訊檢測關鍵字
-| 關鍵字 | 功能說明 | 使用範例 |
-|--------|----------|----------|
-| `Generate Custom TTS Audio` | 自定義語音合成 | `Generate Custom TTS Audio    Hello World    zh-TW    speed=1.2` |
-| `Generate Test Tone Signal` | 產生測試音頻信號 | `Generate Test Tone Signal    frequency=1000    duration=3.0` |
-| `Start High Quality Audio Recording` | 啟動高品質錄音 | `Start High Quality Audio Recording    sample_rate=48000    bit_depth=24` |
-| `Analyze Audio Frequency Spectrum` | 分析音訊頻譜 | `${spectrum} =    Analyze Audio Frequency Spectrum    ${audio_file}    1000` |
-| `Detect Environmental Sound Patterns` | 環境音模式檢測 | `Detect Environmental Sound Patterns    30    ${sound_patterns}` |
-| `Monitor Audio During Test` | 測試期間音訊監控 | `Monitor Audio During Test    60s    alarm_sound` |
-| `Wait For Sound Pattern` | 等待特定聲音 | `Wait For Sound Pattern    notification    30s` |
-
-##### 視覺檢測關鍵字
-| 關鍵字 | 功能說明 | 使用範例 |
-|--------|----------|----------|
-| `Initialize YOLO Light Detection Model` | 初始化 YOLO 燈號檢測 | `Initialize YOLO Light Detection Model    models/lights.pt    0.7` |
-| `Detect Multi Color LED Status` | 檢測多色 LED 狀態 | `${status} =    Detect Multi Color LED Status    ${image}    ${colors}` |
-| `Monitor LED Status Changes` | 監控 LED 狀態變化 | `Monitor LED Status Changes    60    ${led_configs}    0.1` |
-| `Initialize Marker Tracking System` | 初始化標記追蹤系統 | `Initialize Marker Tracking System    camera1    CSRT    ${markers}` |
-| `Track Multi Marker Rotation` | 追蹤多標記旋轉 | `${data} =    Track Multi Marker Rotation    30    30    ${center}` |
-| `Analyze Rotation Patterns` | 分析旋轉模式 | `${analysis} =    Analyze Rotation Patterns    ${tracking_data}    ${config}` |
-| `Capture Screen Area` | 擷取螢幕區域 | `Capture Screen Area    [0,0,800,600]` |
-| `Verify Visual Element` | 驗證視覺元素 | `Verify Visual Element    login_success_icon` |
-| `OCR Text Recognition` | OCR 文字識別 | `${text} =    OCR Text Recognition    screenshot.png` |
-
-##### 多模態整合關鍵字
-| 關鍵字 | 功能說明 | 使用範例 |
-|--------|----------|----------|
-| `Execute Multi Modal Test Sequence` | 執行多模態測試序列 | `${result} =    Execute Multi Modal Test Sequence    ${sequence}    ${sync_config}` |
-| `Synchronize Multi Modal Data` | 多模態數據同步 | `${sync_data} =    Synchronize Multi Modal Data    ${audio}    ${visual}    ${config}` |
-| `Fuse Multi Modal Analysis` | 多模態數據融合分析 | `${fusion} =    Fuse Multi Modal Analysis    ${audio_analysis}    ${visual_analysis}` |
-
-#### TestLink 整合關鍵字 (計劃中)
-| 關鍵字 | 功能說明 | 使用範例 |
-|--------|----------|----------|
-| `Connect To TestLink` | 連接 TestLink 服務 | `Connect To TestLink    ${URL}    ${API_KEY}` |
-| `Sync Test Cases To TestLink` | 同步測試案例 | `Sync Test Cases To TestLink    ${PROJECT_ID}    ${SUITE_PATH}` |
-| `Start TestLink Test Execution` | 開始測試執行記錄 | `Start TestLink Test Execution    ${TEST_CASE_ID}    ${BUILD_ID}` |
-| `Report Test Result To TestLink` | 回報測試結果 | `Report Test Result To TestLink    ${EXECUTION_ID}    PASS    ${NOTES}` |
-| `Upload Test Attachments` | 上傳測試附件 | `Upload Test Attachments To TestLink    ${EXECUTION_ID}    ${FILE_PATH}` |
-| `Create TestLink Test Plan` | 建立測試計劃 | `Create TestLink Test Plan    ${PROJECT_ID}    ${PLAN_NAME}` |
+- [ ] **報告與分析**
+  - 自動化測試報告生成
+  - 測試結果趨勢分析
+  - 覆蓋率報告與缺陷分析
 
 ## 配置管理
 
@@ -867,7 +785,7 @@ python -m pytest . -v
 # 特定模組測試
 python test_library_init.py           # Library 初始化測試
 python test_library_functionality.py  # 功能完整性測試
-python test_recording.py              # 錄音功能測試
+python test_recording.py              # 音訊錄音測試
 python test_recording_detailed.py     # 詳細錄音測試
 ```
 
@@ -923,7 +841,7 @@ def check_system_health():
             if os.path.exists(path):
                 print(f"✅ {name} 目錄存在: {path}")
             else:
-                print(f"⚠️  {name} 目錄不存在: {path}")
+                print(f"⚠️  {name} 目錄不存在: {path} (請手動建立)")
                 
         print("\n🎉 系統健康檢查完成！")
         
@@ -1162,7 +1080,7 @@ EOF
 python diagnose_system.py
 ```
 
-### 📋 效能調整建議
+### 📊 效能調整建議
 
 #### 1. 音訊效能最佳化
 ```python
@@ -1253,15 +1171,109 @@ echo "報告已產生: system_report.txt"
 - ✅ **文檔建立**: spec.md、todo.md、README.md 完整文檔
 - ✅ **測試驗證**: 單元測試、整合測試、dryrun 驗證
 
-#### 🚧 Phase 2: 設備整合開發 (2025-01 ~ 2025-02)
+#### 🚧 Phase 2: 設備整合開發 (2025-07 ~ 2025-08)
 - [ ] **移動應用測試模組**: iOS/Android Appium 整合
 - [ ] **機器手臂控制**: MyCobot 280 控制系統
-- [ ] **電源管理系統**: 智慧插座控制與監控
+- [x] **電源管理系統**: SwitchBot 智慧插座控制與監控 ✅ **[已完成]**
 
-#### 🔮 Phase 3: 檢測系統開發 (2025-03 ~ 2025-04)
+#### 🔮 Phase 3: 檢測系統開發 (2025-09 ~ 2025-10)
 - [ ] **多感官檢測**: 音訊/視覺檢測系統
 - [ ] **AI 輔助識別**: 機器學習增強檢測
 - [ ] **整合測試**: 端到端協同測試
+
+#### v1.0.0 (2025-06-17) - 基礎語音系統
+**主要功能**:
+- ✅ LocalVoiceVerifyingLibrary 核心實現
+- ✅ Google TTS + pyttsx3 雙引擎支援
+- ✅ 高品質音訊錄製 (WAV 格式)
+- ✅ Robot Framework 完整整合
+- ✅ 統一配置管理系統
+
+**技術改進**:
+- ✅ 配置檔案重構 (移至 config 目錄)
+- ✅ 模組化架構設計
+- ✅ 完整錯誤處理與日誌系統
+- ✅ 自動化測試覆蓋
+
+**修復問題**:
+- ✅ 解決配置檔案重複問題
+- ✅ 修復模組匯入路徑問題
+- ✅ 改善音訊設備相容性
+
+#### v1.1.0 (計劃中 - 3個月內) - 移動設備整合
+**預計功能**:
+- [ ] iOS 自動化測試 (Appium + WebDriverAgent)
+- [ ] Android 自動化測試 (UIAutomator2)
+- [ ] 跨平台測試案例模板
+- [ ] 設備管理與監控
+
+**技術目標**:
+- 🎯 完成移動設備測試模組
+- 🎯 實現設備自動發現與連接
+- 🎯 建立跨平台測試架構
+
+#### v2.0.0 (計劃中 - 6個月內) - 硬體操作與電源管理
+**預計功能**:
+- [ ] MyCobot 280 機器手臂控制 (測試工具)
+- [ ] SwitchBot 智慧插座整合 (被測設備電源管理)
+- [ ] 實體面板操作自動化
+- [ ] 視覺輔助定位系統
+- [ ] 精度校準與驗證
+- [ ] 設備電源狀態監控與自動化控制
+
+**技術目標**:
+- 🎯 實現機器手臂基礎控制
+- 🎯 建立電源管理系統
+- 🎯 完成實體設備操作能力
+
+#### v3.0.0 (計劃中 - 12個月內) - 多感官檢測系統
+**預計功能**:
+- [ ] **音訊檢測系統**:
+  - TTS 多語言語音合成（中文、英文、日文）
+  - 48kHz/24bit 高品質音訊錄製與分析
+  - 語音識別、噪音抑制、頻譜分析
+  - 環境音檢測與音訊回饋驗證
+- [ ] **視覺檢測系統**:
+  - YOLOv8 深度學習燈號檢測
+  - 動態角度變化檢測 (30-120 FPS)
+  - 標記中心點追蹤與旋轉分析
+  - 多語言 OCR 與模板匹配
+- [ ] **多模態數據融合**:
+  - 音訊與視覺數據同步
+  - 融合分析與智慧決策
+  - 統一時間戳與事件關聯
+
+**技術目標**:
+- 🔮 多感官檢測系統成熟
+- 🔮 AI 輔助決策整合
+- 🔮 自適應檢測閾值
+
+#### v4.0.0 (計劃中 - 18個月內) - TestLink 整合與雲端化
+**預計功能**:
+- [ ] TestLink 測試案例管理整合
+- [ ] 測試結果自動回報與追蹤
+- [ ] 雲端測試資源整合
+- [ ] CI/CD 自動化流程
+- [ ] 測試數據分析與報告
+
+**技術目標**:
+- 🔮 完整測試案例管理生態
+- 🔮 雲端測試資源整合
+- 🔮 企業級 CI/CD 整合
+
+#### v5.0.0 (長期願景 - 24個月內) - 智慧化測試平台
+**預計功能**:
+- [ ] 智慧型測試案例生成
+- [ ] 自適應測試策略
+- [ ] 完整自動化測試生態系統
+- [ ] 開源社群與商業化支援
+
+**技術目標**:
+- 🌟 完整自動化測試生態系統
+- 🌟 智慧型測試案例生成
+- 🌟 自適應測試策略
+- 🌟 開源社群與商業化
+- [ ] 預測性故障檢測
 
 ### 🏷️ 版本歷史與發展規劃
 
@@ -1313,7 +1325,7 @@ echo "報告已產生: system_report.txt"
 #### v3.0.0 (計劃中 - 12個月內) - 多感官檢測系統
 **預計功能**:
 - [ ] **音訊檢測系統**:
-  - TTS 多語言語音合成 (中文、英文、日文)
+  - TTS 多語言語音合成（中文、英文、日文）
   - 48kHz/24bit 高品質音訊錄製與分析
   - 語音識別、噪音抑制、頻譜分析
   - 環境音檢測與音訊回饋驗證
@@ -1434,52 +1446,4 @@ Robot Framework 核心
 | **案例管理** | Robot Framework Parser | JSON 數據映射 | 同步成功率 > 99% |
 | **結果回報** | xmlrpc.client | 即時狀態更新 | 回報延遲 < 30秒 |
 | **任務調度** | APScheduler | 定時同步機制 | 調度精度 ±1秒 |
-| **案例同步** | Robot Framework Parser | JSON 數據映射 |
-### 📊 專案統計資訊
-
-#### 程式碼統計 (v1.0.0)
-```
-語言分布:
-├── Python: ~2,500 行 (85%)
-├── Robot Framework: ~300 行 (10%)
-├── Shell Script: ~100 行 (3%)
-└── 配置檔案: ~50 行 (2%)
-
-模組分布:
-├── LocalVoiceVerifyingLibrary: 800 行
-├── TTS Manager: 400 行
-├── Audio Recorder: 350 行
-├── Sound Detector: 300 行
-├── 配置系統: 200 行
-└── 測試檔案: 450 行
-```
-
-#### 測試覆蓋率
-- **單元測試**: 85% 覆蓋率
-- **整合測試**: 90% 覆蓋率
-- **Robot Framework 測試**: 100% 關鍵字覆蓋
-
-#### 效能指標
-- **TTS 回應時間**: < 2 秒 (Google TTS)
-- **錄音啟動延遲**: < 0.5 秒
-- **配置載入時間**: < 0.1 秒
-- **Memory 使用**: < 200MB (基礎功能)
-
-#### 硬體設備支援狀態
-- **✅ 已支援**: 
-  - 麥克風與喇叭 (音訊 I/O)
-  - SwitchBot 智慧插座 (電源管理)
-- **🔄 開發中**: 
-  - iOS/Android 設備 (移動測試)
-  - USB 攝影機 (視覺檢測)
-- **📅 計劃中**: 
-  - MyCobot 280 機器手臂 (實體操作)
-  - IoT 面板設備 (被測目標)
-
----
-
-## 📞 聯絡資訊
-
-**最後更新**: 2025-06-18  
-**文檔版本**: v1.1.0  
-**專案狀態**: ⚡ 積極開發中
+| **案例同步** | Robot Framework Parser | JSON 數據映射 | 同步成功率 > 99% |

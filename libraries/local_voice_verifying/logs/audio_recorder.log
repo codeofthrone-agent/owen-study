@@ -193,3 +193,18 @@
 2025-06-17 11:07:51 | WARNING | voice_audio_recorder | 音訊格式測試失敗: ('Must specify stream format for input, output, or both', -9996)
 2025-06-17 11:07:51 | ERROR | voice_audio_recorder | 無法找到支援的音訊格式
 2025-06-17 11:07:51 | INFO | voice_audio_recorder | AudioRecorder 初始化完成
+2025-06-23 15:00:46 | INFO | voice_audio_recorder | 偵測到 3 個音訊設備
+2025-06-23 15:00:46 | INFO | voice_audio_recorder | 預設輸入設備: MacBook Pro的麥克風
+2025-06-23 15:00:46 | WARNING | voice_audio_recorder | 音訊格式測試失敗: ('Must specify stream format for input, output, or both', -9996)
+2025-06-23 15:00:46 | ERROR | voice_audio_recorder | 無法找到支援的音訊格式
+2025-06-23 15:00:46 | INFO | voice_audio_recorder | AudioRecorder 初始化完成
+2025-06-23 15:01:28 | INFO | voice_audio_recorder | 偵測到 3 個音訊設備
+2025-06-23 15:01:28 | INFO | voice_audio_recorder | 預設輸入設備: MacBook Pro的麥克風
+2025-06-23 15:01:28 | WARNING | voice_audio_recorder | 音訊格式測試失敗: ('Must specify stream format for input, output, or both', -9996)
+2025-06-23 15:01:28 | ERROR | voice_audio_recorder | 無法找到支援的音訊格式
+2025-06-23 15:01:28 | INFO | voice_audio_recorder | AudioRecorder 初始化完成
+2025-06-23 15:01:56 | INFO | voice_audio_recorder | 偵測到 3 個音訊設備
+2025-06-23 15:01:56 | INFO | voice_audio_recorder | 預設輸入設備: MacBook Pro的麥克風
+2025-06-23 15:01:56 | WARNING | voice_audio_recorder | 音訊格式測試失敗: ('Must specify stream format for input, output, or both', -9996)
+2025-06-23 15:01:56 | ERROR | voice_audio_recorder | 無法找到支援的音訊格式
+2025-06-23 15:01:56 | INFO | voice_audio_recorder | AudioRecorder 初始化完成

@@ -9,3 +9,7 @@
 9. python 使用 pipenv 管理相依性
 10. 專案如果是使用 Robot Framework 進行測試，請在 tests/ 目錄下建立測試案例，並在 resources/ 目錄下建立關鍵字庫和測試資源
 11. 每次修改完robot程式碼後，應更新 keywords_readme.md，並檢查是否有對應的測試案例
+12. Robot Framework 測試案例應使用 Gherkin 語法，並遵循 Given-When-Then-And 的結構
+13. [Documentation] 應包含每個關鍵字的詳細說明和使用範例
+14. Robot Framework 關鍵字名稱應使用中文
+15. 寫入日期應先檢查現在日期，並確保日期格式為 YYYY-MM-DD

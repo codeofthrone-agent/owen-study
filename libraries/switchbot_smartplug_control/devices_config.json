@@ -1,0 +1,14 @@
+{
+  "last_updated": "2025-06-23 16:11:37",
+  "devices": [
+    {
+      "deviceId": "3C84279C35E2",
+      "deviceName": "智慧插座Mini（US） E2",
+      "deviceType": "Plug Mini (US)",
+      "enableCloudService": true,
+      "hubDeviceId": ""
+    }
+  ],
+  "infrared_devices": [],
+  "total_count": 1
+}

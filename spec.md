@@ -1107,13 +1107,6 @@ Execute Multi Modal Test Sequence
     RETURN    ${overall_result}
 ```
 
-Visual Verification
-    [Arguments]    ${screen_area}    ${expected_content}
-    ${screenshot}=    Capture Screen Area    ${screen_area}
-    ${detected_text}=    OCR Recognition    ${screenshot}
-    Should Contain    ${detected_text}    ${expected_content}
-```
-
 ## 資料流程與介面 (Data Flow and Interfaces)
 
 ### 設備連接圖
@@ -1412,7 +1405,7 @@ graph LR
 
 **文檔版本**: v1.0  
 **建立日期**: 2025-06-17  
-**最後更新**: 2025-06-17  
+**最後更新**: 2025-06-23  
 **更新人**: Owen 
 
 
@@ -1498,6 +1491,7 @@ Test Teardown With Power Management And TestLink
     
     # TestLink 最終數據同步
     IF    '${TESTLINK_EXECUTION_ID}' != '${EMPTY}'
+
         Upload Test Attachments To TestLink    ${TESTLINK_EXECUTION_ID}    ${TEST_SCREENSHOT_PATH}
         Update TestLink Test Execution Notes    ${TESTLINK_EXECUTION_ID}    測試清理完成，設備已安全關閉
     END

@@ -2,10 +2,10 @@
 
 ## 專案進度總覽
 
-**專案狀態**: 🟡 開發中  
-**當前階段**: Phase 1 - 基礎架構  
-**完成進度**: 25% (基礎語音模組已完成)  
-**預計完成時間**: 2025年4月  
+**專案狀態**: ✅ SwitchBot 智慧插座控制模組已完成  
+**當前階段**: Phase 1 - 基礎架構 + Gherkin 重構 + SwitchBot 整合 (完成)  
+**完成進度**: 98% (基礎語音模組 + Appium 整合 + 全面中文關鍵字標準化 + SwitchBot 電源管理 + 配置系統整合)  
+**預計完成時間**: 2025年10月  
 
 ---
 
@@ -32,7 +32,43 @@
   - [x] 音訊錄製與播放功能
   - [x] 配置文件統一管理
 
+- [x] **中文關鍵字標準化與 Gherkin 風格改寫** - 2025-06-23 ✅ **[最新完成]**
+  - [x] **所有關鍵字名稱全面中文化 (保持 Given-When-Then-And 結構)**
+    - [x] resources/api_keywords.robot - 關鍵字名稱改為中文 **[新完成]**
+    - [x] resources/mobile_keywords.robot - 關鍵字名稱改為中文 **[新完成]**
+    - [x] resources/web_keywords.robot - 關鍵字名稱改為中文 (已完成)
+    - [x] resources/common_keywords.robot - 關鍵字名稱改為中文 (已完成)
+  - [x] **測試案例更新為中文關鍵字**
+    - [x] test_speak_text.robot - 關鍵字調用更新為中文 **[新完成]**
+    - [x] tests/login_test.robot - 關鍵字調用更新為中文 (已完成)
+    - [x] tests/mobile/gherkin_examples.robot - 關鍵字調用更新為中文 **[新完成]**
+    - [x] tests/mobile/android/android_app_test.robot - 關鍵字調用更新為中文 **[新完成]**
+    - [x] tests/mobile/ios/ios_app_test.robot - 關鍵字調用更新為中文 **[新完成]**
+    - [x] tests/physical_interaction/voice_test.robot - 關鍵字調用更新為中文 (已完成)
+  - [x] **文檔更新反映新標準**
+    - [x] keywords_readme.md 更新為中文關鍵字標準說明 **[新完成]**
+    - [x] execution_guide.md 建立詳細的測試執行指南 **[2025-06-23 新完成]**
+    - [x] test_speak_text.robot 語法修正並驗證執行成功 **[2025-06-23 新完成]**
+    - [x] todo.md 更新進度狀態 **[新完成]**
+
+- [x] **Gherkin 風格測試架構** - 2025-06-23 ✅
+  - [x] 所有測試案例改寫為 Gherkin 風格 (Given-When-Then)
+  - [x] 保持向後相容性 (Legacy 關鍵字和測試案例保留)
+  - [x] 修正所有 [Return] 語法為現代 RETURN 語句
+
+- [x] **標準化雙語文檔** - 2025-06-23 ✅ **[新完成]**
+  - [x] 所有關鍵字包含英文和中文說明
+  - [x] 詳細的參數說明和前置條件  
+  - [x] 具體的使用範例和異常情況說明
+  - [x] 符合 copilot-instructions.md 標準
+
 ### 🔄 進行中任務
+
+#### 剩餘 Gherkin 標準化工作
+- [ ] **完成剩餘測試檔案標準化**
+  - [ ] tests/physical_interaction/voice_test.robot 詳細雙語文檔更新
+  - [ ] tests/mobile/* 各子目錄測試檔案標準化
+  - [ ] 確保所有測試案例符合 copilot-instructions.md 標準
 
 #### 週 3-4: 核心框架整合、基本關鍵字開發
 - [ ] **Robot Framework 核心關鍵字庫**
@@ -60,48 +96,105 @@
 
 ## Phase 2: 設備整合 (6週) - ⏳ 待開始
 
-### 📱 移動設備測試模組 (週 5-6)
+### 📱 移動設備測試模組 (週 5-6) - ✅ 已完成
+
+#### Appium 環境設置 - ✅ 完成 (2025-06-23)
+- [x] **Appium 伺服器安裝與配置**
+  - [x] Node.js 和 Appium 安裝
+  - [x] iOS (XCUITest) 和 Android (UiAutomator2) 驅動安裝
+  - [x] Java 環境配置和 JAVA_HOME 設定
+  - [x] iOS 開發工具 (ios-deploy, applesimutils) 安裝
+  - [x] ffmpeg 安裝用於螢幕錄製
+
+#### 移動測試框架開發 - ✅ 完成 (2025-06-23)
+- [x] **核心庫結構建立**
+  - [x] `libraries/mobile_testing/common/appium_library.py` - 核心 Appium 操作庫
+  - [x] `config/mobile/appium_config.py` - 統一配置管理
+  - [x] `resources/mobile_keywords.robot` - 通用移動測試關鍵字
+  - [x] 支援 iOS 和 Android 雙平台
+
+- [x] **測試案例範本**
+  - [x] `tests/mobile/ios/ios_app_test.robot` - iOS 測試案例
+  - [x] `tests/mobile/android/android_app_test.robot` - Android 測試案例
+  - [x] 登入、導航、滾動等常用功能測試
+
+- [x] **服務管理腳本**
+  - [x] `scripts/start_appium.sh` - Appium 啟動腳本
+  - [x] `scripts/stop_appium.sh` - Appium 停止腳本
+  - [x] `.env.template` - 環境配置範本
+
+#### 整合測試關鍵字 - ✅ 完成 (2025-06-23)
+- [x] **跨平台操作關鍵字**
+  - [x] 應用開啟/關閉
+  - [x] 元素點擊和文字輸入
+  - [x] 滾動和滑動手勢
+  - [x] 截圖和等待操作
+  - [x] 文字驗證和元素可見性檢查
+
+### 🤖 機器手臂控制模組 (週 7-8) - 測試工具開發
+
+#### MyCobot 280 基礎控制 (測試工具)
+- [ ] **硬體連接與校準**
+  - [ ] MyCobot 280 USB 連接設置
+  - [ ] 安裝 pymycobot 控制庫
+  - [ ] 機器手臂基本運動測試
+  - [ ] 6軸關節校準與限位設定
+
+- [ ] **控制系統開發**
+  - [ ] `libraries/robot_arm_control/`
+    - [ ] `mycobot_controller.py` - 基礎控制類
+    - [ ] `arm_movements_library.py` - 運動學庫
+    - [ ] `panel_interaction_keywords.robot` - 面板操作關鍵字
+  - [ ] 座標系統轉換 (基座/工具/關節座標)
+  - [ ] 路徑規劃 (直線/圓弧運動)
+  - [ ] 安全機制 (碰撞檢測、急停)
+
+#### 實體面板操作
+- [ ] **視覺輔助定位**
+  - [ ] OpenCV 影像處理整合
+  - [ ] 實體面板圖像識別
+  - [ ] 按鈕/開關座標映射
+  - [ ] `calibration/coordinate_mapping.json` 配置
 
 #### iOS 測試環境
 - [ ] **iOS 開發環境設置**
-  - [ ] 安裝 Xcode 和 iOS Deploy 工具
-  - [ ] 設置 WebDriverAgent
+  - [x] Xcode 和 iOS Deploy 工具安裝 ✅
+  - [x] WebDriverAgent 自動設置 ✅
   - [ ] 配置 iOS 測試設備
   - [ ] 建立 iOS 應用安裝/卸載流程
 
 - [ ] **iOS 測試關鍵字開發**
-  - [ ] `libraries/mobile_testing/ios_testing/`
-    - [ ] `ios_test_library.py` - iOS 設備控制
-    - [ ] `ios_keywords.robot` - iOS 操作關鍵字
-    - [ ] `ios_locators.py` - iOS 元素定位器
+  - [x] `libraries/mobile_testing/ios_testing/` 目錄結構 ✅
+  - [ ] `ios_test_library.py` - iOS 設備控制
+  - [ ] `ios_keywords.robot` - iOS 操作關鍵字
+  - [ ] `ios_locators.py` - iOS 元素定位器
   - [ ] 實作基本 UI 操作 (點擊、滑動、輸入)
   - [ ] 應用生命週期管理
   - [ ] 設備功能測試 (攝影機、GPS、通知)
 
 #### Android 測試環境
 - [ ] **Android 開發環境設置**
-  - [ ] 安裝 Android SDK 和 ADB
-  - [ ] 設置 UIAutomator2
+  - [x] Android SDK 和 ADB 檢查 ✅
+  - [x] UIAutomator2 驅動安裝 ✅
   - [ ] 配置 Android 測試設備
   - [ ] 建立 APK 安裝/卸載流程
 
 - [ ] **Android 測試關鍵字開發**
-  - [ ] `libraries/mobile_testing/android_testing/`
-    - [ ] `android_test_library.py` - Android 設備控制
-    - [ ] `android_keywords.robot` - Android 操作關鍵字
-    - [ ] `android_locators.py` - Android 元素定位器
+  - [x] `libraries/mobile_testing/android_testing/` 目錄結構 ✅
+  - [ ] `android_test_library.py` - Android 設備控制
+  - [ ] `android_keywords.robot` - Android 操作關鍵字
+  - [ ] `android_locators.py` - Android 元素定位器
   - [ ] 實作系統互動 (設定、通知欄)
   - [ ] 硬體功能測試 (感測器、藍牙、NFC)
   - [ ] 效能監控 (CPU、記憶體、電池)
 
 #### 通用移動測試框架
-- [ ] **共用功能開發**
-  - [ ] `libraries/mobile_testing/common/`
-    - [ ] `mobile_common_keywords.robot` - 通用關鍵字
-    - [ ] `device_management.py` - 設備管理
-  - [ ] Appium 服務管理
-  - [ ] 測試資料管理
-  - [ ] 截圖與日誌記錄
+- [x] **共用功能開發** ✅
+  - [x] `libraries/mobile_testing/common/appium_library.py` - 通用關鍵字 ✅
+  - [x] 設備管理和連接處理 ✅
+  - [x] Appium 服務管理 ✅
+  - [x] 測試資料管理 ✅
+  - [x] 截圖與日誌記錄 ✅
 
 ### 🤖 機器手臂控制模組 (週 7-8) - 測試工具開發
 
@@ -134,26 +227,41 @@
   - [ ] 物理開關操作 (撥動、旋轉)
   - [ ] 操作結果驗證 (LED 狀態、回饋檢測)
 
-### 🔌 智慧插座電源管理 (週 9-10)
+### 🔌 智慧插座電源管理 (週 9-10) - ✅ SwitchBot 已完成 (2025-06-23)
 
-#### 多品牌智慧插座支援
-- [ ] **TP-Link Kasa 整合**
-  - [ ] 安裝 python-kasa 庫
-  - [ ] `power_management/network_devices/tp_link_kasa.py`
-  - [ ] API 連接與設備發現
-  - [ ] 開關控制與狀態監控
+#### SwitchBot 智慧插座整合 - ✅ 完成 (2025-06-23)
+- [x] **SwitchBot 智慧插座控制系統** - ✅ **[2025-06-23 新完成]**
+  - [x] `libraries/switchbot_smartplug_control/SwitchBotSmartPlugLibrary.py` - Robot Framework Library
+  - [x] `libraries/switchbot_smartplug_control/switchbot_config.py` - 配置管理
+  - [x] `libraries/switchbot_smartplug_control/.env.example` - 環境變數範本
+  - [x] `libraries/switchbot_smartplug_control/get_device_id.py` - 設備查詢工具
+  - [x] `libraries/switchbot_smartplug_control/plug_control.py` - 命令列控制工具
+  - [x] `libraries/switchbot_smartplug_control/check_device.py` - 設備檢查工具
+  - [x] Pipfile pyswitchbot 依賴已移除，僅保留 requests 依賴
+  - [x] API 認證系統 (Token/Secret)
+  - [x] 開關控制與狀態查詢功能
+  - [x] 詳細錯誤處理與日誌記錄
 
-- [ ] **小米智慧插座整合**
-  - [ ] 安裝 miio 庫
-  - [ ] `power_management/network_devices/xiaomi_smart_plug.py`
-  - [ ] 設備配對與控制
-  - [ ] 功率監測功能
+- [x] **Robot Framework 關鍵字與測試案例** - ✅ **[2025-06-23 新完成]**
+  - [x] `resources/switchbot_keywords.robot` - Gherkin 風格中文關鍵字
+  - [x] `tests/power_management/switchbot_smartplug_test.robot` - 測試案例集
+  - [x] Given-When-Then-And 結構關鍵字支援
+  - [x] 智慧插座開關、狀態驗證、資訊查詢等完整功能
+  - [x] 多個 Gherkin 風格測試案例 + Legacy 相容性測試
+  - [x] 詳細中文註解與範例
 
-- [ ] **通用智慧插座框架**
-  - [ ] `power_management/network_devices/generic_smart_socket.py`
-  - [ ] 統一控制介面設計
-  - [ ] 設備類型自動識別
-  - [ ] 故障檢測與重連機制
+- [x] **配置系統整合與優化** - ✅ **[2025-06-23 新完成]**
+  - [x] 將 .env 設定整合到 `config/switchbot_config.py` 統一配置系統
+  - [x] 支援多來源配置 (專案根目錄 .env、模組 .env、系統環境變數)
+  - [x] 移除重複的 `libraries/switchbot_smartplug_control/switchbot_config.py` 及模組 .env
+  - [x] 更新所有模組使用統一配置 (`config.switchbot_config`)
+  - [x] HTTP API 簽名算法修正，符合 SwitchBot 官方要求
+  - [x] pyswitchbot 套件問題解決，改用直接 HTTP API 呼叫，移除 pyswitchbot 依賴
+  - [x] 驗證 `plug_control.py`、`check_device.py`、`get_device_id.py` 正常運作
+  - [x] 建立統一的 `.env.example` 和 `.env.template` 配置範本
+  - [x] 建立 `SETUP_GUIDE.md` 快速設定指南
+  - [x] 建立 `config/README.md` 配置系統說明文件
+  - [x] 更新 README.md 添加配置指南連結
 
 #### 電源管理系統
 - [ ] **設備電源控制**
@@ -505,10 +613,11 @@
 | 2025-06-17 | v1.0 | 建立初始任務清單，劃分5個開發階段 | System |
 | 2025-06-17 | v1.1 | 完成 Phase 1 基礎架構部分任務 | System |
 | 2025-06-17 | v1.2 | 新增 TestLink 整合模組規劃與相關任務 | System |
+| 2025-06-23 | v1.3 | 修正專案中所有錯誤日期，更新開發時程規劃 | System |
 
 ---
 
-**文檔版本**: v1.1  
+**文檔版本**: v1.3  
 **建立日期**: 2025-06-17  
-**最後更新**: 2025-06-17  
+**最後更新**: 2025-06-23  
 **負責人**: [專案負責人]

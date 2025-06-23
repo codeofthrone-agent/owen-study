@@ -5,46 +5,35 @@ robotframework-seleniumlibrary
 robotframework-requests
 robotframework-applicationlibrary
 
+# 移動測試
+Appium-Python-Client>=2.0.0  # Appium 原生 Python 客戶端
+
 # 音訊處理核心套件
 pyaudio>=0.2.11
 numpy>=1.21.0
-scipy>=1.7.0
 
-# 音訊分析與特徵提取
-librosa>=0.9.0
-soundfile>=0.10.0
+# 音訊播放
+pygame  # 用於音訊播放控制
 
 # TTS 引擎
 gTTS>=2.3.0
 pyttsx3>=2.90
 
-# 語音識別 (備用)
-SpeechRecognition>=3.10.0
-
-# 音訊檔案處理
-pydub>=0.25.0
-
-# 數值計算與機器學習
-scikit-learn>=1.0.0
+# 網路請求 (SwitchBot API)
+requests>=2.28.0
 
 # 系統工具
-psutil>=5.8.0
 python-dotenv>=0.19.0
 
-# 開發與測試工具
+# 開發與測試工具 (可選)
 pytest>=7.0.0
 pytest-cov>=4.0.0
-black>=22.0.0
-flake8>=5.0.0
 
-# 日誌與除錯
-loguru>=0.6.0
-
-# 檔案操作
+# 檔案操作 (Python 3.4+ 內建 pathlib，但為了相容性)
 pathlib2>=2.3.0
 
-# 平行處理
-# concurrent-futures>=3.1.0
+# macOS 特定 (如果需要)
+# pyobjc-framework-AVFoundation>=8.0.0  # macOS 音訊框架整合
 
 
 # macOS 特定 (如果需要)
