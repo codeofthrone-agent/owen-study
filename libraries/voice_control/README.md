@@ -98,6 +98,115 @@ pip install -r requirements.txt
 # ... (腳本內容詳見 setup_pipewire_routing_v3.sh)
 ```
 
+#### 設定開機自動執行
+
+使用 systemd 服務讓路由設定在每次開機後自動執行：
+
+```bash
+# 1. 複製服務檔案到用戶 systemd 目錄
+mkdir -p ~/.config/systemd/user
+cp pipewire_scarlett_setup.service ~/.config/systemd/user/
+
+# 2. 重新載入 systemd 配置
+systemctl --user daemon-reload
+
+# 3. 啟用服務（開機自動執行）
+systemctl --user enable pipewire_scarlett_setup.service
+
+# 4. 立即啟動服務（無需重開機）
+systemctl --user start pipewire_scarlett_setup.service
+
+# 檢查服務狀態
+systemctl --user status pipewire_scarlett_setup.service
+```
+
+**注意事項：**
+- 服務檔案中的腳本路徑使用 `%h` 代表用戶家目錄
+- 如果腳本位置不同，請修改 `pipewire_scarlett_setup.service` 中的 `ExecStart` 路徑
+- 服務會在 PipeWire 啟動後自動執行
+- 如果執行失敗，會在 5 秒後自動重試
+
+**驗證服務是否正常運作：**
+```bash
+# 檢查服務狀態（應顯示 active (exited) 且 status=0/SUCCESS）
+systemctl --user status pipewire_scarlett_setup.service
+
+# 檢查虛擬設備是否創建成功
+wpctl status | grep Scarlett
+# 應該看到：
+#   - Scarlett_1-2 Audio/Sink sink
+#   - Scarlett_3-4 Audio/Sink sink
+#   - Scarlett 4i4 4th Gen (實體設備)
+
+# 測試播放到各個聲道
+python3 ultimate_play.py file_example_WAV_2MG.wav 1  # 測試輸出 1
+python3 ultimate_play.py file_example_WAV_2MG.wav 4  # 測試輸出 4
+```
+
+**停用開機自動啟動（如需要）：**
+```bash
+# 停用服務
+systemctl --user disable pipewire_scarlett_setup.service
+
+# 停止當前運行的服務
+systemctl --user stop pipewire_scarlett_setup.service
+```
+
+#### 部署到其他機器的檢查清單
+
+在將此設定部署到新機器前，請確認以下條件：
+
+**前置需求檢查：**
+1. ✅ 用戶已加入 `audio` 群組
+   ```bash
+   sudo usermod -a -G audio $USER
+   # 需要登出重新登入或執行 newgrp audio
+   ```
+
+2. ✅ 系統可以識別 Scarlett 設備
+   ```bash
+   aplay -l | grep Scarlett
+   # 應該看到 "Scarlett 4i4 4th Gen"
+   ```
+
+3. ✅ 腳本具有執行權限
+   ```bash
+   chmod +x setup_pipewire_routing_v3.sh
+   ```
+
+4. ✅ 服務檔案路徑正確
+   - 確認 `ExecStart` 路徑與實際安裝位置一致
+   - 使用 `%h` 變數會自動替換為用戶家目錄
+
+5. ✅ Python 環境就緒
+   ```bash
+   python3 --version  # 確認 Python 3 已安裝
+   which python3 ultimate_play.py  # 確認腳本存在
+   ```
+
+**部署步驟摘要：**
+```bash
+# 1. 確認前置需求
+groups | grep audio || sudo usermod -a -G audio $USER
+
+# 2. 登出重新登入或執行
+newgrp audio
+
+# 3. 安裝服務
+mkdir -p ~/.config/systemd/user
+cp pipewire_scarlett_setup.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable pipewire_scarlett_setup.service
+
+# 4. 重新開機測試
+sudo reboot
+
+# 5. 開機後驗證
+systemctl --user status pipewire_scarlett_setup.service
+wpctl status | grep Scarlett
+python3 ultimate_play.py file_example_WAV_2MG.wav 1
+```
+
 ### 步驟 3: 使用終極 Python 腳本播放聲音
 
 在執行完設定腳本後，您就可以使用 `ultimate_play.py` 來向任意聲道播放聲音。這個 Python 腳本會自動切換系統預設的輸出設備，並將聲音播放到正確的聲道。
