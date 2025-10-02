@@ -1,0 +1,14 @@
+[Unit]
+Description=Scarlett 4i4 PipeWire Routing Setup
+After=pipewire.service pipewire-pulse.service
+Requires=pipewire.service pipewire-pulse.service
+
+[Service]
+Type=oneshot
+ExecStart=%h/Tools/Audio_test/setup_pipewire_routing_v3.sh
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
