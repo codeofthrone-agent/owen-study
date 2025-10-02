@@ -2,6 +2,49 @@
 
 本文件提供了在 Linux (Ubuntu 24) 環境下，為 Focusrite Scarlett 4i4 (第四代) 設定並使用真正獨立的 4 個物理輸出的最終解決方案。
 
+## 系統需求與安裝
+
+### 必要軟體安裝
+
+在開始設定之前，請確保安裝以下所有必要的程式：
+
+```bash
+# 更新套件列表
+sudo apt update
+
+# 安裝 PipeWire 及相關工具
+sudo apt install -y pipewire pipewire-pulse pipewire-audio-client-libraries
+
+# 安裝 PulseAudio 工具 (提供 pactl 命令)
+sudo apt install -y pulseaudio-utils
+
+# 安裝 PipeWire 連接工具 (提供 pw-link 命令)
+sudo apt install -y pipewire-bin
+
+# 安裝 Python 3 及 pip (如果尚未安裝)
+sudo apt install -y python3 python3-pip python3-venv
+
+# 安裝音訊播放工具
+sudo apt install -y ffmpeg sox
+
+# 安裝 Scarlett 控制工具
+sudo apt install -y alsa-scarlett-gui
+
+# 安裝 ALSA 工具 (用於儲存音效卡設定)
+sudo apt install -y alsa-utils
+```
+
+### Python 依賴套件
+
+```bash
+# 建立虛擬環境 (建議)
+python3 -m venv venv
+source venv/bin/activate
+
+# 安裝 Python 依賴
+pip install -r requirements.txt
+```
+
 ## 最終成果
 
 透過本方案設定後，您將可以：
