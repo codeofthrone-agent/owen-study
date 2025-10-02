@@ -5,7 +5,7 @@ Requires=pipewire.service pipewire-pulse.service
 
 [Service]
 Type=oneshot
-ExecStart=%h/Tools/Audio_test/setup_pipewire_routing_v3.sh
+ExecStart=%h/Tools/robot-multiplatform-automation/libraries/voice_control/setup_pipewire_routing_v3.sh
 RemainAfterExit=yes
 Restart=on-failure
 RestartSec=5
