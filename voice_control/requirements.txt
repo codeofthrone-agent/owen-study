@@ -1,0 +1,3 @@
+# This project's final solution is based on shell scripts and system tools.
+# The core Python script, ultimate_play.py, uses only standard libraries.
+# Therefore, no external Python packages are required to be installed via pip.

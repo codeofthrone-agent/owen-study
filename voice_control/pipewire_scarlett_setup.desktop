@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Scarlett PipeWire Setup
+Exec=/home/thortron/Tools/Audio_test/setup_pipewire_routing_v3.sh
+Terminal=false
+Comment=Creates and links virtual sinks for the Scarlett 4i4 on login.

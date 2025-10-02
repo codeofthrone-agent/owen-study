@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.3.2 (Python 3.12.3 on linux)" generated="2025-10-02T09:47:31.485006" rpa="false" schemaversion="5">
+<suite id="s1" name="Audio Test" source="/home/thortron/Tools/Audio_test/audio_test.robot">
+<test id="s1-t1" name="测试声道1播放" line="12">
+<kw name="Play Audio To Channel" owner="ultimate_play">
+<msg time="2025-10-02T09:47:36.748679" level="INFO">(步骤 1/3) 正在将系统默认输出切换到: Scarlett_1-2 ...
+    ✅ 切换成功。
+(步骤 2/3) 准备播放到逻辑声道 1...
+    - 声音应从【物理输出 1】播放出来。
+(步骤 3/3) 播放 5 秒钟...
+✅ 播放完毕。</msg>
+<msg time="2025-10-02T09:47:36.748868" level="INFO">${result} = True</msg>
+<var>${result}</var>
+<arg>${AUDIO_FILE}</arg>
+<arg>${1}</arg>
+<arg>${DURATION}</arg>
+<doc>播放音频到指定声道（便于 Robot Framework 调用的函数）</doc>
+<status status="PASS" start="2025-10-02T09:47:31.500414" elapsed="5.248485"/>
+</kw>
+<kw name="Should Be True" owner="BuiltIn">
+<arg>${result}</arg>
+<arg>msg=声道1播放失败</arg>
+<doc>Fails if the given condition is not true.</doc>
+<status status="PASS" start="2025-10-02T09:47:36.749096" elapsed="0.000216"/>
+</kw>
+<doc>测试音频从物理输出1播放</doc>
+<tag>channel-1</tag>
+<status status="PASS" start="2025-10-02T09:47:31.499881" elapsed="5.249554"/>
+</test>
+<test id="s1-t2" name="测试声道2播放" line="18">
+<kw name="Play Audio To Channel" owner="ultimate_play">
+<msg time="2025-10-02T09:47:41.996681" level="INFO">(步骤 1/3) 正在将系统默认输出切换到: Scarlett_1-2 ...
+    ✅ 切换成功。
+(步骤 2/3) 准备播放到逻辑声道 2...
+    - 声音应从【物理输出 2】播放出来。
+(步骤 3/3) 播放 5 秒钟...
+✅ 播放完毕。</msg>
+<msg time="2025-10-02T09:47:41.996834" level="INFO">${result} = True</msg>
+<var>${result}</var>
+<arg>${AUDIO_FILE}</arg>
+<arg>${2}</arg>
+<arg>${DURATION}</arg>
+<doc>播放音频到指定声道（便于 Robot Framework 调用的函数）</doc>
+<status status="PASS" start="2025-10-02T09:47:36.750100" elapsed="5.246756"/>
+</kw>
+<kw name="Should Be True" owner="BuiltIn">
+<arg>${result}</arg>
+<arg>msg=声道2播放失败</arg>
+<doc>Fails if the given condition is not true.</doc>
+<status status="PASS" start="2025-10-02T09:47:41.997056" elapsed="0.000198"/>
+</kw>
+<doc>测试音频从物理输出2播放</doc>
+<tag>channel-2</tag>
+<status status="PASS" start="2025-10-02T09:47:36.749599" elapsed="5.247792"/>
+</test>
+<test id="s1-t3" name="测试声道3播放" line="24">
+<kw name="Play Audio To Channel" owner="ultimate_play">
+<msg time="2025-10-02T09:47:47.245352" level="INFO">(步骤 1/3) 正在将系统默认输出切换到: Scarlett_3-4 ...
+    ✅ 切换成功。
+(步骤 2/3) 准备播放到逻辑声道 3...
+    - 声音应从【物理输出 3】播放出来。
+(步骤 3/3) 播放 5 秒钟...
+✅ 播放完毕。</msg>
+<msg time="2025-10-02T09:47:47.245512" level="INFO">${result} = True</msg>
+<var>${result}</var>
+<arg>${AUDIO_FILE}</arg>
+<arg>${3}</arg>
+<arg>${DURATION}</arg>
+<doc>播放音频到指定声道（便于 Robot Framework 调用的函数）</doc>
+<status status="PASS" start="2025-10-02T09:47:41.998107" elapsed="5.247432"/>
+</kw>
+<kw name="Should Be True" owner="BuiltIn">
+<arg>${result}</arg>
+<arg>msg=声道3播放失败</arg>
+<doc>Fails if the given condition is not true.</doc>
+<status status="PASS" start="2025-10-02T09:47:47.245759" elapsed="0.000215"/>
+</kw>
+<doc>测试音频从物理输出3播放</doc>
+<tag>channel-3</tag>
+<status status="PASS" start="2025-10-02T09:47:41.997605" elapsed="5.248482"/>
+</test>
+<test id="s1-t4" name="测试声道4播放" line="30">
+<kw name="Play Audio To Channel" owner="ultimate_play">
+<msg time="2025-10-02T09:47:52.492483" level="INFO">(步骤 1/3) 正在将系统默认输出切换到: Scarlett_3-4 ...
+    ✅ 切换成功。
+(步骤 2/3) 准备播放到逻辑声道 4...
+    - 声音应从【物理输出 4】播放出来。
+(步骤 3/3) 播放 5 秒钟...
+✅ 播放完毕。</msg>
+<msg time="2025-10-02T09:47:52.492625" level="INFO">${result} = True</msg>
+<var>${result}</var>
+<arg>${AUDIO_FILE}</arg>
+<arg>${4}</arg>
+<arg>${DURATION}</arg>
+<doc>播放音频到指定声道（便于 Robot Framework 调用的函数）</doc>
+<status status="PASS" start="2025-10-02T09:47:47.246775" elapsed="5.245872"/>
+</kw>
+<kw name="Should Be True" owner="BuiltIn">
+<arg>${result}</arg>
+<arg>msg=声道4播放失败</arg>
+<doc>Fails if the given condition is not true.</doc>
+<status status="PASS" start="2025-10-02T09:47:52.492841" elapsed="0.000202"/>
+</kw>
+<doc>测试音频从物理输出4播放</doc>
+<tag>channel-4</tag>
+<status status="PASS" start="2025-10-02T09:47:47.246252" elapsed="5.246932"/>
+</test>
+<test id="s1-t5" name="测试所有声道循环播放" line="36">
+<for flavor="IN RANGE">
+<iter>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-10-02T09:47:52.494364" level="INFO">正在测试声道 1</msg>
+<arg>正在测试声道 ${channel}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-10-02T09:47:52.494245" elapsed="0.000156"/>
+</kw>
+<kw name="Play Audio To Channel" owner="ultimate_play">
+<msg time="2025-10-02T09:47:57.740485" level="INFO">(步骤 1/3) 正在将系统默认输出切换到: Scarlett_1-2 ...
+    ✅ 切换成功。
+(步骤 2/3) 准备播放到逻辑声道 1...
+    - 声音应从【物理输出 1】播放出来。
+(步骤 3/3) 播放 5 秒钟...
+✅ 播放完毕。</msg>
+<msg time="2025-10-02T09:47:57.740600" level="INFO">${result} = True</msg>
+<var>${result}</var>
+<arg>${AUDIO_FILE}</arg>
+<arg>${channel}</arg>
+<arg>${DURATION}</arg>
+<doc>播放音频到指定声道（便于 Robot Framework 调用的函数）</doc>
+<status status="PASS" start="2025-10-02T09:47:52.494482" elapsed="5.246137"/>
+</kw>
+<kw name="Should Be True" owner="BuiltIn">
+<arg>${result}</arg>
+<arg>msg=声道 ${channel} 播放失败</arg>
+<doc>Fails if the given condition is not true.</doc>
+<status status="PASS" start="2025-10-02T09:47:57.740733" elapsed="0.000164"/>
+</kw>
+<var name="${channel}">1</var>
+<status status="PASS" start="2025-10-02T09:47:52.494160" elapsed="5.246756"/>
+</iter>
+<iter>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-10-02T09:47:57.741121" level="INFO">正在测试声道 2</msg>
+<arg>正在测试声道 ${channel}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-10-02T09:47:57.741045" elapsed="0.000098"/>
+</kw>
+<kw name="Play Audio To Channel" owner="ultimate_play">
+<msg time="2025-10-02T09:48:02.988250" level="INFO">(步骤 1/3) 正在将系统默认输出切换到: Scarlett_1-2 ...
+    ✅ 切换成功。
+(步骤 2/3) 准备播放到逻辑声道 2...
+    - 声音应从【物理输出 2】播放出来。
+(步骤 3/3) 播放 5 秒钟...
+✅ 播放完毕。</msg>
+<msg time="2025-10-02T09:48:02.988389" level="INFO">${result} = True</msg>
+<var>${result}</var>
+<arg>${AUDIO_FILE}</arg>
+<arg>${channel}</arg>
+<arg>${DURATION}</arg>
+<doc>播放音频到指定声道（便于 Robot Framework 调用的函数）</doc>
+<status status="PASS" start="2025-10-02T09:47:57.741199" elapsed="5.247212"/>
+</kw>
+<kw name="Should Be True" owner="BuiltIn">
+<arg>${result}</arg>
+<arg>msg=声道 ${channel} 播放失败</arg>
+<doc>Fails if the given condition is not true.</doc>
+<status status="PASS" start="2025-10-02T09:48:02.988627" elapsed="0.000209"/>
+</kw>
+<var name="${channel}">2</var>
+<status status="PASS" start="2025-10-02T09:47:57.740986" elapsed="5.247881"/>
+</iter>
+<iter>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-10-02T09:48:02.989070" level="INFO">正在测试声道 3</msg>
+<arg>正在测试声道 ${channel}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-10-02T09:48:02.988987" elapsed="0.000106"/>
+</kw>
+<kw name="Play Audio To Channel" owner="ultimate_play">
+<msg time="2025-10-02T09:48:08.236371" level="INFO">(步骤 1/3) 正在将系统默认输出切换到: Scarlett_3-4 ...
+    ✅ 切换成功。
+(步骤 2/3) 准备播放到逻辑声道 3...
+    - 声音应从【物理输出 3】播放出来。
+(步骤 3/3) 播放 5 秒钟...
+✅ 播放完毕。</msg>
+<msg time="2025-10-02T09:48:08.236595" level="INFO">${result} = True</msg>
+<var>${result}</var>
+<arg>${AUDIO_FILE}</arg>
+<arg>${channel}</arg>
+<arg>${DURATION}</arg>
+<doc>播放音频到指定声道（便于 Robot Framework 调用的函数）</doc>
+<status status="PASS" start="2025-10-02T09:48:02.989148" elapsed="5.247474"/>
+</kw>
+<kw name="Should Be True" owner="BuiltIn">
+<arg>${result}</arg>
+<arg>msg=声道 ${channel} 播放失败</arg>
+<doc>Fails if the given condition is not true.</doc>
+<status status="PASS" start="2025-10-02T09:48:08.236767" elapsed="0.000239"/>
+</kw>
+<var name="${channel}">3</var>
+<status status="PASS" start="2025-10-02T09:48:02.988940" elapsed="5.248101"/>
+</iter>
+<iter>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-10-02T09:48:08.237300" level="INFO">正在测试声道 4</msg>
+<arg>正在测试声道 ${channel}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-10-02T09:48:08.237198" elapsed="0.000138"/>
+</kw>
+<kw name="Play Audio To Channel" owner="ultimate_play">
+<msg time="2025-10-02T09:48:13.484238" level="INFO">(步骤 1/3) 正在将系统默认输出切换到: Scarlett_3-4 ...
+    ✅ 切换成功。
+(步骤 2/3) 准备播放到逻辑声道 4...
+    - 声音应从【物理输出 4】播放出来。
+(步骤 3/3) 播放 5 秒钟...
+✅ 播放完毕。</msg>
+<msg time="2025-10-02T09:48:13.484380" level="INFO">${result} = True</msg>
+<var>${result}</var>
+<arg>${AUDIO_FILE}</arg>
+<arg>${channel}</arg>
+<arg>${DURATION}</arg>
+<doc>播放音频到指定声道（便于 Robot Framework 调用的函数）</doc>
+<status status="PASS" start="2025-10-02T09:48:08.237410" elapsed="5.247077"/>
+</kw>
+<kw name="Should Be True" owner="BuiltIn">
+<arg>${result}</arg>
+<arg>msg=声道 ${channel} 播放失败</arg>
+<doc>Fails if the given condition is not true.</doc>
+<status status="PASS" start="2025-10-02T09:48:13.484651" elapsed="0.000271"/>
+</kw>
+<var name="${channel}">4</var>
+<status status="PASS" start="2025-10-02T09:48:08.237138" elapsed="5.247822"/>
+</iter>
+<var>${channel}</var>
+<value>1</value>
+<value>5</value>
+<status status="PASS" start="2025-10-02T09:47:52.493941" elapsed="20.991054"/>
+</for>
+<doc>依次测试所有4个声道</doc>
+<tag>all-channels</tag>
+<status status="PASS" start="2025-10-02T09:47:52.493363" elapsed="20.991771"/>
+</test>
+<test id="s1-t6" name="测试无效声道参数" line="45">
+<kw name="Play Audio To Channel" owner="ultimate_play">
+<msg time="2025-10-02T09:48:13.486210" level="INFO">错误: 目标逻辑声道必须是 1 到 4 之间的数字，当前值: 5</msg>
+<msg time="2025-10-02T09:48:13.486265" level="INFO">${result} = False</msg>
+<var>${result}</var>
+<arg>${AUDIO_FILE}</arg>
+<arg>${5}</arg>
+<arg>${DURATION}</arg>
+<doc>播放音频到指定声道（便于 Robot Framework 调用的函数）</doc>
+<status status="PASS" start="2025-10-02T09:48:13.485916" elapsed="0.000367"/>
+</kw>
+<kw name="Should Not Be True" owner="BuiltIn">
+<arg>${result}</arg>
+<arg>msg=无效声道应该返回失败</arg>
+<doc>Fails if the given condition is true.</doc>
+<status status="PASS" start="2025-10-02T09:48:13.486378" elapsed="0.000168"/>
+</kw>
+<doc>测试错误的声道参数应该失败</doc>
+<tag>negative</tag>
+<status status="PASS" start="2025-10-02T09:48:13.485303" elapsed="0.001334"/>
+</test>
+<test id="s1-t7" name="测试不存在的音频文件" line="51">
+<kw name="Play Audio To Channel" owner="ultimate_play">
+<msg time="2025-10-02T09:48:13.487619" level="INFO">错误: 音频文件不存在: /nonexistent/file.wav</msg>
+<msg time="2025-10-02T09:48:13.487672" level="INFO">${result} = False</msg>
+<var>${result}</var>
+<arg>/nonexistent/file.wav</arg>
+<arg>${1}</arg>
+<arg>${DURATION}</arg>
+<doc>播放音频到指定声道（便于 Robot Framework 调用的函数）</doc>
+<status status="PASS" start="2025-10-02T09:48:13.487338" elapsed="0.000351"/>
+</kw>
+<kw name="Should Not Be True" owner="BuiltIn">
+<arg>${result}</arg>
+<arg>msg=不存在的文件应该返回失败</arg>
+<doc>Fails if the given condition is true.</doc>
+<status status="PASS" start="2025-10-02T09:48:13.487780" elapsed="0.000119"/>
+</kw>
+<doc>测试不存在的文件应该失败</doc>
+<tag>negative</tag>
+<status status="PASS" start="2025-10-02T09:48:13.486783" elapsed="0.001204"/>
+</test>
+<doc>音频播放测试套件
+测试通过 Scarlett 2i4 各个声道播放音频</doc>
+<status status="PASS" start="2025-10-02T09:47:31.485466" elapsed="42.002814"/>
+</suite>
+<statistics>
+<total>
+<stat pass="7" fail="0" skip="0">All Tests</stat>
+</total>
+<tag>
+<stat pass="1" fail="0" skip="0">all-channels</stat>
+<stat pass="1" fail="0" skip="0">channel-1</stat>
+<stat pass="1" fail="0" skip="0">channel-2</stat>
+<stat pass="1" fail="0" skip="0">channel-3</stat>
+<stat pass="1" fail="0" skip="0">channel-4</stat>
+<stat pass="2" fail="0" skip="0">negative</stat>
+</tag>
+<suite>
+<stat name="Audio Test" id="s1" pass="7" fail="0" skip="0">Audio Test</stat>
+</suite>
+</statistics>
+<errors>
+</errors>
+</robot>
