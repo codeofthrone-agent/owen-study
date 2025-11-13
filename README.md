@@ -15,9 +15,10 @@
 - 🤖 **硬體操作測試**: MyCobot 280 機器手臂控制實體面板操作  
 - 🎤 **語音控制測試**: 本機語音識別和語音命令執行
 - 🔌 **電源管理測試**: SwitchBot 智慧插座控制被測設備開關機 ✅ **[已完成]**
+- 📹 **IP Camera 燈光檢測**: RTSP 串流影像擷取與燈光狀態智能分析 ✅ **[已完成]**
 - 👁️ **多感官檢測**: 麥克風雙向音訊檢測（發音與錄音判斷）和視覺影像判斷（YOLO靜態燈號檢測與動態角度變化分析）
-- � **TestLink 整合**: 測試案例管理與執行結果追蹤
-- �🔄 **整合式測試**: 多設備協同操作的端到端測試流程
+-  **TestLink 整合**: 測試案例管理與執行結果追蹤
+- 🔄 **整合式測試**: 多設備協同操作的端到端測試流程
 
 ### 🏗️ 系統架構
 
@@ -57,6 +58,12 @@ graph TB
     G --> Y[執行結果自動回報]
     G --> Z[缺陷追蹤整合]
     
+    E --> S1[IP Camera 燈光檢測 ✅]
+
+    S1 --> T1[RTSP 串流連線]
+    S1 --> T2[影像擷取與分析]
+    S1 --> T3[燈光狀態判定]
+
     subgraph "硬體設備"
         AA[USB 攝影機 - 視覺檢測]
         BB[麥克風/喇叭 - 音訊 I/O]
@@ -70,10 +77,17 @@ graph TB
 robot-test-project/
 ├── 📁 config/                               # 系統配置模組
 │   ├── __init__.py                         # 配置包初始化
+│   ├── ipcam_config.yaml                   # IP Camera 配置
+│   ├── ipcam_config.py                     # IP Camera 配置管理
 │   ├── voice_config.py                     # 語音系統配置
 │   └── migration_report.md                 # 配置重構報告
 │
 ├── 📁 libraries/                            # 自定義 Library 模組
+│   ├── 📁 ipcam_light_detection/ ✅         # IP Camera 燈光檢測模組 [已完成]
+│   │   ├── IPCamLightDetection.py          # Robot Framework Library
+│   │   ├── __init__.py                     # 模組初始化
+│   │   └── README.md                       # 完整 API 文檔
+│   │
 │   ├── 📁 local_voice_verifying/           # 語音驗證庫 (已實現)
 │   │   ├── LocalVoiceVerifyingLibrary.py   # 主要 Robot Framework Library
 │   │   ├── voice_tts_manager.py            # TTS 管理模組
@@ -121,6 +135,8 @@ robot-test-project/
 │       └── 📁 analysis/                    # 分析與報告
 │
 ├── 📁 tests/                               # Robot Framework 測試案例
+│   ├── 📁 ipcam_testing/ ✅                 # IP Camera 測試 [新增]
+│   │   └── ipcam_light_detection_test.robot # IP Camera 測試案例
 │   ├── 📁 physical_interaction/            # 實體互動測試
 │   │   └── voice_test.robot               # 語音測試案例
 │   ├── 📁 power_management/ ✅              # 電源管理測試 [新增]
@@ -132,6 +148,7 @@ robot-test-project/
 ├── 📁 resources/                           # Robot Framework 資源
 │   ├── api_keywords.robot                  # API 關鍵字
 │   ├── common_keywords.robot               # 通用關鍵字
+│   ├── ipcam_keywords.robot ✅              # IP Camera 關鍵字 [新增]
 │   ├── mobile_keywords.robot               # 移動設備關鍵字
 │   ├── switchbot_keywords.robot ✅          # SwitchBot 智慧插座關鍵字 [新增]
 │   └── web_keywords.robot                  # Web 關鍵字
@@ -166,6 +183,10 @@ robot-test-project/
 #### 擴展配置 (完整系統)
 - [ ] **MyCobot 280**: 機器手臂 (測試工具，用於操作實體面板)
 - [x] **智慧插座**: SwitchBot 智慧插座 (被測設備電源管理) ✅ **[已完成]**
+- [x] **IP Camera**: 支援 RTSP 的網路攝影機 (已測試 3 台) ✅ **[已完成]**
+  - Level 1: 192.168.165.184
+  - Level 2: 192.168.165.127
+  - Motor: 10.42.0.39
 - [ ] **測試設備**: 
   - iPhone/iPad (iOS 應用測試目標)
   - Android 手機/平板 (Android 測試目標)
@@ -187,12 +208,36 @@ brew install python@3.11
 brew install pipenv
 ```
 
-#### iOS 開發環境 (計劃)
+#### IP Camera 燈光檢測環境 ✅ **[已完成 - 2025-11-05]**
 ```bash
-# iOS 應用測試需要
-brew install --cask xcode
-brew install libimobiledevice
-brew install ios-deploy
+# 安裝依賴套件
+pipenv install opencv-python numpy loguru pyyaml
+
+# 配置認證資訊
+cp .env.example .env
+# 編輯 .env 設定 IPCAM_USERNAME 和 IPCAM_PASSWORD
+
+# 測試連線
+pipenv run python3 scripts/quick_ipcam_test.py
+
+# 執行測試
+pipenv run robot --include smoke tests/ipcam_testing/
+```
+
+#### iOS 真機測試環境 ✅ **[已完成 - 2025-06-27]**
+```bash
+# 一鍵式環境設置（Ubuntu 24.04）
+./scripts/setup_ios_testing.sh --install-deps --verbose
+
+# iOS 設備工具安裝
+sudo apt install -y libimobiledevice-utils usbmuxd
+
+# Appium 和 iOS 驅動安裝
+sudo npm install -g appium@next
+appium driver install xcuitest
+
+# 檢查 iOS 設備連接
+./scripts/check_ios_device.sh --verbose
 ```
 
 #### Android 開發環境 (計劃)
@@ -257,6 +302,62 @@ brew install android-platform-tools
    # 測試插座控制
    pipenv run python libraries/switchbot_smartplug_control/plug_control.py status
    ```
+
+## 🚀 快速開始 - IP Camera 燈光檢測
+
+### 5 分鐘設置
+
+1. **安裝依賴**:
+   ```bash
+   pipenv shell
+   pipenv install opencv-python numpy loguru pyyaml
+   ```
+
+2. **配置認證**:
+   ```bash
+   # 編輯 .env 文件
+   IPCAM_USERNAME=admin
+   IPCAM_PASSWORD=your_password
+   ```
+
+3. **驗證配置**:
+   ```bash
+   export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+   pipenv run python3 scripts/test_ipcam_config.py
+   ```
+
+4. **執行測試**:
+   ```bash
+   pipenv run robot --include smoke tests/ipcam_testing/
+   ```
+
+### Python 使用範例
+
+```python
+from libraries.ipcam_light_detection import IPCamLightDetection
+
+detector = IPCamLightDetection()
+detector.connect_camera('laboratory', 'level1')
+brightness = detector.get_current_brightness()
+is_on = detector.is_light_on()
+print(f"亮度: {brightness}, 燈光: {'開啟' if is_on else '關閉'}")
+```
+
+### Robot Framework 使用範例
+
+```robotframework
+*** Test Cases ***
+檢測燈光狀態
+    Given 連接實驗室 Level1 攝影機
+    When 取得當前燈光亮度
+    Then 驗證燈光為開啟狀態
+    And 儲存當前攝影機影像    /tmp/screenshot.jpg
+```
+
+詳細文檔請參閱:
+- [安裝指南](docs/ipcam_setup_guide.md)
+- [快速開始](docs/ipcam_quick_start.md)
+- [API 文檔](libraries/ipcam_light_detection/README.md)
 
 ### 🔧 進階設置 (各子系統)
 
@@ -351,6 +452,7 @@ export TESTLINK_API_KEY="your_api_key_here"
 idevice_id -l
 
 # Android 設備檢測
+
 adb devices
 
 # Appium 服務安裝
@@ -446,6 +548,7 @@ export JAVA_HOME=/path/to/java
 appium-doctor --android --ios
 
 # 檢查設備連接
+
 adb devices                    # Android
 xcrun simctl list devices     # iOS
 ```
@@ -533,7 +636,7 @@ ANDROID_APP_ACTIVITY=.MainActivity
 ```
 ## 系統功能與特色
 
-### ✅ 已實現功能 (v1.0)
+### ✅ 已實現功能 (v1.2)
 
 #### 🎤 語音控制系統
 - **TTS 語音播放**
@@ -554,11 +657,97 @@ ANDROID_APP_ACTIVITY=.MainActivity
   - ✅ 詳細錯誤處理與日誌
   - ✅ 測試報告生成
 
-#### � 配置管理系統
+#### 📱 移動應用測試模組 ✅ **[2025-06-27 完成並驗證]**
+- **iOS 真機測試** ✅ **[完整支援 + 執行驗證通過]**
+  - ✅ Appium 2.x + XCUITest 驅動整合
+  - ✅ Ubuntu 24.04 環境下 iOS 真機支援
+  - ✅ 自動設備檢測和 UDID 管理 (已測試: iPhone 18.5)
+  - ✅ 設備資訊獲取 (名稱、版本、型號)
+  - ✅ 系統應用自動化測試 (計算機、設定)
+  - ✅ 觸控手勢和滑動操作
+  - ✅ 設備旋轉和螢幕方向測試
+  - ✅ 螢幕截圖和測試結果記錄
+  - ✅ 完整的 Gherkin 風格測試案例
+  - ✅ **執行驗證**: 3/3 測試案例通過，設備檢測正常
+
+- **Android 應用測試** ✅ **[基礎支援]**
+  - ✅ UIAutomator2 + Appium 整合
+  - ✅ 基本 UI 元素操作
+  - ✅ 測試案例框架建立
+
+#### 💡 配置管理系統
 - ✅ 統一配置架構 (`config/voice_config.py`)
 - ✅ 模組化設定管理
 - ✅ 環境變數支援
 - ✅ 動態配置載入
+
+#### 🔌 電源管理系統 ✅ **[完整實現]**
+- ✅ SwitchBot 智慧插座 API 整合
+- ✅ 設備自動發現與狀態查詢
+- ✅ 開關控制與狀態監測
+- ✅ 統一配置系統整合
+- ✅ Robot Framework 關鍵字庫
+- ✅ 完整測試案例與文檔
+- ✅ 設備狀態檢測與驗證
+
+## 📹 IP Camera 燈光檢測系統 ✅
+
+### 功能概述
+
+基於 RTSP 串流的 IP Camera 影像分析系統，支援：
+- 實時影像擷取（HEVC/H.265 編碼）
+- 智能亮度分析（0-255 數值範圍）
+- 自動燈光狀態判定（可配置閾值）
+- 多攝影機環境管理
+- 完整的中文 Robot Framework 關鍵字
+
+### 測試通過的攝影機
+
+| 攝影機 | IP 地址 | 狀態 | 影像尺寸 |
+|---|---|---|---|
+| Level1 | 192.168.165.184 | ✅ 正常 | 1620×2592 |
+| Level2 | 192.168.165.127 | ✅ 正常 | 1620×2592 |
+| Motor  | 10.42.0.39      | ✅ 正常 | 1620×2592 |
+
+### 使用範例
+
+#### Python
+```python
+from libraries.ipcam_light_detection import IPCamLightDetection
+
+detector = IPCamLightDetection()
+detector.connect_camera('laboratory', 'level1')
+brightness = detector.get_current_brightness()
+```
+
+#### Robot Framework
+```robotframework
+*** Test Cases ***
+自動化燈光檢測
+    Given 連接實驗室 Level1 攝影機
+    When 取得當前燈光亮度
+    Then 驗證燈光為開啟狀態
+```
+
+### 相關文檔
+
+- [完整 API 文檔](libraries/ipcam_light_detection/README.md)
+- [安裝指南](docs/ipcam_setup_guide.md)
+- [快速開始](docs/ipcam_quick_start.md)
+- [模組摘要](docs/ipcam_module_summary.md)
+- [測試案例](tests/ipcam_testing/ipcam_light_detection_test.robot)
+
+**開發完成日期**: 2025-11-05
+**測試狀態**: ✅ 生產就緒 (Production Ready)
+
+#### 🌐 測試標準化系統 ✅ **[完整實現]**
+- ✅ 全面中文關鍵字標準化
+- ✅ Gherkin 風格測試案例 (Given-When-Then)
+- ✅ 雙語文檔 (中英文說明)
+- ✅ 統一編碼規範和註解標準
+- ✅ 完整的使用範例和 [Documentation]
+
+### 🔄 部分實現功能
 
 ### 🔄 部分實現功能
 
@@ -570,18 +759,18 @@ ANDROID_APP_ACTIVITY=.MainActivity
 
 ### 🚧 計劃中功能 (v2.0+)
 
-#### 📱 移動應用測試模組
-- [ ] **iOS 應用測試**
-  - Appium + WebDriverAgent 整合
-  - 應用安裝/卸載自動化
-  - UI 元素操作 (點擊、滑動、輸入)
-  - 設備功能測試 (攝影機、GPS、推播)
+#### 📱 移動應用測試模組 - 進階功能
+- [ ] **iOS 應用測試 - 進階功能**
+  - 多設備並行測試
+  - 應用效能監控 (CPU、記憶體、電池)
+  - 推播通知和背景處理測試
+  - 網路條件模擬和測試
 
-- [ ] **Android 應用測試**
-  - UIAutomator2 + ADB 控制
+- [ ] **Android 應用測試 - 完整實現**
   - 系統設定與權限管理
   - 硬體功能測試 (感測器、藍牙、NFC)
   - 效能監控 (CPU、記憶體、電池)
+  - ADB 進階控制功能
 
 #### 🤖 機器手臂控制模組
 - [ ] **MyCobot 280 控制**
@@ -770,7 +959,7 @@ export VOICE_DETECTION_THRESHOLD=0.8
 export VOICE_LOG_LEVEL=DEBUG
 
 # Robot Framework 中使用
-robot --variable TTS_LANG:%{VOICE_TTS_LANGUAGE} tests/
+robot --variable TTS_LANG:%{{VOICE_TTS_LANGUAGE}} tests/
 ```
 
 ## 測試與驗證
@@ -898,7 +1087,7 @@ python -c "from config.voice_config import AUDIO_CONFIG; print('✅ 修復成功
 ```bash
 # 錯誤: [Errno -9996] Invalid input device
 # macOS 麥克風權限檢查:
-# 系統偏好設定 > 安全性與隱私 > 隱私權 > 麥克風 > 允許終端機/VS Code
+# 系統偏好設定 > 安全性與隱私權 > 隱私權 > 麥克風 > 允許終端機/VS Code
 
 # 檢查可用音訊設備:
 python -c "
@@ -906,7 +1095,7 @@ import pyaudio
 audio = pyaudio.PyAudio()
 for i in range(audio.get_device_count()):
     info = audio.get_device_info_by_index(i)
-    print(f'Device {i}: {info[\"name\"]} - Inputs: {info[\"maxInputChannels\"]}')
+    print(f'Device {i}: {info["name"]} - Inputs: {info["maxInputChannels"]}')
 audio.terminate()
 "
 
@@ -929,7 +1118,7 @@ print(f'離線 TTS 結果: {result}')
 "
 
 # macOS 語音合成權限:
-# 系統偏好設定 > 安全性與隱私 > 隱私權 > 語音識別
+# 系統偏好設定 > 安全性與隱私權 > 隱私權 > 語音識別
 ```
 
 #### 4. Robot Framework 執行錯誤
@@ -942,7 +1131,7 @@ robot --dryrun --loglevel DEBUG tests/physical_interaction/voice_test.robot
 python -c "
 from libraries.local_voice_verifying.LocalVoiceVerifyingLibrary import LocalVoiceVerifyingLibrary
 lib = LocalVoiceVerifyingLibrary()
-print(f'Library 方法: {[m for m in dir(lib) if not m.startswith(\"_\")]}')
+print(f'Library 方法: {[m for m in dir(lib) if not m.startswith("_")]}')
 "
 ```
 
@@ -1164,118 +1353,28 @@ echo "報告已產生: system_report.txt"
 
 ### 📈 專案發展時程
 
-#### 🏗️ Phase 1: 基礎架構建設 (2025-06-17 完成)
+#### 🏗️ Phase 1: 基礎架構建設 (✅ 2025-06-27 完成)
 - ✅ **配置系統重構**: 統一配置管理至 `config/voice_config.py`
 - ✅ **語音核心功能**: TTS 播放、音訊錄製、基礎檢測
 - ✅ **Robot Framework 整合**: 完整關鍵字庫、測試案例
 - ✅ **文檔建立**: spec.md、todo.md、README.md 完整文檔
 - ✅ **測試驗證**: 單元測試、整合測試、dryrun 驗證
+- ✅ **移動應用測試模組**: iOS/Android Appium 整合完成 ✅ **[2025-06-27 完成]**
+  - ✅ iOS 真機測試環境完整建置 (Ubuntu 24.04)
+  - ✅ Appium 2.x + XCUITest 驅動完整配置
+  - ✅ 自動設備檢測和管理系統
+  - ✅ 完整測試案例和文檔
+- ✅ **電源管理系統**: SwitchBot 智慧插座控制與監控 ✅ **[已完成]**
+- ✅ **全面中文關鍵字標準化**: Gherkin 風格 + 中文關鍵字 ✅ **[已完成]**
 
 #### 🚧 Phase 2: 設備整合開發 (2025-07 ~ 2025-08)
-- [ ] **移動應用測試模組**: iOS/Android Appium 整合
 - [ ] **機器手臂控制**: MyCobot 280 控制系統
-- [x] **電源管理系統**: SwitchBot 智慧插座控制與監控 ✅ **[已完成]**
+- [ ] **進階移動測試**: 效能監控、多設備並行測試
 
 #### 🔮 Phase 3: 檢測系統開發 (2025-09 ~ 2025-10)
 - [ ] **多感官檢測**: 音訊/視覺檢測系統
 - [ ] **AI 輔助識別**: 機器學習增強檢測
 - [ ] **整合測試**: 端到端協同測試
-
-#### v1.0.0 (2025-06-17) - 基礎語音系統
-**主要功能**:
-- ✅ LocalVoiceVerifyingLibrary 核心實現
-- ✅ Google TTS + pyttsx3 雙引擎支援
-- ✅ 高品質音訊錄製 (WAV 格式)
-- ✅ Robot Framework 完整整合
-- ✅ 統一配置管理系統
-
-**技術改進**:
-- ✅ 配置檔案重構 (移至 config 目錄)
-- ✅ 模組化架構設計
-- ✅ 完整錯誤處理與日誌系統
-- ✅ 自動化測試覆蓋
-
-**修復問題**:
-- ✅ 解決配置檔案重複問題
-- ✅ 修復模組匯入路徑問題
-- ✅ 改善音訊設備相容性
-
-#### v1.1.0 (計劃中 - 3個月內) - 移動設備整合
-**預計功能**:
-- [ ] iOS 自動化測試 (Appium + WebDriverAgent)
-- [ ] Android 自動化測試 (UIAutomator2)
-- [ ] 跨平台測試案例模板
-- [ ] 設備管理與監控
-
-**技術目標**:
-- 🎯 完成移動設備測試模組
-- 🎯 實現設備自動發現與連接
-- 🎯 建立跨平台測試架構
-
-#### v2.0.0 (計劃中 - 6個月內) - 硬體操作與電源管理
-**預計功能**:
-- [ ] MyCobot 280 機器手臂控制 (測試工具)
-- [ ] SwitchBot 智慧插座整合 (被測設備電源管理)
-- [ ] 實體面板操作自動化
-- [ ] 視覺輔助定位系統
-- [ ] 精度校準與驗證
-- [ ] 設備電源狀態監控與自動化控制
-
-**技術目標**:
-- 🎯 實現機器手臂基礎控制
-- 🎯 建立電源管理系統
-- 🎯 完成實體設備操作能力
-
-#### v3.0.0 (計劃中 - 12個月內) - 多感官檢測系統
-**預計功能**:
-- [ ] **音訊檢測系統**:
-  - TTS 多語言語音合成（中文、英文、日文）
-  - 48kHz/24bit 高品質音訊錄製與分析
-  - 語音識別、噪音抑制、頻譜分析
-  - 環境音檢測與音訊回饋驗證
-- [ ] **視覺檢測系統**:
-  - YOLOv8 深度學習燈號檢測
-  - 動態角度變化檢測 (30-120 FPS)
-  - 標記中心點追蹤與旋轉分析
-  - 多語言 OCR 與模板匹配
-- [ ] **多模態數據融合**:
-  - 音訊與視覺數據同步
-  - 融合分析與智慧決策
-  - 統一時間戳與事件關聯
-
-**技術目標**:
-- 🔮 多感官檢測系統成熟
-- 🔮 AI 輔助決策整合
-- 🔮 自適應檢測閾值
-
-#### v4.0.0 (計劃中 - 18個月內) - TestLink 整合與雲端化
-**預計功能**:
-- [ ] TestLink 測試案例管理整合
-- [ ] 測試結果自動回報與追蹤
-- [ ] 雲端測試資源整合
-- [ ] CI/CD 自動化流程
-- [ ] 測試數據分析與報告
-
-**技術目標**:
-- 🔮 完整測試案例管理生態
-- 🔮 雲端測試資源整合
-- 🔮 企業級 CI/CD 整合
-
-#### v5.0.0 (長期願景 - 24個月內) - 智慧化測試平台
-**預計功能**:
-- [ ] 智慧型測試案例生成
-- [ ] 自適應測試策略
-- [ ] 完整自動化測試生態系統
-- [ ] 開源社群與商業化支援
-
-**技術目標**:
-- 🌟 完整自動化測試生態系統
-- 🌟 智慧型測試案例生成
-- 🌟 自適應測試策略
-- 🌟 開源社群與商業化
-- [ ] 預測性故障檢測
-
-### 🏷️ 版本歷史與發展規劃
 
 #### v1.0.0 (2025-06-17) - 基礎語音系統
 **主要功能**:
@@ -1414,7 +1513,7 @@ Robot Framework 核心
 
 #### 核心框架選擇
 | 技術 | 選擇原因 | 替代方案 |
-|------|----------|----------|
+|---|---|---|
 | **Robot Framework** | 關鍵字驅動、易擴展、豐富生態 | Pytest, Selenium |
 | **Python 3.8+** | 豐富庫支援、跨平台、易維護 | Java, JavaScript |
 | **Appium** | 跨平台移動測試標準 | XCUITest, Espresso |
@@ -1422,7 +1521,7 @@ Robot Framework 核心
 
 #### 設備控制技術
 | 設備類型 | 控制技術 | 通訊協議 | 功能角色 |
-|----------|----------|----------|----------|
+|---|---|---|---|
 | **MyCobot 280** | pymycobot | USB Serial | 測試工具 (實體操作) |
 | **SwitchBot 智慧插座** | switchbot-api | WiFi, REST API | 被測設備電源管理 |
 | **iOS 設備** | WebDriverAgent + Appium | USB, WiFi | 被測目標 (應用測試) |
@@ -1431,7 +1530,7 @@ Robot Framework 核心
 
 #### 檢測技術棧
 | 檢測類型 | 主要技術 | 進階功能 | 性能規格 |
-|----------|----------|----------|----------|
+|---|---|---|---|
 | **音訊發音** | gTTS + pyttsx3 | 多語言 TTS (中/英/日) | 語音合成 < 2秒 |
 | **音訊錄製** | PyAudio + librosa | 48kHz/24bit 高品質 | 啟動延遲 < 0.5秒 |
 | **語音識別** | SpeechRecognition | ASR + 關鍵字檢測 | 識別準確率 > 90% |
@@ -1441,7 +1540,7 @@ Robot Framework 核心
 
 #### 測試管理技術棧
 | 管理類型 | 主要技術 | 整合方式 | 同步性能 |
-|----------|----------|----------|----------|
+|---|---|---|---|
 | **TestLink 整合** | python-testlink-api | XML-RPC, REST API | 即時同步 < 5分鐘 |
 | **案例管理** | Robot Framework Parser | JSON 數據映射 | 同步成功率 > 99% |
 | **結果回報** | xmlrpc.client | 即時狀態更新 | 回報延遲 < 30秒 |

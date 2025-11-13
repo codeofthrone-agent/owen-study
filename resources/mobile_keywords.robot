@@ -18,7 +18,7 @@ Documentation    移動設備測試通用關鍵字庫 - Mobile Device Testing Ke
 ...              在測試案例中引用此資源檔案，並使用 Given-When-Then-And 格式的關鍵字
 ...              Import this resource file in test cases and use Given-When-Then-And style keywords
 
-Library          ../libraries/mobile_testing/common/appium_library.py
+
 Library          AppiumLibrary
 Library          Collections
 Library          BuiltIn
@@ -99,7 +99,7 @@ Given 使用者在登入畫面
     [Arguments]    ${login_screen_locator}=accessibility_id=login_screen
     [Tags]    given    mobile    precondition
     
-    Wait Until Element Is Visible    ${login_screen_locator}    timeout=30
+    AppiumLibrary.Wait Until Element Is Visible    ${login_screen_locator}    timeout=30
     Log    Given: 用戶已在登入畫面
 
 Given 應用程式載入已完成
@@ -124,7 +124,7 @@ Given 應用程式載入已完成
     [Arguments]    ${loading_indicator}    ${timeout}=30
     [Tags]    given    mobile    precondition
     
-    Wait Until Element Is Visible    ${loading_indicator}    timeout=5
+    AppiumLibrary.Wait Until Element Is Visible    ${loading_indicator}    timeout=5
     Wait Until Element Is Not Visible    ${loading_indicator}    timeout=${timeout}
     Log    Given: 應用程式載入已完成
 
@@ -283,14 +283,14 @@ When 使用者等待元素
     [Arguments]    ${locator}    ${timeout}=30
     [Tags]    when    mobile    action
     
-    Wait Until Element Is Visible    ${locator}    timeout=${timeout}
+    AppiumLibrary.Wait Until Element Is Visible    ${locator}    timeout=${timeout}
     Log    When: 用戶等待元素 ${locator} 出現
 
 # ============================================================================
 # THEN Keywords (Assertions) - 驗證關鍵字
 # ============================================================================
 
-Then Element Text Should Be
+Then 元素文字應該是
     [Documentation]    元素文字應該是
     ...                Element text should be
     ...                
@@ -315,42 +315,42 @@ Then Element Text Should Be
     Should Be Equal    ${actual_text}    ${expected_text}
     Log    Then: 元素 ${locator} 的文字驗證成功，內容為 "${expected_text}"
 
-Then Element Should Be Visible
+Then 元素應該可見
     [Documentation]    驗證：元素應該可見
     [Arguments]    ${locator}    ${timeout}=10
     [Tags]    then    mobile    assertion
     
-    Element Should Be Visible    ${locator}    timeout=${timeout}
+    AppiumLibrary.Element Should Be Visible    ${locator}    timeout=${timeout}
     Log    Then: 元素 ${locator} 已成功驗證為可見
 
-Then Application Should Be Closed
+Then 應用程式應該已關閉
     [Documentation]    驗證：應用程式應該已關閉
     [Tags]    then    mobile    assertion
     
-    Close Application
+    AppiumLibrary.Close Application
     Log    Then: 應用程式已成功關閉
 
-Then User Should See Loading Complete
+Then 使用者應該看到載入完成
     [Documentation]    驗證：用戶應該看到載入完成
     [Arguments]    ${success_indicator}    ${timeout}=30
     [Tags]    then    mobile    assertion
     
-    Wait Until Element Is Visible    ${success_indicator}    timeout=${timeout}
+    AppiumLibrary.Wait Until Element Is Visible    ${success_indicator}    timeout=${timeout}
     Log    Then: 用戶已看到載入完成指示器 ${success_indicator}
 
-Then Login Should Be Successful
+Then 登入應該成功
     [Documentation]    驗證：登入應該成功
     [Arguments]    ${success_indicator}=accessibility_id=home_screen
     [Tags]    then    mobile    assertion
     
-    Wait Until Element Is Visible    ${success_indicator}    timeout=30
+    AppiumLibrary.Wait Until Element Is Visible    ${success_indicator}    timeout=30
     Log    Then: 登入已成功驗證，顯示 ${success_indicator}
 
 # ============================================================================
 # AND Keywords (Conjunctions) - 連接關鍵字
 # ============================================================================
 
-And User Also Taps On Element
+And 使用者同時點擊元素
     [Documentation]    連接：用戶同時也點擊元素
     [Arguments]    ${locator}    ${timeout}=10
     [Tags]    and    mobile    action
@@ -358,23 +358,23 @@ And User Also Taps On Element
     Click Element    ${locator}    timeout=${timeout}
     Log    And: 用戶同時也點擊了元素 ${locator}
 
-And Application Is Still Running
+And 應用程式仍在運行
     [Documentation]    連接：應用程式仍在運行
     [Arguments]    ${indicator}=accessibility_id=main_screen
     [Tags]    and    mobile    verification
     
-    Element Should Be Visible    ${indicator}    timeout=10
+    AppiumLibrary.Element Should Be Visible    ${indicator}    timeout=10
     Log    And: 應用程式仍在正常運行
 
-And User Can See Element
+And 使用者可以看到元素
     [Documentation]    連接：用戶可以看到元素
     [Arguments]    ${locator}    ${timeout}=10
     [Tags]    and    mobile    verification
     
-    Element Should Be Visible    ${locator}    timeout=${timeout}
+    AppiumLibrary.Element Should Be Visible    ${locator}    timeout=${timeout}
     Log    And: 用戶可以看到元素 ${locator}
 
-And Screenshot Is Taken
+And 截圖已擷取
     [Documentation]    連接：截圖已擷取
     [Arguments]    ${filename}=${EMPTY}
     [Tags]    and    mobile    action
@@ -399,10 +399,10 @@ Open Mobile Application
     Given User Has Mobile Application Ready    ${platform}    &{capabilities}
 
 Close Mobile Application
-    [Documentation]    舊版：關閉移動應用程式 (建議使用 Then Application Should Be Closed)
+    [Documentation]    舊版：關閉移動應用程式 (建議使用 Then 應用程式應該已關閉)
     [Tags]    legacy    mobile    teardown
     
-    Then Application Should Be Closed
+    Then 應用程式應該已關閉
 
 Tap Element
     [Documentation]    舊版：點擊元素 (建議使用 When User Taps On Element)
@@ -419,11 +419,11 @@ Input Text Into Field
     When User Enters Text    ${locator}    ${text}    ${timeout}
 
 Verify Element Text
-    [Documentation]    舊版：驗證元素文字 (建議使用 Then Element Text Should Be)
+    [Documentation]    舊版：驗證元素文字 (建議使用 Then 元素文字應該是)
     [Arguments]    ${locator}    ${expected_text}    ${timeout}=10
     [Tags]    legacy    mobile    verification
     
-    Then Element Text Should Be    ${locator}    ${expected_text}    ${timeout}
+    Then 元素文字應該是    ${locator}    ${expected_text}    ${timeout}
 
 Wait For Element
     [Documentation]    舊版：等待元素 (建議使用 When User Waits For Element)
@@ -433,11 +433,11 @@ Wait For Element
     When User Waits For Element    ${locator}    ${timeout}
 
 Verify Element Visible
-    [Documentation]    舊版：驗證元素可見 (建議使用 Then Element Should Be Visible)
+    [Documentation]    舊版：驗證元素可見 (建議使用 Then 元素應該可見)
     [Arguments]    ${locator}    ${timeout}=10
     [Tags]    legacy    mobile    verification
     
-    Then Element Should Be Visible    ${locator}    ${timeout}
+    Then 元素應該可見    ${locator}    ${timeout}
 
 Swipe Screen
     [Documentation]    舊版：滑動螢幕 (建議使用 When User Swipes Screen)
@@ -496,7 +496,7 @@ Login To Mobile App
     [Documentation]    中文：關閉移動應用程式 (建議使用 Then Application Should Be Closed)
     [Tags]    chinese    legacy    mobile    teardown
     
-    Close Application
+    AppiumLibrary.Close Application
     Log    已關閉行動應用程式
 
 輸入文字到行動應用程式元素

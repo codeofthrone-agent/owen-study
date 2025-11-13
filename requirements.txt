@@ -1,42 +1,44 @@
+# Robot Framework 多平台自動化測試系統
+# 使用 uv 進行套件管理
+
 # Robot Framework 核心
-robotframework
-robotframework-appiumlibrary
-robotframework-seleniumlibrary
-robotframework-requests
-robotframework-applicationlibrary
+robotframework>=7.3.1
+robotframework-appiumlibrary>=2.0
+robotframework-seleniumlibrary>=6.0
+robotframework-requests>=0.9.0
 
 # 移動測試
-Appium-Python-Client>=2.0.0  # Appium 原生 Python 客戶端
+Appium-Python-Client>=2.0.0
 
 # 音訊處理核心套件
 pyaudio>=0.2.11
 numpy>=1.21.0
-
-# 音訊播放
-pygame  # 用於音訊播放控制
+pygame  # 音訊播放控制
+librosa>=0.10.0  # 音訊分析與 MFCC 特徵提取
+soundfile>=0.12.0  # librosa 依賴（音訊檔案讀取）
 
 # TTS 引擎
 gTTS>=2.3.0
 pyttsx3>=2.90
 
+# IP Camera 與影像處理
+opencv-python>=4.5.0  # IP Camera 影像處理與多燈號陣列偵測
+pyyaml>=6.0  # 配置文件解析
+
 # 網路請求 (SwitchBot API)
 requests>=2.28.0
 
+# TestLink 整合
+# 注意：我們不使用 python-testlink-api，而是直接使用 xmlrpc.client（內建）
+
 # 系統工具
 python-dotenv>=0.19.0
+loguru>=0.7.0  # 統一日誌管理
 
-# 開發與測試工具 (可選)
+# 機器手臂控制
+pymycobot>=4.0.1
+pyserial>=3.5
+
+# 開發與測試工具
 pytest>=7.0.0
 pytest-cov>=4.0.0
-
-# 檔案操作 (Python 3.4+ 內建 pathlib，但為了相容性)
-pathlib2>=2.3.0
-
-# macOS 特定 (如果需要)
-# pyobjc-framework-AVFoundation>=8.0.0  # macOS 音訊框架整合
-
-
-# macOS 特定 (如果需要)
-# pyobjc-framework-AVFoundation>=8.0.0  # macOS 音訊框架整合
-
-

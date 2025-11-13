@@ -110,6 +110,12 @@ DETECTION_CONFIG: Dict[str, Any] = {
     'confidence_smoothing': True,    # 信心度平滑
 }
 
+
+# General App Config
+GENERAL_CONFIG: Dict[str, Any] = {
+    'app_name': 'LocalVoice',
+}
+
 # Robot Framework 配置
 ROBOT_CONFIG: Dict[str, Any] = {
     'library_scope': 'GLOBAL',      # Library 作用域

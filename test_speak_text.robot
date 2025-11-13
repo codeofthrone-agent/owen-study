@@ -1,26 +1,63 @@
 *** Settings ***
-Documentation    Local Voice TTS Test Cases - Gherkin Style
-...              本地語音 TTS 測試案例 - Gherkin 風格
-Library    libraries/local_voice_verifying/LocalVoiceVerifyingLibrary.py
+Documentation    Voice Control TTS Test Cases - Gherkin Style with New Keywords
+...              語音控制 TTS 測試案例 - 使用新 Gherkin 關鍵字
+Library    libraries/voice_control/VoiceControlKeywords.py
 Library    BuiltIn
 
 *** Test Cases ***
-Scenario: User Needs To Play Text Speech Through TTS
-    [Documentation]    Gherkin style TTS text-to-speech testing scenario
-    ...                Gherkin 風格的 TTS 文字轉語音測試場景
-    [Tags]    voice    tts    gherkin
-    Given 語音系統已經成功初始化
-    When 使用者請求播放文字    Hey power pro
-    Then 語音播放應該成功完成
-    And 測試執行結果應該被成功記錄
+Scenario: 使用者需要通過 TTS 播放文字語音
+    [Documentation]    Gherkin style TTS text-to-speech testing scenario with new keywords
+    ...                使用新關鍵字的 Gherkin 風格 TTS 文字轉語音測試場景
+    [Tags]    voice    tts    gherkin    scarlett    new
+    Given 語音控制系統已成功初始化
+    And Given Scarlett 4i4 音效介面已正確連接
+    And Given TTS 引擎已設定為 "gtts"
+    And Given 音訊輸出聲道 "1" 已準備就緒
+    When 使用者播放文字 "hey power pro" 到聲道 "1"
+    Sleep    2
+    When 使用者播放文字 "Warm Weather Mode" 到聲道 "1"
+    Then 語音應該成功播放到指定聲道
+    And 語音品質應該符合標準
+    And 沒有音訊延遲或中斷
 
-# Legacy Test Case (Backward Compatible)
-Simple Speak Text Test
-    [Documentation]    Simple Speak Text test (Traditional style)
-    ...                簡單的 Speak Text 測試 (傳統風格)
-    [Tags]    legacy
-    Speak Text    Hello World
-    Log    Test completed successfully
+Scenario: 使用者切換 TTS 引擎並播放多語言文字
+    [Documentation]    Test TTS engine switching and multilingual playback
+    ...                測試 TTS 引擎切換和多語言播放
+    [Tags]    voice    tts    gherkin    multilingual    engine_switch
+    Given 語音控制系統已成功初始化
+    And Given Scarlett 4i4 音效介面已正確連接
+    When 使用者切換 TTS 引擎到 "pyttsx3"
+    Then TTS 引擎應該成功切換
+    When 使用者播放文字 "測試語音" 到聲道 "2" 使用語言 "zh-TW"
+    Then 語音應該成功播放到指定聲道
+    And 語音品質應該符合標準
+
+Scenario: 使用者測試所有聲道並查詢系統資訊
+    [Documentation]    Test all channels and query system information
+    ...                測試所有聲道並查詢系統資訊
+    [Tags]    voice    tts    gherkin    all_channels    system_info
+    Given 語音控制系統已成功初始化
+    And Given Scarlett 4i4 音效介面已正確連接
+    And Given TTS 引擎已設定為 "gtts"
+    When 使用者測試指定聲道 "1" 的音訊輸出
+    And When 使用者測試指定聲道 "2" 的音訊輸出
+    And When 使用者測試指定聲道 "3" 的音訊輸出
+    And When 使用者測試指定聲道 "4" 的音訊輸出
+    When 使用者查詢當前 TTS 引擎資訊
+    Then 系統應該回傳正確的 TTS 引擎資訊
+    And Then Scarlett 4i4 設備應該處於正常運作狀態
+    And 系統資源使用應該在正常範圍內
+
+# Legacy Test Cases (Backward Compatible) - 已移除
+# 所有測試案例現已使用 Gherkin 風格關鍵字
+Legacy Test Cleanup Complete
+    [Documentation]    Legacy keywords have been removed, all tests now use Gherkin-style keywords
+    ...                Legacy關鍵字已移除，所有測試現在使用Gherkin風格關鍵字
+    [Tags]    cleanup    gherkin    modern
+    Given 語音控制系統已成功初始化
+    When 使用者查詢當前 TTS 引擎資訊
+    Then 系統應該回傳正確的 TTS 引擎資訊
+    And 暫存檔案應該正確清理
 
 *** Keywords ***
 # === Given Keywords ===
@@ -61,7 +98,7 @@ Simple Speak Text Test
     ...                | When | 使用者請求播放文字 | 歡迎使用 |
     [Arguments]    ${text}
     Log    準備播放文字: ${text}
-    Speak Text    ${text}
+    When 使用者播放文字 "${text}" 到聲道 "1"
     Set Test Variable    ${SPOKEN_TEXT}    ${text}
 
 # === Then Keywords ===
