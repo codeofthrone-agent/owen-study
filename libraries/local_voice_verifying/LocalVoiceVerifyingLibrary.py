@@ -39,7 +39,7 @@ try:
     
     from config.voice_config import (
         ROBOT_CONFIG, AUDIO_CONFIG, TTS_CONFIG, DETECTION_CONFIG, 
-        PATHS, get_config_value, create_directories
+        PATHS, get_config_value, create_directories, GENERAL_CONFIG
     )
     # 匯入其他模組
     from .voice_tts_manager import TTSManager

@@ -1,37 +1,34 @@
 #!/usr/bin/env python3
 """
-Robot Framework 音频测试关键字库
-提供更多测试相关的自定义关键字
+Robot Framework 音频测试关键字库 (AudioKeywords)
+遵循 BDD (Given-When-Then) 规范，提供音频设备和播放相关的测试关键字。
 """
 
-from ultimate_play import AudioPlayer, play_audio_to_channel
 import subprocess
 from typing import List, Dict
 
+# Robot Framework API
+from robot.api.deco import keyword
+from robot.api import logger
+
+from .ultimate_play import play_audio_to_channel
+
 
 class AudioKeywords:
-    """音频测试关键字库"""
+    """
+    音频测试关键字库
+    
+    提供检查音频设备状态、验证输出以及播放音频等 Gherkin 风格的关键字。
+    """
 
     ROBOT_LIBRARY_SCOPE = 'GLOBAL'
 
-    def __init__(self):
-        self.current_sink = None
+    # ===========================================
+    # 内部辅助方法 (Private Helper Methods)
+    # ===========================================
 
-    def play_audio_to_channel(self, audio_file: str, channel: int, duration: int = 5) -> bool:
-        """
-        播放音频到指定声道
-
-        参数:
-        - audio_file: 音频文件路径
-        - channel: 目标声道 (1-4)
-        - duration: 播放时长（秒）
-
-        返回: True表示成功，False表示失败
-        """
-        return play_audio_to_channel(audio_file, int(channel), int(duration))
-
-    def get_current_default_sink(self) -> str:
-        """获取当前默认音频输出设备"""
+    def _get_current_default_sink(self) -> str:
+        """获取当前默认音频输出设备 (sink)"""
         try:
             result = subprocess.run(
                 ["pactl", "get-default-sink"],
@@ -39,25 +36,15 @@ class AudioKeywords:
                 text=True,
                 check=True
             )
-            self.current_sink = result.stdout.strip()
-            return self.current_sink
-        except subprocess.CalledProcessError:
+            sink_name = result.stdout.strip()
+            logger.info(f"Current default audio sink is '{sink_name}'.")
+            return sink_name
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            logger.error(f"Failed to get default sink: {e}")
             return ""
 
-    def verify_sink_is(self, expected_sink: str) -> bool:
-        """
-        验证当前默认sink是否为期望值
-
-        参数:
-        - expected_sink: 期望的sink名称
-
-        返回: True表示匹配，False表示不匹配
-        """
-        current = self.get_current_default_sink()
-        return current == expected_sink
-
-    def list_available_sinks(self) -> List[str]:
-        """列出所有可用的音频输出设备"""
+    def _list_available_sinks(self) -> List[str]:
+        """列出所有可用的音频输出设备 (sinks)"""
         try:
             result = subprocess.run(
                 ["pactl", "list", "short", "sinks"],
@@ -68,60 +55,105 @@ class AudioKeywords:
             sinks = []
             for line in result.stdout.strip().split('\n'):
                 if line:
-                    # 格式: ID NAME ...
                     parts = line.split('\t')
                     if len(parts) >= 2:
                         sinks.append(parts[1])
+            logger.info(f"Available sinks: {sinks}")
             return sinks
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            logger.error(f"Failed to list available sinks: {e}")
             return []
 
-    def check_scarlett_sinks_exist(self) -> bool:
-        """检查 Scarlett 虚拟设备是否存在"""
-        sinks = self.list_available_sinks()
+    # ===========================================
+    # Gherkin 風格關鍵字 - Given (前置條件)
+    # ===========================================
+
+    @keyword('Given Scarlett Audio Interface Is Available')
+    def given_scarlett_audio_interface_is_available(self):
+        """
+        Given: 檢查 Scarlett 虛擬音訊介面是否存在
+        Given: Checks if the Scarlett virtual audio interfaces exist
+
+        此關鍵字驗證名為 'Scarlett_1-2' 和 'Scarlett_3-4' 的音訊輸出設備 (sink) 是否都存在於系統中。
+        This keyword verifies that audio sinks named 'Scarlett_1-2' and 'Scarlett_3-4' are both available in the system.
+
+        Prerequisites:
+        - PulseAudio or PipeWire is running.
+        - Scarlett device drivers and configuration are properly set up.
+
+        Examples:
+        | Given | Scarlett Audio Interface Is Available |
+        """
+        sinks = self._list_available_sinks()
         has_1_2 = "Scarlett_1-2" in sinks
         has_3_4 = "Scarlett_3-4" in sinks
-        return has_1_2 and has_3_4
+        
+        if not (has_1_2 and has_3_4):
+            raise AssertionError(
+                f"Scarlett audio interface not fully available. "
+                f"Found 'Scarlett_1-2': {has_1_2}. "
+                f"Found 'Scarlett_3-4': {has_3_4}."
+            )
+        logger.info("Verified that 'Scarlett_1-2' and 'Scarlett_3-4' sinks are available.")
 
-    def get_sink_for_channel(self, channel: int) -> str:
+    # ===========================================
+    # Gherkin 風格關鍵字 - When (執行動作)
+    # ===========================================
+
+    @keyword('When User Plays Audio File "${audio_file}" To Channel "${channel}"')
+    def when_user_plays_audio_file_to_channel(self, audio_file: str, channel: int, duration: int = 5):
         """
-        根据声道号返回应该使用的sink名称
+        When: 使用者播放音訊檔案至指定聲道
+        When: User plays an audio file to a specified channel
 
-        参数:
-        - channel: 声道号 (1-4)
+        此關鍵字將指定的音訊檔案播放到 Scarlett 設備的特定聲道。
+        This keyword plays the specified audio file to a specific channel of the Scarlett device.
 
-        返回: sink名称
+        Arguments:
+        - `audio_file`: Path to the audio file to be played.
+        - `channel`: The target channel number (1-4).
+        - `duration`: The playback duration in seconds (default is 5).
+
+        Prerequisites:
+        - Scarlett audio interface must be available.
+        - The audio file must exist and be in a supported format (e.g., wav, mp3).
+
+        Examples:
+        | When | User Plays Audio File "/path/to/sound.wav" To Channel "1" |
+        | When | User Plays Audio File "${SOUND_FILE}" To Channel "3" |
         """
-        if int(channel) in [1, 2]:
-            return "Scarlett_1-2"
-        else:
-            return "Scarlett_3-4"
+        success = play_audio_to_channel(audio_file, int(channel), int(duration))
+        if not success:
+            raise AssertionError(f"Failed to play audio file '{audio_file}' to channel {channel}.")
+        logger.info(f"Successfully played '{audio_file}' to channel {channel} for {duration} seconds.")
 
-    def test_all_channels_sequentially(self, audio_file: str, duration: int = 5) -> Dict[int, bool]:
+    # ===========================================
+    # Gherkin 風格關鍵字 - Then (驗證結果)
+    # ===========================================
+
+    @keyword('Then Default Audio Output Should Be "${expected_sink}"')
+    def then_default_audio_output_should_be(self, expected_sink: str):
         """
-        依次测试所有4个声道
+        Then: 驗證預設音訊輸出設備
+        Then: Verify the default audio output device
 
-        参数:
-        - audio_file: 音频文件路径
-        - duration: 每个声道播放时长（秒）
+        此關鍵字檢查當前的預設音訊輸出設備 (sink) 是否為預期的名稱。
+        This keyword checks if the current default audio output device (sink) matches the expected name.
 
-        返回: 字典，键为声道号，值为是否成功
+        Arguments:
+        - `expected_sink`: The expected name of the default sink.
+
+        Prerequisites:
+        - PulseAudio or PipeWire is running.
+
+        Examples:
+        | Then | Default Audio Output Should Be "Scarlett_1-2" |
+        | Then | Default Audio Output Should Be "alsa_output.pci-0000_00_1f.3.analog-stereo" |
         """
-        results = {}
-        for channel in range(1, 5):
-            print(f"正在测试声道 {channel}...")
-            success = play_audio_to_channel(audio_file, channel, int(duration))
-            results[channel] = success
-            print(f"声道 {channel} 测试{'成功' if success else '失败'}")
-        return results
-
-    def verify_all_channels_passed(self, results: Dict[int, bool]) -> bool:
-        """
-        验证所有声道测试是否都通过
-
-        参数:
-        - results: test_all_channels_sequentially 的返回结果
-
-        返回: True表示全部通过，False表示有失败
-        """
-        return all(results.values())
+        current_sink = self._get_current_default_sink()
+        if current_sink != expected_sink:
+            raise AssertionError(
+                f"Default audio output device mismatch. "
+                f"Expected: '{expected_sink}', Actual: '{current_sink}'."
+            )
+        logger.info(f"Verified that default audio output is '{current_sink}'.")

@@ -1,3 +1,21 @@
-# This project's final solution is based on shell scripts and system tools.
-# The core Python script, ultimate_play.py, uses only standard libraries.
-# Therefore, no external Python packages are required to be installed via pip.
+# Voice Control 模組相依套件
+
+# TTS 引擎
+gtts>=2.3.0              # Google Text-to-Speech
+pyttsx3>=2.90            # 離線 TTS 引擎
+
+# 日誌記錄
+loguru>=0.7.0            # 進階日誌記錄
+
+# Robot Framework (選用)
+robotframework>=6.0      # Robot Framework 核心
+robotframework-pythonlibcore>=4.0  # Python Library 核心
+
+# 配置檔案支援
+pyyaml>=6.0              # YAML 配置檔案
+python-dotenv>=1.0.0     # 環境變數檔案
+
+# 網路請求（TTS 需要）
+requests>=2.28.0         # HTTP 請求庫
+
+# 注意：ultimate_play.py 只使用標準函式庫，不需要額外依賴
