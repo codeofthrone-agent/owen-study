@@ -41,3 +41,26 @@ htmlcov/
 coverage.xml
 *.cover
 .hypothesis/
+
+# Log files
+*.log
+**/logs/
+*.pid
+
+# Test results
+results/
+output/
+log.html
+output.xml
+report.html
+report.md
+
+# Local environment configuration
+.env
+
+# Temporary files
+click_angles
+temp_test.robot
+simple_test.robot
+DOCUMENTATION_UPDATE_COMPLETE.md
+test_button_press.py
