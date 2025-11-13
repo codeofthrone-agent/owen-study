@@ -857,3 +857,15 @@ robot --dryrun tests/path/to/test.robot
 ## 結語
 
 本專案遵循**模組化、標準化、文檔化**的開發原則，確保各子系統可獨立運作或協同配合。開發時請務必遵循本文件中的規範與準則，並保持與既有架構的一致性。
+
+## Shell Tools Usage Guidelines
+⚠️ **IMPORTANT**: Use the following specialized tools instead of traditional Unix commands: (Install if missing)
+| Task Type | Must Use | Do Not Use |
+|-----------|----------|------------|
+| Find Files | `fd` | `find`, `ls -R` |
+| Search Text | `rg` (ripgrep) | `grep`, `ag` |
+| Analyze Code Structure | `ast-grep` | `grep`, `sed` |
+| Interactive Selection | `fzf` | Manual filtering |
+| Process JSON | `jq` | `python -m json.tool` |
+| Process YAML/XML | `yq` | Manual parsing |
+====

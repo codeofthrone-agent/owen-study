@@ -17,7 +17,7 @@ Documentation    SwitchBot 智慧插座控制關鍵字
 ...              | Library | libraries/switchbot_smartplug_control/SwitchBotSmartPlugLibrary.py |
 ...              | Resource | resources/switchbot_keywords.robot |
 
-Library    libraries/switchbot_smartplug_control/SwitchBotSmartPlugLibrary.py
+Library    ../libraries/switchbot_smartplug_control/SwitchBotSmartPlugLibrary.py
 Library    BuiltIn
 Library    String
 Library    Collections
