@@ -8,7 +8,7 @@ Resource         ../../resources/mobile_keywords.robot
 *** Variables ***
 ${IOS_BUNDLE_ID}        com.example.app
 ${IOS_DEVICE_NAME}      iPhone 14
-${IOS_PLATFORM_VERSION} 16.0
+${IOS_PLATFORM_VERSION}    16.0
 
 *** Test Cases ***
 Scenario: User Launches iOS Application Successfully
