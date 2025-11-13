@@ -1,6 +1,70 @@
 # Robot Framework 關鍵字說明文件 - Gherkin 風格 (最新更新)
 
-## 🔧 最新維護更新 (2025-06-27)
+## 🔧 最新維護更新 (2025-11-13)
+
+### ✅ Mobile Keywords 英文關鍵字修復完成
+
+**修復任務概覽:**
+- ✅ 修復 `resources/mobile_keywords.robot` 中的英文關鍵字名稱
+- ✅ 將所有 Then/And 英文關鍵字轉換為中文
+- ✅ 更新相關引用和文檔
+
+**修復的關鍵字清單:**
+```robotframework
+# 修復前 → 修復後
+Then Element Text Should Be → Then 元素文字應該是
+Then Element Should Be Visible → Then 元素應該可見  
+Then Application Should Be Closed → Then 應用程式應該已關閉
+Then User Should See Loading Complete → Then 使用者應該看到載入完成
+Then Login Should Be Successful → Then 登入應該成功
+And User Also Taps On Element → And 使用者同時點擊元素
+And Application Is Still Running → And 應用程式仍在運行
+And User Can See Element → And 使用者可以看到元素
+And Screenshot Is Taken → And 截圖已擷取
+```
+
+**技術細節:**
+- ✅ 更新了所有 Legacy Keywords 中的關鍵字引用
+- ✅ 保持了完整的雙語文檔和參數說明
+- ✅ 維護了向後相容性
+
+**驗證結果:**
+- ✅ Robot Framework 語法檢查通過
+- ✅ 所有中文關鍵字可正常調用
+- ✅ Legacy 關鍵字引用正確更新
+
+### ✅ Multi-Light Keywords 模組匯入修復完成
+
+**修復任務概覽:**
+- ✅ 修復 `resources/multi_light_keywords.robot` 中的錯誤模組匯入路徑
+- ✅ 解決 MultiLightKeywords 類別找不到的問題
+- ✅ 確保多燈號陣列檢測關鍵字正常運作
+
+**技術細節:**
+```robotframework
+# 問題匯入 (修復前)
+Library    ../libraries/multimodal_detection/    WITH NAME    MultiLightLib
+
+# 修復後匯入
+Library    ../libraries/ipcam_light_detection/MultiLightKeywords.py    WITH NAME    MultiLightLib
+```
+
+**修復驗證:**
+- ✅ 模組匯入測試通過: `MultiLightKeywords 匯入成功`
+- ✅ Robot Framework 語法檢查通過
+- ✅ 所有多燈號關鍵字可正常調用
+
+**影響檔案:**
+- `resources/multi_light_keywords.robot`: 匯入路徑修復
+- `resources/mobile_keywords.robot`: 英文關鍵字名稱修復
+
+**問題根因:**
+1. **錯誤模組路徑**: 原先指向 `multimodal_detection` 模組，但 `MultiLightKeywords` 實際位於 `ipcam_light_detection` 模組
+2. **英文關鍵字名稱**: 違反了項目的中文關鍵字標準化要求
+
+---
+
+## 🔧 維護更新記錄 (2025-06-27)
 
 ### ✅ Robot Framework 語法錯誤修復完成
 
@@ -76,6 +140,7 @@ Log    1. Open Application 使用 http://localhost:4723 和 capabilities字典
 | resources/web_keywords.robot | ✅ | ✅ | ✅ | ✅ | ✅ | **完成** |
 | resources/api_keywords.robot | ✅ | ✅ | ✅ | ✅ | ✅ | **完成** |
 | resources/mobile_keywords.robot | ✅ | ✅ | ✅ | ✅ | ✅ | **完成** |
+| resources/multi_light_keywords.robot | ✅ | ✅ | ✅ | ✅ | ✅ | **完成** |
 | resources/switchbot_keywords.robot ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | **完成** |
 | test_speak_text.robot | ✅ | ✅ | ✅ | ✅ | ✅ | **完成** |
 | tests/login_test.robot | ✅ | ✅ | ✅ | ✅ | ✅ | **完成** |

@@ -11,7 +11,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 🎤 語音控制與驗證系統 (LocalVoiceVerifyingLibrary)
 - 🔊 專業音訊硬體控制 (Scarlett 4i4 四通道獨立輸出)
 - 🔌 SwitchBot 智慧插座電源管理
-- 🤖 機器手臂控制實體面板操作 (計劃中)
+- 🤖 **機器手臂視覺檢測系統 (✅ Phase 1-3 已完成, 2025-11-13)**
+  - MyCobot 280 按鈕 LED 顏色檢測（HSV 色彩空間）
+  - ROI 互動式校準工具
+  - 26 個 BDD 中文關鍵字
+  - 17 個完整測試案例（快速測試、功能測試、整合測試）
 - 👁️ **多感官檢測系統 (✅ 已完成 - v1.0.0, 2025-11-07)**
   - IP Camera 視覺檢測（螢幕亮度變化）
   - RTSP 音訊檢測（提示音檢測）
@@ -259,30 +263,91 @@ robot-multiplatform-automation/
 
 ## 編碼規範與標準
 
-### Robot Framework 測試案例規範
+### Robot Framework BDD 設計規範
 
-**重要規範（來自 .github/copilot-instructions.md）:**
+本專案遵循嚴格的 BDD (Behavior-Driven Development) 設計原則。所有 Robot Framework 關鍵字和測試案例都必須符合以下規範。
 
-1. **Gherkin 語法結構:** 所有測試案例必須使用 Gherkin 語法（Given-When-Then-And）
-2. **中文關鍵字:** 所有 Robot Framework 關鍵字名稱必須使用中文
-3. **詳細文檔:** [Documentation] 應包含詳細說明和使用範例
-4. **RETURN 語句:** 使用現代 RETURN 語句，避免舊式 [Return]
-5. **日期格式:** 寫入日期前須檢查現在日期，格式為 YYYY-MM-DD
-6. **中文文檔:** 所有文件和註解都應使用中文
+#### 核心原則
 
-### 關鍵字命名範例
+1. **Gherkin 語法結構** - 所有測試案例必須使用 Gherkin 語法（Given-When-Then-And）
+2. **中文關鍵字** - 所有 Robot Framework 關鍵字名稱必須使用中文
+3. **業務層級抽象** - 關鍵字應描述「做什麼」(What)，而非「如何做」(How)
+4. **單一職責原則** - 每個關鍵字只負責一件核心任務
+5. **詳細文檔** - [Documentation] 應包含詳細說明和使用範例
+6. **RETURN 語句** - 使用現代 RETURN 語句，避免舊式 [Return]
+
+#### 完整設計指南
+
+⭐ **必讀文檔：**
+- 📖 [Keyword 設計規範](docs/keyword_design_guidelines.md) - 最完整的 BDD 設計指南
+  - Gherkin / BDD 整合
+  - 命名規範與抽象層級
+  - Docstring 標準範本
+  - 職責劃分與錯誤處理
+- 📖 [視覺檢測設計文檔](docs/robot_arm_vision_detection_design.md) - 實際應用範例
+
+⭐ **最佳實踐範本：**
+- `libraries/voice_control/VoiceControlKeywords.py` - 語音控制關鍵字（完整 Docstring）
+- `libraries/robot_arm_control/RobotArmKeywords.py` - 機器手臂關鍵字（v3.0.0，26 個 BDD 關鍵字）
+- `libraries/testlink_integration/TestLinkConnector.py` - TestLink 整合（69 個中文 Gherkin 關鍵字）
+
+#### BDD 關鍵字類型說明
+
+**Given（給定）** - 設定前置條件或系統狀態
+- 範例：`Given TTS 引擎已設定為 "gtts"`
+- 目的：建立已知的、穩定的測試起點
+
+**When（當）** - 觸發核心業務動作或用戶操作
+- 範例：`When 用戶檢測第 "light1" 按鈕的燈光狀態`
+- 目的：模擬用戶或系統執行的單一關鍵行為
+
+**Then（那麼）** - 驗證結果或狀態變化
+- 範例：`Then 按鈕燈光應該為 "blue" 色`
+- 目的：斷言測試的預期結果是否達成
+- 要求：驗證失敗時使用 `raise AssertionError("描述性錯誤訊息")`
+
+**And（而且）/ But（但是）** - 串連同類型步驟
+- 範例：`And 回應內容應該包含 "${expected_content}"`
+- 目的：避免重複使用 Given/When/Then
+
+#### 快速範例
 
 ```robotframework
-# ✅ 正確範例
+# ✅ 正確範例 - 業務層級抽象
+Given 機器手臂已連接到遠端伺服器
+When 用戶檢測第 "light1" 按鈕的燈光狀態
+Then 按鈕燈光應該為 "blue" 色
+And 檢測信心度應該大於 0.9
+
+# ✅ 正確範例 - API 測試
 Given API 服務已在端點 "${endpoint}" 運行
 When 使用者發送 GET 請求到 "${url}"
 Then 回應狀態碼應該為 "${status_code}"
 And 回應內容應該包含 "${expected_content}"
 
-# ❌ 錯誤範例 (舊格式，已棄用)
+# ❌ 錯誤範例 - 技術層級暴露（已棄用）
 Given API Service Is Running At Endpoint "${endpoint}"
 When User Sends GET Request To "${url}"
+Click Button "xpath=//button[@id='submit']"  # 不應暴露技術定位符
 ```
+
+#### 抽象層級對比
+
+**好的例子（業務層級）：**
+- `When 用戶透過機器手臂開啟第 "1" 號燈光`
+- `Then 機器手臂操作應該成功完成`
+- `When 用戶檢測多個按鈕的燈光狀態`
+
+**壞的例子（技術實現層級）：**
+- `Send Angles To Robot [10, 20, 30, 40, 50, 60]` ❌
+- `Click Element "xpath=//button[@class='light1']"` ❌
+- `HTTP Get Request To "http://10.42.0.180:9000/detect"` ❌
+
+#### 其他重要規範
+
+7. **日期格式** - 寫入日期前須檢查現在日期，格式為 YYYY-MM-DD
+8. **中文文檔** - 所有文件和註解都應使用中文
+9. **工具使用** - 使用 `robotidy` 格式化，使用 `libdoc` 產生文檔
 
 ### Python 程式碼規範
 
@@ -515,7 +580,7 @@ Log    1. Open Application 使用 http://localhost:4723 和 capabilities 字典
 
 ### 版本控制
 
-**當前狀態 (2025-11-10):**
+**當前狀態 (2025-11-13):**
 - Phase 1 基礎架構：✅ 完成
 - iOS 真機測試環境：✅ 完成（2025-06-27）
   - 支援 iPhone 13 系列（已測試：iPhone 13 mini, iOS 18.6.2）
@@ -537,11 +602,17 @@ Log    1. Open Application 使用 http://localhost:4723 和 capabilities 字典
   - 69 個中文 Gherkin 風格關鍵字
   - 單一/批次測試結果回報
   - 完整文檔與 20 個測試案例
+- **機器手臂視覺檢測系統：✅ 完成（2025-11-13）**
+  - Phase 1: VisionAnalyzer + JSON 命令（HSV 顏色檢測、多幀平均）
+  - Phase 2: ROI 校準工具（互動式選擇、YAML 配置）
+  - Phase 3: Robot Framework 整合（26 個 BDD 關鍵字、17 個測試案例）
+  - RobotArmKeywords v3.0.0（新增 10 個視覺檢測關鍵字）
+  - 完整測試文檔與使用指南
 
 **下一階段重點:**
-- Phase 2: 設備整合開發（機器手臂控制）
-- Phase 3: 多感官檢測測試案例完善
-- Phase 4: 進階 TestLink 功能（測試案例同步、自動建立 Bug）
+- 機器手臂視覺檢測 Phase 4: 測試與優化（真機測試、性能優化、準確度調整）
+- 進階 TestLink 功能（測試案例同步、自動建立 Bug）
+- 多感官檢測測試案例完善
 
 ## 常見問題與解決方案
 
@@ -742,10 +813,19 @@ robot --dryrun tests/path/to/test.robot
 - `libraries/local_voice_verifying/README.md` - 語音驗證庫說明
 - `libraries/voice_control/README.md` - Scarlett 4i4 音訊控制說明
 - `libraries/voice_control/ROBOT_FRAMEWORK_README.md` - Robot Framework 整合指南
-- `libraries/testlink_integration/README.md` - TestLink 整合模組說明（✅ 新增）
+- `libraries/robot_arm_control/README.md` - 機器手臂控制模組說明
+- `libraries/robot_arm_control/BUTTON_SETUP_GUIDE.md` - 按鈕配置指南
+- `libraries/testlink_integration/README.md` - TestLink 整合模組說明
 - `docs/ios_device_setup.md` - iOS 設置指南
 - `docs/ios_test_execution_guide.md` - iOS 測試執行指南
-- `docs/testlink_integration_setup_guide.md` - TestLink 整合設置指南（✅ 新增）
+- `docs/testlink_integration_setup_guide.md` - TestLink 整合設置指南
+
+**機器手臂視覺檢測文檔（✅ 新增 2025-11-13）:**
+- `docs/robot_arm_vision_detection_design.md` - 視覺檢測設計文檔（Phase 1-6 完整規劃）
+- `docs/robot_arm_vision_calibration_guide.md` - ROI 校準操作指南
+- `docs/robot_arm_vision_phase3_completion_summary.md` - Phase 3 完成報告
+- `tests/robot_arm/VISION_DETECTION_TESTS_README.md` - 測試案例詳細說明
+- `docs/keyword_design_guidelines.md` - BDD 關鍵字設計規範（最佳實踐）
 
 ## 開發工作流程
 

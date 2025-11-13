@@ -144,8 +144,8 @@ def main():
         failed_modules = [name for name, success in results.items() if not success]
         print(f"❌ 失敗的套件: {', '.join(failed_modules)}")
         print("\n💡 安裝建議:")
-        print("   pipenv install")
-        print("   pip install -r requirements.txt")
+        print("   uv pip install -r requirements.txt")
+        print("   或: pip install -r requirements.txt")
         return 1
 
 if __name__ == "__main__":
