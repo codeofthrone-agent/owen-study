@@ -93,14 +93,15 @@ class VisionAnalyzer:
 
         self.logger.info(f"VisionAnalyzer 初始化完成，攝影機: {camera_device}")
 
-    def capture_multi_frame_average(self, num_frames=5) -> np.ndarray:
-        """多幀平均截圖（解決 LED 掃描頻率問題）
+    def capture_multi_frame_average(self, num_frames=5, warmup_frames=10) -> np.ndarray:
+        """多幀平均截圖（解決 LED 掃描頻率與自動曝光問題）
 
-        LED PWM 調光頻率與攝影機幀率不同步會導致亮度不穩定。
-        透過多幀平均可以消除閃爍效果。
+        - LED PWM 調光頻率與攝影機幀率不同步會導致亮度不穩定。
+        - 攝影機啟動時需要時間穩定自動曝光。
 
         Args:
-            num_frames: 平均幀數（預設 5 幀，約 0.17 秒）
+            num_frames: 用於平均的幀數（預設 5 幀）。
+            warmup_frames: 用於預熱的幀數（預設 10 幀），讓自動曝光穩定。
 
         Returns:
             平均後的圖像 (numpy.ndarray)
@@ -119,6 +120,13 @@ class VisionAnalyzer:
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             cap.set(cv2.CAP_PROP_FPS, 30)
 
+            # 新增：相機預熱階段，讓自動曝光穩定
+            self.logger.debug(f"相機預熱中，讀取並捨棄 {warmup_frames} 幀...")
+            for _ in range(warmup_frames):
+                cap.read()
+            self.logger.debug("相機預熱完成。")
+
+            # 讀取幀用於平均
             frames = []
             for i in range(num_frames):
                 ret, frame = cap.read()
@@ -1033,6 +1041,8 @@ if __name__ == "__main__":
     parser.add_argument('--log-level', type=str, default='INFO',
                         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
                         help='Logging level (default: INFO)')
+    parser.add_argument('--disable-vision', action='store_true',
+                        help='Disable vision detection system (default: enabled)')
 
     args = parser.parse_args()
 
@@ -1060,6 +1070,7 @@ if __name__ == "__main__":
     print(f"Server Port: {PORT}")
     print(f"Serial Port: {args.serial}")
     print(f"Baud Rate:   {args.baud}")
+    print(f"Vision Enabled: {not args.disable_vision}")
     print("=" * 50)
     print("Press Ctrl+C to stop the server")
     print("=" * 50)
@@ -1073,7 +1084,8 @@ if __name__ == "__main__":
             max_reconnect_attempts=args.max_reconnect_attempts,
             read_timeout=args.read_timeout,
             socket_timeout=args.socket_timeout,
-            log_level=log_level
+            log_level=log_level,
+            enable_vision=not args.disable_vision
         )
     except KeyboardInterrupt:
         print("\nServer stopped by user")
