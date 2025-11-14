@@ -93,7 +93,7 @@ class VisionAnalyzer:
 
         self.logger.info(f"VisionAnalyzer 初始化完成，攝影機: {camera_device}")
 
-    def capture_multi_frame_average(self, num_frames=5, warmup_frames=10) -> np.ndarray:
+    def capture_multi_frame_average(self, num_frames=5, warmup_frames=20) -> np.ndarray:
         """多幀平均截圖（解決 LED 掃描頻率與自動曝光問題）
 
         - LED PWM 調光頻率與攝影機幀率不同步會導致亮度不穩定。
@@ -145,19 +145,16 @@ class VisionAnalyzer:
 
             return avg_frame
 
-    def detect_button_state(self, image: np.ndarray, roi_config: dict) -> dict:
+    def detect_button_state(self, image: np.ndarray, roi_config: dict, save_roi: bool = False, save_path: Optional[str] = None, save_full_frame: bool = False, full_frame_path: Optional[str] = None) -> dict:
         """檢測單一按鈕狀態
 
         Args:
             image: 輸入圖像 (BGR 格式)
             roi_config: ROI 配置
-                {
-                    "x": int,
-                    "y": int,
-                    "width": int,
-                    "height": int,
-                    "brightness_threshold": int (可選，預設 100)
-                }
+            save_roi: 是否儲存 ROI 圖像
+            save_path: ROI 圖像儲存路徑
+            save_full_frame: 是否儲存標記 ROI 的完整圖像
+            full_frame_path: 完整圖像儲存路徑
 
         Returns:
             {
@@ -165,16 +162,39 @@ class VisionAnalyzer:
                 "color": "blue" | "white" | "off" | "unknown",
                 "brightness": 0-255,
                 "confidence": 0.0-1.0,
-                "debug_info": {
-                    "blue_ratio": float,
-                    "white_ratio": float,
-                    "roi_size": [width, height]
-                }
+                "debug_info": {...}
             }
         """
         try:
             # 1. 提取 ROI
             roi = self._extract_roi(image, roi_config)
+
+            # 如果請求，儲存完整幀和 ROI
+            if save_full_frame and full_frame_path:
+                try:
+                    # 在完整圖像上繪製 ROI 矩形
+                    x, y, w, h = roi_config['x'], roi_config['y'], roi_config['width'], roi_config['height']
+                    debug_frame = image.copy()
+                    cv2.rectangle(debug_frame, (x, y), (x + w, y + h), (0, 255, 0), 2) # Green rectangle
+                    
+                    from pathlib import Path
+                    output_dir = Path(full_frame_path).parent
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                    cv2.imwrite(str(full_frame_path), debug_frame)
+                    self.logger.info(f"附有 ROI 的完整圖像已儲存至: {full_frame_path}")
+                except Exception as e:
+                    self.logger.error(f"儲存完整圖像失敗: {e}")
+
+            # 如果請求，儲存 ROI 圖像
+            if save_roi and save_path:
+                try:
+                    from pathlib import Path
+                    output_dir = Path(save_path).parent
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                    cv2.imwrite(str(save_path), roi)
+                    self.logger.info(f"ROI 圖像已儲存至: {save_path}")
+                except Exception as e:
+                    self.logger.error(f"儲存 ROI 圖像失敗: {e}")
 
             # 2. 檢測亮度
             brightness = self._detect_brightness(roi)
@@ -488,6 +508,70 @@ class MycobotServer(object):
             self.logger.error(f"串口健康檢查失敗: {e}")
             return False
 
+    def _is_moving(self) -> bool:
+        """檢查機器手臂是否正在移動"""
+        with self.serial_lock:
+            is_moving_cmd = [0xfe, 0xfe, 0x02, 0x2b, 0xfa]
+            try:
+                self.write(is_moving_cmd)
+                # is_moving 指令有回應
+                response = self.read(is_moving_cmd)
+                if response and len(response) >= 5 and response[3] == 0x2b:
+                    return bool(response[4])
+            except Exception as e:
+                self.logger.error(f"檢查 is_moving 狀態失敗: {e}")
+        return False  # 發生錯誤時，預設為未移動
+
+    def get_angles(self):
+        """讀取當前手臂角度
+
+        Returns:
+            list: 6 個關節角度 [j1, j2, j3, j4, j5, j6]，失敗時返回 [None] * 6
+        """
+        with self.serial_lock:
+            # MyCobot 280 get_angles 命令: 0xfe 0xfe 0x02 0x10 0xfa (實際命令碼是 0x10)
+            get_angles_cmd = [0xfe, 0xfe, 0x02, 0x10, 0xfa]
+            try:
+                self.write(get_angles_cmd)
+                response = self.read(get_angles_cmd)
+
+                # 預期回應: [0xfe, 0xfe, len, 0x10, j1_h, j1_l, ..., j6_h, j6_l, 0xfa]
+                # 總長度應該是 16 bytes: header(2) + len(1) + cmd(1) + 6*angles(12) + footer(1)
+                if response and len(response) >= 16 and response[3] == 0x10:
+                    angles = []
+                    for i in range(6):
+                        # 讀取每個關節的高位和低位字節
+                        high_byte = response[4 + i * 2]
+                        low_byte = response[5 + i * 2]
+                        # 組合成 int16，然後除以 100 轉換為角度
+                        angle_int = (high_byte << 8) | low_byte
+                        # 處理負數（int16 範圍）
+                        if angle_int > 32767:
+                            angle_int -= 65536
+                        angle = angle_int / 100.0
+                        angles.append(angle)
+                    return angles
+                else:
+                    self.logger.warning(f"讀取角度回應格式錯誤: {response}")
+                    return [None] * 6
+            except Exception as e:
+                self.logger.error(f"讀取角度失敗: {e}")
+                return [None] * 6
+
+    def _wait_for_movement(self, timeout: float = 15.0, interval: float = 0.2):
+        """等待機器手臂移動完成"""
+        start_time = time.time()
+        self.logger.info("等待機器手臂移動完成...")
+        while time.time() - start_time < timeout:
+            if not self._is_moving():
+                elapsed = time.time() - start_time
+                self.logger.info(f"✓ 移動完成 (耗時: {elapsed:.2f} 秒)")
+                return True
+            time.sleep(interval)
+        
+        self.logger.warning(f"⚠️ 等待移動超時 ({timeout} 秒)")
+        return False
+
     # ==================== JSON 命令處理方法 ====================
 
     def _handle_json_command(self, cmd: dict) -> dict:
@@ -513,6 +597,8 @@ class MycobotServer(object):
                 return self._cmd_detect_button(cmd)
             elif command_type == "move_to_angles":
                 return self._cmd_move_to_angles(cmd)
+            elif command_type == "get_angles":
+                return self._cmd_get_angles(cmd)
             elif command_type == "capture_image":
                 return self._cmd_capture_image(cmd)
             else:
@@ -528,24 +614,28 @@ class MycobotServer(object):
         Args:
             cmd: {
                 "command": "detect_button",
-                "roi": {"x": int, "y": int, "width": int, "height": int, "brightness_threshold": int},
-                "observe_angles": [j1, j2, j3, j4, j5, j6],  # 可選，如果需要先移動
-                "num_frames": int  # 可選，多幀平均數量（預設 5）
+                "roi": {...},
+                "observe_angles": [...],
+                "num_frames": int,
+                "save_roi": bool,      // 新增
+                "button_name": str   // 新增
             }
 
         Returns:
-            {
-                "status": "success" | "error",
-                "result": {...},  # detect_button_state 的結果
-                "message": str
-            }
+            {...}
         """
         if not self.enable_vision or not self.vision_analyzer:
             return {"status": "error", "message": "視覺檢測系統未啟用"}
 
         try:
             # 1. 移動到觀測位置（如果提供）
-            if "observe_angles" in cmd:
+            self.logger.info(f"檢測按鈕命令 - observe_angles: {cmd.get('observe_angles')}")
+            if "observe_angles" in cmd and cmd["observe_angles"] is not None:
+                # 讀取當前角度
+                current_angles = self.get_angles()
+                self.logger.info(f"當前手臂角度: {[round(a, 2) if a is not None else None for a in current_angles]}")
+                self.logger.info(f"目標觀測角度: {cmd['observe_angles']}")
+
                 move_result = self._cmd_move_to_angles({
                     "command": "move_to_angles",
                     "angles": cmd["observe_angles"],
@@ -555,8 +645,15 @@ class MycobotServer(object):
                 if move_result["status"] != "success":
                     return {"status": "error", "message": f"移動到觀測位置失敗: {move_result['message']}"}
 
-                # 等待穩定
-                time.sleep(0.5)
+                # 等待移動完成 + 機器手臂穩定 + 相機畫面穩定
+                # 注意：MyCobot 的 is_moving 指令不可靠，使用固定延遲
+                self.logger.info("等待機器手臂移動到觀測位置並穩定...")
+                time.sleep(5.0)  # 固定延遲：移動 + 穩定
+
+                # 讀取移動後的角度
+                final_angles = self.get_angles()
+                self.logger.info(f"移動後手臂角度: {[round(a, 2) if a is not None else None for a in final_angles]}")
+                self.logger.info("✓ 機器手臂已穩定")
 
             # 2. 多幀平均截圖
             num_frames = cmd.get("num_frames", 5)
@@ -567,7 +664,27 @@ class MycobotServer(object):
             if not roi_config:
                 return {"status": "error", "message": "缺少 'roi' 參數"}
 
-            result = self.vision_analyzer.detect_button_state(image, roi_config)
+            # 處理 ROI 和完整幀的儲存
+            save_roi = cmd.get("save_roi", False)
+            save_full_frame = cmd.get("save_full_frame", False)
+            save_path = None
+            full_frame_path = None
+            
+            if save_roi or save_full_frame:
+                from pathlib import Path
+                button_name = cmd.get("button_name", "unknown")
+                output_dir = Path('output/roi_debug')
+                timestamp = time.strftime("%Y%m%d-%H%M%S")
+                if save_roi:
+                    save_path = str(output_dir / f"roi_{button_name}_{timestamp}.jpg")
+                if save_full_frame:
+                    full_frame_path = str(output_dir / f"full_{button_name}_{timestamp}.jpg")
+
+            result = self.vision_analyzer.detect_button_state(
+                image, roi_config, 
+                save_roi, save_path, 
+                save_full_frame, full_frame_path
+            )
 
             return {
                 "status": "success",
@@ -577,6 +694,42 @@ class MycobotServer(object):
 
         except Exception as e:
             self.logger.error(f"按鈕檢測失敗: {e}")
+            return {"status": "error", "message": str(e)}
+
+    def _cmd_get_angles(self, cmd: dict) -> dict:
+        """讀取當前手臂角度
+
+        Args:
+            cmd: {
+                "command": "get_angles"
+            }
+
+        Returns:
+            {
+                "status": "success" | "error",
+                "angles": [j1, j2, j3, j4, j5, j6],  # 成功時
+                "message": str
+            }
+        """
+        try:
+            angles = self.get_angles()
+
+            # 檢查是否有無效角度
+            if None in angles:
+                return {
+                    "status": "error",
+                    "message": "讀取角度失敗",
+                    "angles": angles
+                }
+
+            return {
+                "status": "success",
+                "angles": angles,
+                "message": "讀取角度成功"
+            }
+
+        except Exception as e:
+            self.logger.error(f"讀取角度失敗: {e}")
             return {"status": "error", "message": str(e)}
 
     def _cmd_move_to_angles(self, cmd: dict) -> dict:
@@ -602,26 +755,27 @@ class MycobotServer(object):
 
             speed = cmd.get("speed", 50)
 
-            # 構建 send_angles 命令（參考 pymycobot 協議）
-            # 格式: [0xfe, 0xfe, len, 0x52, j1_h, j1_l, j2_h, j2_l, ..., j6_h, j6_l, speed, 0xfa]
-            command_bytes = [0xfe, 0xfe, 0x0f, 0x52]  # header + length + cmd_id
-
-            for angle in angles:
-                # 將角度轉換為 int16 (角度 * 100)
-                angle_int = int(angle * 100)
-                high_byte = (angle_int >> 8) & 0xff
-                low_byte = angle_int & 0xff
-                command_bytes.extend([high_byte, low_byte])
-
-            command_bytes.append(speed)
-            command_bytes.append(0xfa)  # footer
-
-            # 發送命令
-            with self.serial_lock:
-                self.write(command_bytes)
-
             self.logger.info(f"移動到角度: {angles}, 速度: {speed}")
-            return {"status": "success", "message": f"已發送移動命令"}
+
+            # 使用 pymycobot 的協議構建命令
+            # send_angles 命令不需要等待回應（不在 has_return 列表中）
+            try:
+                from pymycobot import MyCobot280
+
+                # 創建臨時 MyCobot 對象來使用其協議方法
+                temp_mc = MyCobot280(self.serial_num, self.baud)
+                temp_mc._serial_port = self.mc  # 使用現有的串口連接
+
+                # 使用 pymycobot 的 send_angles 方法
+                # 這個方法會構建正確的協議並發送到串口
+                temp_mc.send_angles(angles, speed)
+
+                self.logger.info("✓ 移動命令已發送")
+                return {"status": "success", "message": "已發送移動命令"}
+
+            except ImportError:
+                self.logger.error("pymycobot 庫未安裝，無法使用 send_angles")
+                return {"status": "error", "message": "pymycobot 庫未安裝"}
 
         except Exception as e:
             self.logger.error(f"移動命令失敗: {e}")

@@ -644,12 +644,13 @@ class RobotArmKeywords:
 
     # ==================== 視覺檢測關鍵字 (v3.0.0新增) ====================
 
-    def _send_vision_command(self, command: dict) -> dict:
+    def _send_vision_command(self, command: dict, timeout: float = 30.0) -> dict:
         """
         發送視覺檢測命令到伺服器
 
         Args:
             command: JSON 命令字典
+            timeout: 等待回應的超時時間（秒），預設 30 秒
 
         Returns:
             伺服器回應的字典
@@ -660,26 +661,73 @@ class RobotArmKeywords:
         self._ensure_connected()
 
         try:
-            # 使用底層 socket 發送 JSON 命令
-            cmd_str = json.dumps(command, ensure_ascii=False)
-            self.controller.socket.sendall(cmd_str.encode('utf-8'))
+            import socket as sock_module
 
-            # 接收回應
-            response = b""
-            while True:
-                chunk = self.controller.socket.recv(4096)
-                if not chunk:
-                    break
-                response += chunk
-                # 嘗試解析 JSON
-                try:
+            # 設定 socket timeout
+            original_timeout = self.controller.socket.gettimeout()
+            self.controller.socket.settimeout(timeout)
+
+            try:
+                # 使用底層 socket 發送 JSON 命令
+                cmd_str = json.dumps(command, ensure_ascii=False)
+                logger.debug(f"發送視覺命令: {cmd_str[:200]}...")
+                self.controller.socket.sendall(cmd_str.encode('utf-8'))
+
+                # 接收回應
+                response = b""
+                start_time = time.time()
+
+                while True:
+                    elapsed = time.time() - start_time
+                    if elapsed > timeout:
+                        raise sock_module.timeout(f"接收回應超時（{timeout}秒）")
+
+                    try:
+                        chunk = self.controller.socket.recv(65536)
+                        if not chunk:
+                            # 連接關閉，嘗試解析已接收的資料
+                            if response:
+                                break
+                            else:
+                                raise RuntimeError("連接關閉，未收到任何回應")
+
+                        response += chunk
+
+                        # 嘗試解析 JSON
+                        try:
+                            result = json.loads(response.decode('utf-8'))
+                            logger.debug(f"收到視覺檢測結果: {result.get('status')}")
+                            return result
+                        except json.JSONDecodeError:
+                            # JSON 不完整，繼續接收
+                            continue
+
+                    except sock_module.timeout:
+                        # Socket timeout，檢查是否已收到完整資料
+                        if response:
+                            try:
+                                result = json.loads(response.decode('utf-8'))
+                                logger.debug(f"收到視覺檢測結果（timeout 後）: {result.get('status')}")
+                                return result
+                            except json.JSONDecodeError:
+                                pass
+                        # 未收到完整資料，繼續等待
+                        continue
+
+                # 迴圈結束，嘗試最後一次解析
+                if response:
                     result = json.loads(response.decode('utf-8'))
                     return result
-                except json.JSONDecodeError:
-                    continue
+                else:
+                    raise RuntimeError("未收到伺服器回應")
 
-            raise RuntimeError("未收到伺服器回應")
+            finally:
+                # 恢復原始 timeout
+                self.controller.socket.settimeout(original_timeout)
 
+        except sock_module.timeout as e:
+            logger.error(f"視覺命令執行逾時: {e}")
+            raise RuntimeError(f"視覺命令執行逾時: {e}")
         except Exception as e:
             logger.error(f"視覺命令執行失敗: {e}")
             raise RuntimeError(f"視覺命令執行失敗: {e}")
@@ -751,6 +799,110 @@ class RobotArmKeywords:
 
         except Exception as e:
             logger.error(f"✗ 按鈕檢測失敗: {e}")
+            self._last_operation_success = False
+            raise
+
+    @keyword('When 用戶檢測第 "${button_id}" 按鈕的燈光狀態並儲存ROI圖像')
+    def when_user_detects_button_light_state_and_save_roi(self, button_id: str) -> dict:
+        """
+        When: 用戶檢測指定按鈕的燈光狀態，並儲存 ROI 圖像以供除錯
+
+        執行動作：與「用戶檢測第...」相同，但會額外儲存 ROI 圖像
+
+        Args:
+            button_id: 按鈕 ID
+
+        Returns:
+            dict: 檢測結果
+
+        Examples:
+            | When | 用戶檢測第 "light1" 按鈕的燈光狀態並儲存ROI圖像 |
+
+        Raises:
+            RuntimeError: 如果檢測失敗
+        """
+        try:
+            button_config = self.config_loader.get_button_config(button_id)
+            if 'vision' not in button_config:
+                raise ValueError(f"按鈕 '{button_id}' 未校準視覺檢測 ROI。")
+
+            vision_config = button_config['vision']
+
+            command = {
+                "command": "detect_button",
+                "roi": vision_config['roi'],
+                "observe_angles": vision_config.get('observe_angles'),
+                "num_frames": 5,
+                "save_roi": True,
+                "button_name": button_id
+            }
+
+            logger.info(f"開始檢測按鈕 (儲存ROI): {button_config.get('name', button_id)}")
+            result = self._send_vision_command(command)
+
+            if result.get("status") != "success":
+                raise RuntimeError(f"檢測失敗: {result.get('message')}")
+
+            detection_result = result['result']
+            logger.info(f"✓ 檢測完成 - 燈光: {detection_result['light']}, "
+                       f"顏色: {detection_result['color']}")
+
+            self._last_detection_result = detection_result
+            self._last_operation_success = True
+            return detection_result
+
+        except Exception as e:
+            logger.error(f"✗ 按鈕檢測 (儲存ROI) 失敗: {e}")
+            self._last_operation_success = False
+            raise
+
+
+    @keyword('When 用戶檢測第 "${button_id}" 按鈕的燈光狀態並儲存完整圖像')
+    def when_user_detects_button_light_state_and_save_full_frame(self, button_id: str) -> dict:
+        """
+        When: 用戶檢測按鈕狀態，並儲存 ROI 和完整的除錯圖像
+
+        執行動作：最強大的除錯模式，儲存 ROI 和標記了 ROI 的完整畫面
+
+        Args:
+            button_id: 按鈕 ID
+
+        Returns:
+            dict: 檢測結果
+        """
+        try:
+            button_config = self.config_loader.get_button_config(button_id)
+            if 'vision' not in button_config:
+                raise ValueError(f"按鈕 '{button_id}' 未校準視覺檢測 ROI。")
+
+            vision_config = button_config['vision']
+
+            command = {
+                "command": "detect_button",
+                "roi": vision_config['roi'],
+                "observe_angles": vision_config.get('observe_angles'),
+                "num_frames": 5,
+                "save_roi": True,
+                "save_full_frame": True,
+                "button_name": button_id
+            }
+
+            logger.info(f"開始檢測按鈕 (儲存完整圖像): {button_config.get('name', button_id)}")
+            result = self._send_vision_command(command)
+
+            if result.get("status") != "success":
+                raise RuntimeError(f"檢測失敗: {result.get('message')}")
+
+            detection_result = result['result']
+            logger.info(f"✓ 檢測完成 - 燈光: {detection_result['light']}, "
+                       f"顏色: {detection_result['color']}")
+
+            self._last_detection_result = detection_result
+            self._last_operation_success = True
+            return detection_result
+
+        except Exception as e:
+            logger.error(f"✗ 按鈕檢測 (儲存完整圖像) 失敗: {e}")
             self._last_operation_success = False
             raise
 

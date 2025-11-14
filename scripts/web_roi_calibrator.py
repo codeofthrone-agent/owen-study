@@ -27,8 +27,9 @@ import argparse
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from flask import Flask, render_template, request, jsonify, send_from_directory
+import cv2.aruco as aruco
 
 # 確保能匯入專案模組
 project_root = Path(__file__).parent.parent
@@ -52,11 +53,31 @@ class HybridRobotArmClient:
         self.timeout = timeout
 
     def connect(self) -> bool:
+        """連接機器手臂並檢查狀態"""
+        print("🔌 嘗試連接機器手臂...")
         if self.controller.connect():
             if hasattr(self.controller.mc, 'sock') and self.controller.mc.sock:
                 self.socket = self.controller.mc.sock
                 self.socket.settimeout(self.timeout)
-                return True
+                
+                # 檢查連接狀態
+                try:
+                    power_status = self.controller.is_power_on()
+                    print(f"✅ 連接成功，電源狀態: {'已上電' if power_status else '未上電'}")
+                    
+                    # 嘗試讀取角度以驗證通信
+                    angles = self.controller.get_angles()
+                    if angles and all(isinstance(a, (int, float)) for a in angles):
+                        print(f"✅ 通信正常，當前角度: {[round(a, 2) for a in angles]}")
+                    else:
+                        print("⚠️  連接成功但角度讀取異常，可能需要檢查手臂狀態")
+                    
+                    return True
+                except Exception as e:
+                    print(f"⚠️  連接成功但狀態檢查失敗: {e}")
+                    return True  # 仍然返回成功，讓使用者可以嘗試操作
+        
+        print("❌ 連接失敗")
         return False
 
     def disconnect(self):
@@ -70,7 +91,35 @@ class HybridRobotArmClient:
         return self.controller.power_off()
 
     def get_angles(self) -> Optional[List[float]]:
-        return self.controller.get_angles()
+        """讀取角度，增加錯誤處理"""
+        try:
+            angles = self.controller.get_angles()
+            if angles is None:
+                print("⚠️  角度讀取返回 None")
+                return None
+            
+            # 檢查角度數據有效性
+            if isinstance(angles, (int, float)) and angles == -1:
+                print("⚠️  角度讀取返回 -1，可能手臂未上電或通信異常")
+                return None
+            
+            if not isinstance(angles, (list, tuple)) or len(angles) != 6:
+                print(f"⚠️  角度數據格式錯誤: {angles} (type: {type(angles)})")
+                return None
+            
+            # 檢查每個角度值
+            valid_angles = []
+            for i, angle in enumerate(angles):
+                if not isinstance(angle, (int, float)):
+                    print(f"⚠️  關節 {i+1} 角度值無效: {angle} (type: {type(angle)})")
+                    return None
+                valid_angles.append(float(angle))
+            
+            return valid_angles
+            
+        except Exception as e:
+            print(f"❌ 讀取角度時發生異常: {e}")
+            return None
 
     def send_angles(self, angles, speed) -> bool:
         return self.controller.send_angles(angles, speed)
@@ -78,69 +127,485 @@ class HybridRobotArmClient:
     def is_power_on(self) -> bool:
         return self.controller.is_power_on()
 
-    def capture_image(self, num_frames: int = 5, image_format: str = "jpeg") -> Optional[np.ndarray]:
-        """使用底層 socket 發送自訂的 capture_image JSON 命令"""
-        if not self.socket:
+    def detect_aruco_markers(self, image: np.ndarray, marker_size: float = 0.05) -> Dict:
+        """檢測 ArUco 標記並計算位置資訊（支援所有 OpenCV 版本）
+        
+        Args:
+            image: 輸入影像
+            marker_size: 標記實際大小（公尺）
+            
+        Returns:
+            包含檢測到的標記資訊的字典
+        """
+        try:
+            # 檢查 OpenCV 版本並使用適當的 API
+            cv_version = cv2.__version__
+            print(f"🔍 OpenCV 版本: {cv_version}")
+            
+            # 嘗試不同的 ArUco API 方法
+            aruco_dict = None
+            parameters = None
+            corners = None
+            ids = None
+            
+            # 方法 1: OpenCV 4.7+ 新版 API
+            try:
+                if hasattr(aruco, 'getPredefinedDictionary'):
+                    aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
+                    if hasattr(aruco, 'DetectorParameters'):
+                        parameters = aruco.DetectorParameters()
+                    else:
+                        parameters = aruco.DetectorParameters_create()
+                    print("✓ 使用新版 ArUco API (getPredefinedDictionary)")
+            except Exception as e:
+                print(f"⚠️ 新版 API 失敗: {e}")
+                
+            # 方法 2: OpenCV 4.0-4.6 舊版 API
+            if aruco_dict is None:
+                try:
+                    if hasattr(aruco, 'Dictionary_get'):
+                        aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
+                        parameters = aruco.DetectorParameters_create()
+                        print("✓ 使用舊版 ArUco API (Dictionary_get)")
+                except Exception as e:
+                    print(f"⚠️ 舊版 API 失敗: {e}")
+            
+            # 方法 3: 最新版本的替代方案
+            if aruco_dict is None:
+                try:
+                    # 嘗試直接創建字典
+                    aruco_dict = aruco.Dictionary(aruco.DICT_4X4_50)
+                    parameters = aruco.DetectorParameters()
+                    print("✓ 使用最新版 ArUco API (Dictionary)")
+                except Exception as e:
+                    print(f"⚠️ 最新版 API 失敗: {e}")
+            
+            if aruco_dict is None:
+                return {
+                    "success": False,
+                    "error": f"無法初始化 ArUco 字典 (OpenCV {cv_version})",
+                    "markers_count": 0,
+                    "markers": []
+                }
+            
+            # 檢測標記 - 嘗試不同的參數格式
+            try:
+                # 新版本格式
+                if parameters is not None:
+                    corners, ids, _ = aruco.detectMarkers(image, aruco_dict, parameters=parameters)
+                else:
+                    corners, ids, _ = aruco.detectMarkers(image, aruco_dict)
+            except Exception as e:
+                try:
+                    # 備用方法：只使用字典
+                    corners, ids, _ = aruco.detectMarkers(image, aruco_dict)
+                except Exception as e2:
+                    return {
+                        "success": False,
+                        "error": f"ArUco 檢測失敗: {str(e2)}",
+                        "markers_count": 0,
+                        "markers": []
+                    }
+            
+            result = {
+                "success": True,
+                "markers_count": len(corners) if corners is not None else 0,
+                "markers": []
+            }
+            
+            if corners is not None and len(corners) > 0:
+                print(f"🎯 檢測到 {len(corners)} 個 ArUco 標記")
+                
+                for i, corner in enumerate(corners):
+                    marker_id = int(ids[i][0]) if ids is not None else i
+                    
+                    # 計算標記中心
+                    center = np.mean(corner[0], axis=0)
+                    
+                    # 簡化版標記資訊（避免複雜的姿態估計）
+                    marker_info = {
+                        "id": marker_id,
+                        "center": [float(center[0]), float(center[1])],
+                        "corners": corner[0].tolist(),
+                        "center_x": float(center[0]),  # 為了向後相容
+                        "center_y": float(center[1])   # 為了向後相容
+                    }
+                    
+                    # 可選：嘗試姿態估計（如果失敗就跳過）
+                    try:
+                        # 簡化的相機內參
+                        camera_matrix = np.array([
+                            [600, 0, 320],
+                            [0, 600, 240],
+                            [0, 0, 1]
+                        ], dtype=np.float32)
+                        
+                        dist_coeffs = np.zeros((4, 1))
+                        
+                        # 嘗試姿態估計
+                        if hasattr(aruco, 'estimatePoseSingleMarkers'):
+                            rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(
+                                [corner], marker_size, camera_matrix, dist_coeffs
+                            )
+                            
+                            marker_info["position"] = {
+                                "x": float(tvecs[0][0][0]),
+                                "y": float(tvecs[0][0][1]),
+                                "z": float(tvecs[0][0][2])
+                            }
+                            marker_info["rotation"] = {
+                                "x": float(rvecs[0][0][0]),
+                                "y": float(rvecs[0][0][1]),
+                                "z": float(rvecs[0][0][2])
+                            }
+                    except Exception as pose_error:
+                        print(f"⚠️ 姿態估計失敗 (標記 {marker_id}): {pose_error}")
+                        marker_info["position"] = None
+                        marker_info["rotation"] = None
+                    
+                    result["markers"].append(marker_info)
+            else:
+                print("🔍 未檢測到任何 ArUco 標記")
+                    
+            return result
+            
+        except Exception as e:
+            print(f"❌ ArUco 檢測總體失敗: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "success": False,
+                "error": str(e),
+                "markers_count": 0,
+                "markers": []
+            }
+    
+    def calculate_position_correction(self, current_markers: List[Dict], 
+                                    reference_markers: List[Dict]) -> Optional[Dict]:
+        """計算位置校正資訊
+        
+        Args:
+            current_markers: 當前檢測到的標記
+            reference_markers: 參考位置的標記
+            
+        Returns:
+            位置校正資訊或 None
+        """
+        try:
+            if not current_markers or not reference_markers:
+                return None
+            
+            # 尋找共同的標記 ID
+            current_ids = {}
+            reference_ids = {}
+            
+            # 處理當前標記
+            for m in current_markers:
+                if "id" in m:
+                    # 支援新格式 (center) 和舊格式 (center_x, center_y)
+                    if "center" in m:
+                        current_ids[m["id"]] = {
+                            "center_x": m["center"][0],
+                            "center_y": m["center"][1]
+                        }
+                    elif "center_x" in m and "center_y" in m:
+                        current_ids[m["id"]] = {
+                            "center_x": m["center_x"],
+                            "center_y": m["center_y"]
+                        }
+            
+            # 處理參考標記
+            for m in reference_markers:
+                if "id" in m:
+                    # 支援新格式 (center) 和舊格式 (center_x, center_y)
+                    if "center" in m:
+                        reference_ids[m["id"]] = {
+                            "center_x": m["center"][0],
+                            "center_y": m["center"][1]
+                        }
+                    elif "center_x" in m and "center_y" in m:
+                        reference_ids[m["id"]] = {
+                            "center_x": m["center_x"],
+                            "center_y": m["center_y"]
+                        }
+            
+            common_ids = set(current_ids.keys()) & set(reference_ids.keys())
+            
+            if not common_ids:
+                print("⚠️  沒有找到共同的 ArUco 標記 ID")
+                return None
+            
+            print(f"📍 找到 {len(common_ids)} 個共同標記: {list(common_ids)}")
+            
+            # 計算位移偏差
+            total_offset_x = 0
+            total_offset_y = 0
+            valid_markers = 0
+            
+            for marker_id in common_ids:
+                current_center = current_ids[marker_id]
+                reference_center = reference_ids[marker_id]
+                
+                offset_x = current_center["center_x"] - reference_center["center_x"]
+                offset_y = current_center["center_y"] - reference_center["center_y"]
+                
+                total_offset_x += offset_x
+                total_offset_y += offset_y
+                valid_markers += 1
+                
+                print(f"   標記 {marker_id}: 偏移 ({offset_x:.1f}, {offset_y:.1f})")
+            
+            if valid_markers == 0:
+                return None
+            
+            # 平均偏移量
+            avg_offset_x = total_offset_x / valid_markers
+            avg_offset_y = total_offset_y / valid_markers
+            
+            # 計算偏移距離
+            offset_distance = np.sqrt(avg_offset_x**2 + avg_offset_y**2)
+            
+            # 位置校正閾值（可調整）
+            correction_threshold = 10.0  # 像素
+            
+            result = {
+                "offset_x": float(avg_offset_x),
+                "offset_y": float(avg_offset_y),
+                "offset_distance": float(offset_distance),
+                "common_markers": len(common_ids),
+                "needs_correction": offset_distance > correction_threshold,
+                "threshold": correction_threshold
+            }
+            
+            print(f"📐 位置校正結果: 平均偏移=({avg_offset_x:.1f}, {avg_offset_y:.1f}), 距離={offset_distance:.1f}")
+            print(f"   需要校正: {'是' if result['needs_correction'] else '否'} (閾值: {correction_threshold})")
+            
+            return result
+            
+        except Exception as e:
+            print(f"❌ 計算位置校正失敗: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
-        command = {
-            "command": "capture_image",
-            "num_frames": num_frames,
-            "format": image_format
-        }
-        try:
-            self.socket.settimeout(self.timeout)
-            cmd_str = json.dumps(command, ensure_ascii=False)
-            self.socket.sendall(cmd_str.encode('utf-8'))
+    def capture_image(self, num_frames: int = 5, image_format: str = "jpeg", max_retries: int = 3) -> Optional[np.ndarray]:
+        """使用底層 socket 發送自訂的 capture_image JSON 命令（改進版）"""
+        if not self.socket:
+            print("❌ Socket 未連接")
+            return None
 
-            response = b""
-            start_time = time.time()
+        # 重試機制
+        for retry in range(max_retries):
+            try:
+                print(f"📷 開始截圖 (第 {retry + 1}/{max_retries} 次嘗試)")
+                
+                command = {
+                    "command": "capture_image",
+                    "num_frames": num_frames,
+                    "format": image_format
+                }
+                
+                # 設定較長的超時時間
+                self.socket.settimeout(45.0)  # 增加到 45 秒
+                cmd_str = json.dumps(command, ensure_ascii=False)
+                self.socket.sendall(cmd_str.encode('utf-8'))
+                print(f"✓ 已發送截圖命令: {len(cmd_str)} bytes")
 
-            while True:
-                elapsed = time.time() - start_time
-                if elapsed > self.timeout:
-                    raise socket.timeout(f"整體接收超時（{self.timeout}s）")
+                response = b""
+                start_time = time.time()
+                last_progress_time = start_time
 
-                try:
-                    chunk = self.socket.recv(65536)
-                    if not chunk:
-                        break
-                    response += chunk
+                while True:
+                    elapsed = time.time() - start_time
+                    if elapsed > 45.0:  # 總超時時間
+                        raise socket.timeout(f"整體接收超時（45s）")
 
                     try:
-                        result = json.loads(response.decode('utf-8'))
-                        if "status" in result:
-                            if "image_base64" in result or result.get("status") == "error":
-                                break
-                    except json.JSONDecodeError:
+                        # 設定較小的 chunk timeout，但不要太小
+                        self.socket.settimeout(8.0)  # 增加到 8 秒
+                        chunk = self.socket.recv(8192)  # 減小接收緩衝區
+                        
+                        if not chunk:
+                            print("🔚 伺服器關閉連接")
+                            break
+                            
+                        response += chunk
+                        
+                        # 進度顯示
+                        current_time = time.time()
+                        if current_time - last_progress_time > 3.0:  # 每 3 秒顯示進度
+                            print(f"📥 接收中... {len(response):,} bytes")
+                            last_progress_time = current_time
+
+                        # 嘗試解析 JSON - 更智能的檢查
+                        if len(response) > 100:  # 至少接收一些數據再檢查
+                            try:
+                                # 先檢查是否包含完整的 JSON 結尾標記
+                                decoded_response = response.decode('utf-8', errors='ignore')
+                                
+                                # 檢查是否有 JSON 開始標記
+                                if '{"status"' in decoded_response:
+                                    # 檢查是否有完整的 image_base64 結束標記
+                                    if ('"image_base64"' in decoded_response and 
+                                        decoded_response.count('"') >= 6 and  # 至少應該有足夠的引號
+                                        (decoded_response.endswith('"}') or '"}' in decoded_response[-50:])):
+                                        
+                                        print(f"✓ 偵測到完整響應: {len(response):,} bytes")
+                                        break
+                                    elif '"status": "error"' in decoded_response:
+                                        print(f"✓ 偵測到錯誤響應: {len(response):,} bytes")
+                                        break
+                                
+                            except UnicodeDecodeError:
+                                continue
+
+                    except socket.timeout:
+                        # 檢查是否有部分響應
+                        if len(response) > 100:
+                            try:
+                                result = json.loads(response.decode('utf-8', errors='ignore'))
+                                if isinstance(result, dict) and "status" in result:
+                                    print(f"⚠️  部分超時但有響應: {len(response):,} bytes")
+                                    break
+                            except:
+                                pass
+                        
+                        print(f"⏱️  接收超時，已接收: {len(response):,} bytes")
+                        if retry < max_retries - 1:
+                            print("   將重試...")
+                            break
+                        else:
+                            raise
+
+                # 解析響應
+                if len(response) == 0:
+                    print("❌ 沒有接收到任何數據")
+                    if retry < max_retries - 1:
+                        time.sleep(1)
                         continue
+                    return None
 
-                except socket.timeout:
-                    if len(response) > 0:
-                        try:
-                            result = json.loads(response.decode('utf-8'))
-                            if "status" in result:
-                                break
-                        except:
-                            pass
-                    raise
+                try:
+                    # 改進的 JSON 解析
+                    decoded_response = response.decode('utf-8', errors='ignore')
+                    
+                    # 方法 1: 直接解析
+                    try:
+                        result = json.loads(decoded_response)
+                    except json.JSONDecodeError as e:
+                        # 方法 2: 尋找完整的 JSON 物件
+                        print(f"⚠️  直接解析失敗: {e}")
+                        json_start = decoded_response.find('{"status"')
+                        if json_start >= 0:
+                            # 尋找對應的結束括號
+                            brace_count = 0
+                            json_end = -1
+                            for i in range(json_start, len(decoded_response)):
+                                if decoded_response[i] == '{':
+                                    brace_count += 1
+                                elif decoded_response[i] == '}':
+                                    brace_count -= 1
+                                    if brace_count == 0:
+                                        json_end = i + 1
+                                        break
+                            
+                            if json_end > json_start:
+                                json_part = decoded_response[json_start:json_end]
+                                print(f"🔍 嘗試解析提取的 JSON: {len(json_part)} 字符")
+                                result = json.loads(json_part)
+                            else:
+                                raise json.JSONDecodeError("無法找到完整的 JSON 物件", decoded_response, 0)
+                        else:
+                            raise json.JSONDecodeError("無法找到 JSON 開始標記", decoded_response, 0)
+                            
+                except json.JSONDecodeError as e:
+                    print(f"❌ JSON 解析失敗: {e}")
+                    print(f"   響應長度: {len(response):,} bytes")
+                    print(f"   響應前 200 字符: {decoded_response[:200]}")
+                    print(f"   響應後 200 字符: {decoded_response[-200:]}")
+                    if retry < max_retries - 1:
+                        time.sleep(1)
+                        continue
+                    return None
 
-            result = json.loads(response.decode('utf-8'))
+                # 檢查響應狀態
+                if not isinstance(result, dict):
+                    print(f"❌ 響應格式錯誤，預期字典但得到: {type(result)}")
+                    if retry < max_retries - 1:
+                        time.sleep(1)
+                        continue
+                    return None
 
-            if result.get("status") != "success":
-                return None
+                if result.get("status") != "success":
+                    error_msg = result.get("message", "未知錯誤")
+                    print(f"❌ 伺服器錯誤: {error_msg}")
+                    if retry < max_retries - 1:
+                        time.sleep(1)
+                        continue
+                    return None
 
-            image_base64 = result.get("image_base64")
-            if not image_base64:
-                return None
+                image_base64 = result.get("image_base64")
+                if not image_base64:
+                    print("❌ 響應中沒有影像數據")
+                    if retry < max_retries - 1:
+                        time.sleep(1)
+                        continue
+                    return None
 
-            image_bytes = base64.b64decode(image_base64)
-            image_array = np.frombuffer(image_bytes, dtype=np.uint8)
-            image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
-            return image
-        except Exception as e:
-            print(f"影像處理失敗: {e}")
-            return None
+                # 解碼影像
+                try:
+                    image_bytes = base64.b64decode(image_base64)
+                    image_array = np.frombuffer(image_bytes, dtype=np.uint8)
+                    image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+                    
+                    if image is None:
+                        print("❌ OpenCV 解碼失敗")
+                        if retry < max_retries - 1:
+                            time.sleep(1)
+                            continue
+                        return None
+                    
+                    # 檢查影像是否全黑
+                    if np.mean(image) < 5:  # 平均亮度太低
+                        print("⚠️  警告：截圖可能全黑（平均亮度過低）")
+                        if retry < max_retries - 1:
+                            print("   將重試...")
+                            time.sleep(2)  # 等待較長時間
+                            continue
+                    
+                    print(f"✅ 截圖成功: {image.shape[1]}x{image.shape[0]}, 平均亮度: {np.mean(image):.1f}")
+                    return image
+                    
+                except Exception as e:
+                    print(f"❌ 影像解碼失敗: {e}")
+                    if retry < max_retries - 1:
+                        time.sleep(1)
+                        continue
+                    return None
+
+            except socket.timeout as e:
+                print(f"⏱️  Socket 超時 (第 {retry + 1} 次): {e}")
+                if retry < max_retries - 1:
+                    print("   重新嘗試...")
+                    time.sleep(2)
+                    continue
+                else:
+                    print("❌ 達到最大重試次數")
+                    return None
+                    
+            except Exception as e:
+                print(f"❌ 截圖失敗 (第 {retry + 1} 次): {e}")
+                if retry < max_retries - 1:
+                    print("   重新嘗試...")
+                    time.sleep(1)
+                    continue
+                else:
+                    import traceback
+                    traceback.print_exc()
+                    return None
+
+        print("❌ 所有重試都失敗")
+        return None
 
 
 class WebButtonROICalibrator:
@@ -204,31 +669,80 @@ class WebButtonROICalibrator:
         return button_list
 
     def prepare_calibration(self, button_name: str) -> Optional[Dict]:
-        """準備校準：讀取角度並截圖"""
+        """準備校準：讀取角度並截圖（改進版）"""
         if button_name not in self.buttons:
             return {"success": False, "error": f"按鈕 '{button_name}' 不存在"}
 
         self.current_button_name = button_name
         button_config = self.buttons[button_name]
 
-        # 讀取當前手臂角度
+        print(f"📋 準備校準按鈕: {button_name}")
+
+        # 檢查手臂電源狀態
+        try:
+            if not self.client.is_power_on():
+                return {"success": False, "error": "手臂電源未開啟，請先開啟手臂電源"}
+        except Exception as e:
+            print(f"⚠️  無法檢查電源狀態: {e}")
+
+        # 讀取當前手臂角度（允許失敗，但要記錄）
+        observe_angles = None
         try:
             observe_angles = self.client.get_angles()
-            if not observe_angles:
-                return {"success": False, "error": "無法讀取當前手臂角度"}
+            if observe_angles:
+                print(f"✅ 當前手臂角度: {[round(a, 2) for a in observe_angles]}")
+            else:
+                print("⚠️  無法讀取當前手臂角度，將使用預設值")
+                observe_angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # 預設角度
         except Exception as e:
-            return {"success": False, "error": f"讀取手臂角度失敗: {str(e)}"}
+            print(f"⚠️  讀取手臂角度失敗: {str(e)}")
+            observe_angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # 預設角度
 
-        # 截圖
+        # 截圖（重試機制）
+        print("📷 開始截圖...")
         image = self.client.capture_image(num_frames=5)
         if image is None:
-            return {"success": False, "error": "截圖失敗"}
+            return {"success": False, "error": "截圖失敗，請檢查攝影機連接和伺服器狀態"}
 
         self.current_image = image
 
+        # ArUco 標記檢測和位置校正
+        aruco_result = self.detect_aruco_and_adjust_position(image, button_config)
+
         # 將影像轉為 Base64 以便傳送到前端
-        _, buffer = cv2.imencode('.jpg', image)
-        image_base64 = base64.b64encode(buffer).decode('utf-8')
+        try:
+            # 檢查影像有效性
+            if image.size == 0:
+                return {"success": False, "error": "截圖影像為空"}
+            
+            print(f"📸 影像資訊: 尺寸={image.shape}, 類型={image.dtype}, 平均亮度={np.mean(image):.1f}")
+            
+            # 如果影像太暗，警告但仍然繼續
+            if np.mean(image) < 10:
+                print("⚠️  警告：影像很暗，可能是攝影機或光線問題")
+            
+            # 嘗試不同的編碼質量
+            for quality in [85, 70, 50]:
+                try:
+                    _, buffer = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, quality])
+                    if len(buffer) > 0:
+                        image_base64 = base64.b64encode(buffer).decode('utf-8')
+                        print(f"✅ 影像編碼完成: {len(image_base64):,} bytes (質量={quality})")
+                        break
+                except Exception as e:
+                    print(f"⚠️  質量 {quality} 編碼失敗: {e}")
+                    continue
+            else:
+                return {"success": False, "error": "影像編碼失敗"}
+                
+        except Exception as e:
+            return {"success": False, "error": f"影像編碼失敗: {str(e)}"}
+
+        # 檢查是否已有 ROI 配置
+        existing_roi = None
+        if 'vision' in button_config and 'roi' in button_config['vision']:
+            existing_roi = button_config['vision']['roi']
+            print(f"✅ 找到已存在的 ROI: {existing_roi}")
 
         return {
             "success": True,
@@ -236,7 +750,9 @@ class WebButtonROICalibrator:
             "description": button_config.get('description', 'N/A'),
             "observe_angles": [round(a, 2) for a in observe_angles],
             "image_base64": image_base64,
-            "image_size": {"width": image.shape[1], "height": image.shape[0]}
+            "image_size": {"width": image.shape[1], "height": image.shape[0]},
+            "existing_roi": existing_roi,
+            "aruco_info": aruco_result  # 新增：ArUco 檢測資訊
         }
 
     def save_roi(self, button_name: str, roi: Dict) -> Dict:
@@ -272,6 +788,103 @@ class WebButtonROICalibrator:
         else:
             return {"success": False, "error": "儲存配置失敗"}
 
+    def detect_aruco_and_adjust_position(self, image: np.ndarray, button_config: Dict) -> Dict:
+        """檢測 ArUco 標記並嘗試調整位置
+        
+        Args:
+            image: 當前截圖
+            button_config: 按鈕配置
+            
+        Returns:
+            ArUco 檢測和校正資訊
+        """
+        try:
+            # 檢測 ArUco 標記
+            aruco_result = self.client.detect_aruco_markers(image)
+            
+            if not aruco_result["success"]:
+                return {
+                    "aruco_detected": False,
+                    "error": aruco_result.get("error", "ArUco 檢測失敗"),
+                    "correction_needed": False
+                }
+            
+            markers_count = aruco_result["markers_count"]
+            print(f"🎯 檢測到 {markers_count} 個 ArUco 標記")
+            
+            # 檢查是否有參考位置
+            reference_markers = None
+            if 'aruco_reference' in button_config:
+                reference_markers = button_config['aruco_reference'].get('markers', [])
+            
+            correction_info = None
+            if reference_markers and aruco_result["markers"]:
+                # 計算位置校正
+                correction_info = self.client.calculate_position_correction(
+                    aruco_result["markers"], reference_markers
+                )
+                
+                if correction_info:
+                    print(f"📏 位置偏移: X={correction_info['offset_x']:.1f}, Y={correction_info['offset_y']:.1f}, 距離={correction_info['offset_distance']:.1f}")
+                    
+                    if correction_info["needs_correction"]:
+                        print("⚠️  建議進行位置校正")
+            
+            return {
+                "aruco_detected": True,
+                "markers_count": markers_count,
+                "markers": aruco_result["markers"],
+                "correction_info": correction_info,
+                "correction_needed": correction_info["needs_correction"] if correction_info else False,
+                "has_reference": reference_markers is not None
+            }
+            
+        except Exception as e:
+            print(f"⚠️  ArUco 處理失敗: {e}")
+            return {
+                "aruco_detected": False,
+                "error": str(e),
+                "correction_needed": False
+            }
+
+    def save_aruco_reference(self, button_name: str, aruco_markers: List[Dict]) -> Dict:
+        """儲存 ArUco 參考位置
+        
+        Args:
+            button_name: 按鈕名稱
+            aruco_markers: ArUco 標記清單
+            
+        Returns:
+            儲存結果
+        """
+        if button_name not in self.buttons:
+            return {"success": False, "error": f"按鈕 '{button_name}' 不存在"}
+        
+        button_config = self.buttons[button_name]
+        
+        # 獲取當前角度
+        angles = self.client.get_angles()
+        if not angles:
+            return {"success": False, "error": "無法讀取當前手臂角度"}
+        
+        # 儲存 ArUco 參考資料
+        if 'aruco_reference' not in button_config:
+            button_config['aruco_reference'] = {}
+        
+        button_config['aruco_reference'] = {
+            'angles': [round(a, 2) for a in angles],
+            'markers': aruco_markers,
+            'timestamp': time.time()
+        }
+        
+        if self.save_config():
+            return {
+                "success": True,
+                "message": f"按鈕 '{button_name}' 的 ArUco 參考位置已儲存"
+            }
+        else:
+            return {"success": False, "error": "儲存配置失敗"}
+
 
 # Flask 路由
 
@@ -295,14 +908,25 @@ def prepare_calibration():
     data = request.json
     button_name = data.get('button_name')
 
+    print(f"🎯 收到準備校準請求: {button_name}")
+
     if not button_name:
+        print("❌ 缺少按鈕名稱")
         return jsonify({"success": False, "error": "缺少按鈕名稱"})
 
     if global_calibrator is None:
+        print("❌ 校準器未初始化")
         return jsonify({"success": False, "error": "校準器未初始化"})
 
-    result = global_calibrator.prepare_calibration(button_name)
-    return jsonify(result)
+    try:
+        result = global_calibrator.prepare_calibration(button_name)
+        print(f"✅ 校準準備結果: success={result.get('success')}")
+        return jsonify(result)
+    except Exception as e:
+        print(f"❌ 校準準備發生異常: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": f"校準準備失敗: {str(e)}"})
 
 @app.route('/api/calibrate/save', methods=['POST'])
 def save_roi():
@@ -319,6 +943,93 @@ def save_roi():
 
     result = global_calibrator.save_roi(button_name, roi)
     return jsonify(result)
+
+
+@app.route('/api/arm/move', methods=['POST'])
+def move_arm():
+    """移動手臂到指定角度（改進版）"""
+    if global_client is None:
+        return jsonify({"success": False, "error": "客戶端未初始化"})
+
+    data = request.json
+    angles_str = data.get('angles')
+    speed = data.get('speed', 30)
+
+    if not angles_str:
+        return jsonify({"success": False, "error": "缺少角度參數"})
+
+    try:
+        # 將字串轉換為浮點數列表
+        angles = [float(a.strip()) for a in angles_str.split(',')]
+        if len(angles) != 6:
+            return jsonify({"success": False, "error": "角度參數必須是6個數字"})
+        
+        print(f"🎯 準備移動到角度: {[round(a, 2) for a in angles]}")
+        
+    except ValueError:
+        return jsonify({"success": False, "error": "角度參數格式錯誤"})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"解析角度時發生錯誤: {str(e)}"})
+
+    try:
+        # 檢查電源狀態
+        try:
+            power_status = global_client.is_power_on()
+            if not power_status:
+                return jsonify({"success": False, "error": "手臂電源未開啟，請先開啟電源"})
+            print("✅ 手臂電源已開啟")
+        except Exception as e:
+            print(f"⚠️  無法確認電源狀態: {e}，嘗試繼續移動...")
+
+        # 讀取移動前的角度
+        try:
+            before_angles = global_client.get_angles()
+            if before_angles:
+                print(f"📍 移動前角度: {[round(a, 2) for a in before_angles]}")
+        except Exception as e:
+            print(f"⚠️  無法讀取移動前角度: {e}")
+
+        # 發送移動指令
+        success = global_client.send_angles(angles, speed)
+        if success:
+            print("✅ 移動指令發送成功")
+            
+            # 等待手臂移動
+            print("⏳ 等待手臂移動...")
+            time.sleep(3)  # 增加等待時間
+            
+            # 讀取移動後的角度
+            try:
+                current_angles = global_client.get_angles()
+                if current_angles:
+                    angles_formatted = [round(a, 2) for a in current_angles]
+                    print(f"📍 移動後角度: {angles_formatted}")
+                    return jsonify({
+                        "success": True,
+                        "message": "手臂移動完成",
+                        "angles": angles_formatted
+                    })
+                else:
+                    print("⚠️  無法讀取移動後角度")
+                    return jsonify({
+                        "success": True,
+                        "message": "移動指令已發送，但無法確認最終位置",
+                        "angles": None
+                    })
+            except Exception as e:
+                print(f"⚠️  讀取移動後角度失敗: {e}")
+                return jsonify({
+                    "success": True,
+                    "message": "移動指令已發送，但角度讀取失敗",
+                    "angles": None
+                })
+        else:
+            return jsonify({"success": False, "error": "發送移動指令失敗"})
+            
+    except Exception as e:
+        print(f"❌ 移動手臂時發生錯誤: {e}")
+        return jsonify({"success": False, "error": f"移動手臂時發生錯誤: {str(e)}"})
+
 
 @app.route('/api/status', methods=['GET'])
 def get_status():
@@ -345,6 +1056,95 @@ def get_status():
     })
 
 
+@app.route('/api/aruco/save_reference', methods=['POST'])
+def save_aruco_reference():
+    """儲存 ArUco 參考位置"""
+    if global_calibrator is None:
+        return jsonify({"success": False, "error": "校準器未初始化"})
+    
+    data = request.json
+    button_name = data.get('button_name')
+    aruco_markers = data.get('aruco_markers')
+
+    if not button_name or not aruco_markers:
+        return jsonify({"success": False, "error": "缺少必要參數"})
+
+    try:
+        result = global_calibrator.save_aruco_reference(button_name, aruco_markers)
+        return jsonify(result)
+    except Exception as e:
+        print(f"❌ 儲存 ArUco 參考失敗: {e}")
+        return jsonify({"success": False, "error": f"儲存 ArUco 參考失敗: {str(e)}"})
+
+
+@app.route('/api/aruco/detect', methods=['POST'])
+def detect_aruco():
+    """即時檢測 ArUco 標記"""
+    if global_client is None:
+        return jsonify({"success": False, "error": "客戶端未初始化"})
+    
+    try:
+        # 獲取當前截圖
+        image = global_client.capture_image(num_frames=3)
+        if image is None:
+            return jsonify({"success": False, "error": "無法獲取截圖"})
+        
+        # 檢測 ArUco 標記
+        result = global_client.detect_aruco_markers(image)
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ ArUco 檢測失敗: {e}")
+        return jsonify({"success": False, "error": f"ArUco 檢測失敗: {str(e)}"})
+
+
+@app.route('/api/aruco/calculate_correction', methods=['POST'])
+def calculate_correction():
+    """計算位置校正"""
+    if global_client is None:
+        return jsonify({"success": False, "error": "客戶端未初始化"})
+    
+    data = request.json
+    current_markers = data.get('current_markers')
+    reference_markers = data.get('reference_markers')
+
+    if not current_markers or not reference_markers:
+        return jsonify({"success": False, "error": "缺少標記數據"})
+
+    try:
+        result = global_client.calculate_position_correction(current_markers, reference_markers)
+        return jsonify(result if result else {"success": False, "error": "無法計算校正"})
+    except Exception as e:
+        print(f"❌ 計算位置校正失敗: {e}")
+        return jsonify({"success": False, "error": f"計算位置校正失敗: {str(e)}"})
+
+
+@app.route('/api/image/capture', methods=['POST'])
+def capture_image():
+    """即時截圖並返回 Base64 影像"""
+    if global_client is None:
+        return jsonify({"success": False, "error": "客戶端未初始化"})
+    
+    try:
+        image = global_client.capture_image(num_frames=3)
+        if image is None:
+            return jsonify({"success": False, "error": "截圖失敗"})
+        
+        # 編碼為 Base64
+        _, buffer = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        image_base64 = base64.b64encode(buffer).decode('utf-8')
+        
+        return jsonify({
+            "success": True,
+            "image_base64": image_base64,
+            "image_size": {"width": image.shape[1], "height": image.shape[0]}
+        })
+        
+    except Exception as e:
+        print(f"❌ 截圖失敗: {e}")
+        return jsonify({"success": False, "error": f"截圖失敗: {str(e)}"})
+
+
 def main():
     global global_client, global_calibrator
 
@@ -355,11 +1155,12 @@ def main():
     parser.add_argument('--config', type=str, default='config/robot_arm/button_positions.yaml',
                         help='按鈕配置檔案路徑')
     parser.add_argument('--timeout', type=float, default=30.0, help='Socket 超時時間（秒）')
+    parser.add_argument('--skip-arm-check', action='store_true', help='跳過手臂狀態檢查')
 
     args = parser.parse_args()
 
     print("=" * 60)
-    print("🌐 網頁版 ROI 校準工具")
+    print("🌐 網頁版 ROI 校準工具 (改進版)")
     print("=" * 60)
     print()
 
@@ -368,11 +1169,12 @@ def main():
     global_client = HybridRobotArmClient(args.host, args.port, timeout=args.timeout)
 
     if not global_client.connect():
-        print("❌ 連接失敗，請確認伺服器已啟動。")
-        return 1
-
-    print("✅ 連接成功")
-    print()
+        if not args.skip_arm_check:
+            print("❌ 連接失敗，請確認伺服器已啟動。")
+            print("   如要跳過手臂檢查，使用 --skip-arm-check 參數")
+            return 1
+        else:
+            print("⚠️  跳過手臂連接檢查，繼續啟動...")
 
     # 載入配置
     print(f"📂 載入配置檔案: {args.config}")
@@ -380,10 +1182,22 @@ def main():
 
     if not global_calibrator.load_config():
         print("❌ 載入配置失敗")
-        global_client.disconnect()
+        if global_client:
+            global_client.disconnect()
         return 1
 
     print(f"✅ 找到 {len(global_calibrator.buttons)} 個按鈕")
+    
+    # 顯示按鈕列表
+    calibrated_count = 0
+    for name, config in global_calibrator.buttons.items():
+        has_roi = 'vision' in config and 'roi' in config.get('vision', {})
+        if has_roi:
+            calibrated_count += 1
+        status = "✅" if has_roi else "❌"
+        print(f"   {status} {name}: {config.get('description', 'N/A')}")
+    
+    print(f"📊 已校準: {calibrated_count}/{len(global_calibrator.buttons)}")
     print()
 
     # 啟動 Web 伺服器
@@ -392,11 +1206,17 @@ def main():
     print("=" * 60)
     print()
     print(f"📍 請在瀏覽器中開啟: http://localhost:{args.web_port}")
+    print(f"🌐 或從其他設備訪問: http://{get_local_ip()}:{args.web_port}")
     print()
-    print("提示：")
-    print("  - 選擇要校準的按鈕")
-    print("  - 在影像上拖曳滑鼠框選 ROI")
-    print("  - 點擊「儲存 ROI」按鈕")
+    print("功能說明：")
+    print("  🦾 手臂移動：輸入角度並點擊移動按鈕")
+    print("  📷 截圖標註：選擇按鈕後擷取影像並框選 ROI")
+    print("  💾 儲存配置：標註完成後儲存到配置檔案")
+    print()
+    print("疑難排解：")
+    print("  - 如果截圖全黑：檢查攝影機連接和光線")
+    print("  - 如果角度讀取失敗：確認手臂電源已開啟")
+    print("  - 如果移動失敗：檢查手臂連接和電源狀態")
     print()
     print("按 Ctrl+C 停止伺服器")
     print("=" * 60)
@@ -407,9 +1227,23 @@ def main():
     except KeyboardInterrupt:
         print("\n\n⏹️  伺服器已停止")
     finally:
-        global_client.disconnect()
+        if global_client:
+            global_client.disconnect()
 
     return 0
+
+
+def get_local_ip():
+    """獲取本機 IP 位址"""
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except:
+        return "localhost"
 
 
 if __name__ == "__main__":

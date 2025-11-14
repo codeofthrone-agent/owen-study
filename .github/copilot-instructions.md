@@ -16,3 +16,4 @@
 16. All Document should using chinese
 17. 所有的程式碼註解和文件都應使用中文
 18. 虛擬環境 使用 uv run 指令啟動
+19. 使用library 時會使用context7閱讀最新文件

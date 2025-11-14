@@ -42,6 +42,27 @@ class MyCobotSocketController:
 
         logger.info(f"初始化 MyCobotSocketController: {host}:{port}")
 
+    @property
+    def socket(self):
+        """
+        取得底層 socket 對象（用於視覺檢測等自訂命令）
+
+        Returns:
+            socket.socket: 底層 TCP socket
+
+        Raises:
+            RuntimeError: 如果機器手臂未連接
+        """
+        if not self._connected or not self.mc:
+            raise RuntimeError("機器手臂未連接，無法取得 socket")
+
+        # pymycobot 的 MyCobot280Socket 內部有 sock 屬性
+        if hasattr(self.mc, 'sock'):
+            return self.mc.sock
+        else:
+            raise RuntimeError("pymycobot 對象沒有 sock 屬性，可能版本不相容")
+
+
     def connect(self) -> bool:
         """
         連接到機器手臂

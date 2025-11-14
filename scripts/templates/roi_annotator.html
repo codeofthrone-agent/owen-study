@@ -288,11 +288,19 @@
         }
 
         .message {
-            padding: 10px 16px;
-            border-radius: 6px;
-            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
             font-size: 0.9rem;
-            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 9999;
+            max-width: 400px;
+            opacity: 0;
+            transform: translateX(400px);
+            transition: all 0.3s ease;
+            pointer-events: none;
         }
 
         .message.success {
@@ -308,7 +316,34 @@
         }
 
         .message.show {
-            display: block;
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+
+        .message-close {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: inherit;
+            cursor: pointer;
+            opacity: 0.6;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            line-height: 20px;
+            text-align: center;
+        }
+
+        .message-close:hover {
+            opacity: 1;
+        }
+
+        .message-content {
+            padding-right: 24px;
         }
     </style>
 </head>
@@ -345,9 +380,6 @@
                     </div>
                 </div>
 
-                <!-- 訊息顯示 -->
-                <div id="message" class="message"></div>
-
                 <!-- Canvas 容器 -->
                 <div class="canvas-container" id="canvasContainer">
                     <div class="placeholder">
@@ -380,6 +412,27 @@
                     </div>
                 </div>
 
+                <!-- 手臂移動控制 -->
+                <div class="move-control" style="background: #e7f3ff; border: 1px solid #2196f3; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                    <h3 style="margin: 0 0 12px 0; color: #1976d2; font-size: 1rem;">🦾 手臂移動控制</h3>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <label style="color: #1976d2; font-weight: 600; white-space: nowrap;">目標角度：</label>
+                        <input 
+                            type="text" 
+                            id="anglesInput" 
+                            value="1.75, 9.93, -134.73, 34.45, 2.19, -45.08"
+                            style="flex: 1; min-width: 300px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace;"
+                            placeholder="j1, j2, j3, j4, j5, j6"
+                        >
+                        <button class="btn btn-primary" id="moveBtn">
+                            🚀 移動
+                        </button>
+                    </div>
+                    <div style="font-size: 0.85rem; color: #666; margin-top: 8px;">
+                        輸入 6 個關節角度，以逗號分隔（例如：1.75, 9.93, -134.73, 34.45, 2.19, -45.08）
+                    </div>
+                </div>
+
                 <!-- 控制按鈕 -->
                 <div class="controls">
                     <button class="btn btn-primary" id="captureBtn" disabled>
@@ -396,6 +449,9 @@
         </div>
     </div>
 
+    <!-- 訊息顯示（浮動通知） -->
+    <div id="message" class="message"></div>
+
     <script>
         // 全域變數
         let selectedButton = null;
@@ -405,6 +461,8 @@
         let isDrawing = false;
         let startX, startY, currentX, currentY;
         let roi = null;
+        let isExistingROI = false;  // 追蹤 ROI 是否為已存在的
+        let armMoved = false;  // 追蹤手臂是否已移動
 
         // 初始化
         document.addEventListener('DOMContentLoaded', () => {
@@ -420,6 +478,7 @@
             document.getElementById('captureBtn').addEventListener('click', captureImage);
             document.getElementById('clearBtn').addEventListener('click', clearROI);
             document.getElementById('saveBtn').addEventListener('click', saveROI);
+            document.getElementById('moveBtn').addEventListener('click', moveArm);  // 新增移動按鈕事件
         });
 
         // 載入按鈕列表
@@ -451,15 +510,16 @@
                     <div class="button-desc">${button.description}</div>
                     ${button.has_roi ? '<div class="button-status">✅ 已校準</div>' : ''}
                 `;
-                item.addEventListener('click', () => selectButton(button.name));
+                item.addEventListener('click', () => selectButton(button.name, button.has_roi));
                 listContainer.appendChild(item);
             });
         }
 
         // 選擇按鈕
-        function selectButton(buttonName) {
+        function selectButton(buttonName, hasROI = false) {
             selectedButton = buttonName;
             document.getElementById('currentButton').textContent = buttonName;
+            armMoved = false;  // 重置移動狀態
 
             // 更新按鈕列表的選中狀態
             document.querySelectorAll('.button-item').forEach(item => {
@@ -474,6 +534,11 @@
 
             // 清除之前的影像和 ROI
             clearCanvas();
+
+            // 如果按鈕有已存在的 ROI，自動截圖並顯示
+            if (hasROI) {
+                setTimeout(captureImage, 100);  // 短暫延遲後自動截圖
+            }
         }
 
         // 擷取影像
@@ -494,8 +559,12 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    displayImage(data.image_base64);
-                    showMessage(`成功擷取 ${selectedButton} 的影像`, 'success');
+                    displayImage(data.image_base64, data.existing_roi);
+                    if (data.existing_roi) {
+                        showMessage(`成功擷取 ${selectedButton} 的影像（已載入現有 ROI）`, 'success');
+                    } else {
+                        showMessage(`成功擷取 ${selectedButton} 的影像`, 'success');
+                    }
                 } else {
                     showMessage('擷取影像失敗: ' + data.error, 'error');
                 }
@@ -508,7 +577,7 @@
         }
 
         // 顯示影像
-        function displayImage(base64Image) {
+        function displayImage(base64Image, existingROI = null) {
             const img = new Image();
             img.onload = () => {
                 canvas.width = img.width;
@@ -519,6 +588,15 @@
                 document.getElementById('canvasContainer').querySelector('.placeholder')?.remove();
                 canvas.style.display = 'block';
                 document.getElementById('clearBtn').disabled = false;
+
+                // 如果有已存在的 ROI，顯示它
+                if (existingROI) {
+                    roi = existingROI;
+                    isExistingROI = true;
+                    displayROI(roi);
+                    document.getElementById('saveBtn').disabled = false;
+                    redrawCanvas(true);  // 傳入 true 表示是已存在的 ROI
+                }
             };
             img.src = 'data:image/jpeg;base64,' + base64Image;
         }
@@ -561,34 +639,45 @@
 
             if (width > 10 && height > 10) {
                 roi = { x, y, width, height };
+                isExistingROI = false;  // 新畫的 ROI，不是已存在的
                 displayROI(roi);
                 document.getElementById('saveBtn').disabled = false;
             }
 
-            redrawCanvas();
+            redrawCanvas(isExistingROI);
         }
 
         // 重繪 Canvas
-        function redrawCanvas() {
+        function redrawCanvas(isExistingROI = false) {
             if (!currentImage) return;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(currentImage, 0, 0);
 
             if (isDrawing) {
-                // 繪製拖曳中的矩形
+                // 繪製拖曳中的矩形（綠色）
                 ctx.strokeStyle = '#00ff00';
                 ctx.lineWidth = 2;
                 ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
             } else if (roi) {
                 // 繪製已確定的 ROI
-                ctx.strokeStyle = '#00ff00';
+                // 已存在的 ROI 用黃色，新標註的用綠色
+                const color = isExistingROI ? '#ffff00' : '#00ff00';
+                const fillColor = isExistingROI ? 'rgba(255, 255, 0, 0.15)' : 'rgba(0, 255, 0, 0.1)';
+
+                ctx.strokeStyle = color;
                 ctx.lineWidth = 3;
                 ctx.strokeRect(roi.x, roi.y, roi.width, roi.height);
 
                 // 半透明填充
-                ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
+                ctx.fillStyle = fillColor;
                 ctx.fillRect(roi.x, roi.y, roi.width, roi.height);
+
+                // 在左上角顯示標籤
+                ctx.fillStyle = color;
+                ctx.font = 'bold 14px Arial';
+                const label = isExistingROI ? '已標註 ROI' : '新 ROI';
+                ctx.fillText(label, roi.x + 5, roi.y - 5);
             }
         }
 
@@ -604,6 +693,7 @@
         // 清除 ROI
         function clearROI() {
             roi = null;
+            isExistingROI = false;
             redrawCanvas();
             document.getElementById('roiInfo').style.display = 'none';
             document.getElementById('saveBtn').disabled = true;
@@ -611,23 +701,93 @@
 
         // 清除 Canvas
         function clearCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            canvas.style.display = 'none';
-            currentImage = null;
-            roi = null;
-            document.getElementById('roiInfo').style.display = 'none';
-            document.getElementById('clearBtn').disabled = true;
-            document.getElementById('saveBtn').disabled = true;
+            // 只有在手臂已移動的情況下才清除影像
+            if (armMoved) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                canvas.style.display = 'none';
+                currentImage = null;
+                roi = null;
+                isExistingROI = false;
+                document.getElementById('roiInfo').style.display = 'none';
+                document.getElementById('clearBtn').disabled = true;
+                document.getElementById('saveBtn').disabled = true;
 
-            const placeholder = document.createElement('div');
-            placeholder.className = 'placeholder';
-            placeholder.innerHTML = `
-                <div class="placeholder-icon">🖼️</div>
-                <p>點擊「擷取影像」以開始</p>
-            `;
-            const container = document.getElementById('canvasContainer');
-            if (!container.querySelector('.placeholder')) {
-                container.appendChild(placeholder);
+                const placeholder = document.createElement('div');
+                placeholder.className = 'placeholder';
+                placeholder.innerHTML = `
+                    <div class="placeholder-icon">🖼️</div>
+                    <p>點擊「擷取影像」以開始</p>
+                `;
+                const container = document.getElementById('canvasContainer');
+                if (!container.querySelector('.placeholder')) {
+                    container.appendChild(placeholder);
+                }
+            }
+        }
+
+        // 移動機器手臂
+        async function moveArm() {
+            const btn = document.getElementById('moveBtn');
+            const anglesInput = document.getElementById('anglesInput');
+            const anglesStr = anglesInput.value.trim();
+
+            if (!anglesStr) {
+                showMessage('請輸入角度值', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading"></div> 移動中...';
+
+            try {
+                const response = await fetch('/api/arm/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        angles: anglesStr,
+                        speed: 30
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('手臂移動成功！', 'success');
+                    armMoved = true;  // 標記手臂已移動
+                    // 清除之前的影像（因為位置已改變）
+                    if (currentImage) {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        canvas.style.display = 'none';
+                        currentImage = null;
+                        roi = null;
+                        isExistingROI = false;
+                        document.getElementById('roiInfo').style.display = 'none';
+                        document.getElementById('clearBtn').disabled = true;
+                        document.getElementById('saveBtn').disabled = true;
+
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'placeholder';
+                        placeholder.innerHTML = `
+                            <div class="placeholder-icon">🖼️</div>
+                            <p>手臂已移動到新位置，請點擊「擷取影像」</p>
+                        `;
+                        const container = document.getElementById('canvasContainer');
+                        container.innerHTML = '';
+                        container.appendChild(placeholder);
+                    }
+                    
+                    // 更新狀態顯示
+                    if (data.angles) {
+                        console.log('當前手臂角度:', data.angles);
+                    }
+                } else {
+                    showMessage('移動失敗: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('網路錯誤: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 移動';
             }
         }
 

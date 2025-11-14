@@ -13,8 +13,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 429, y: 339, width: 62, height: 59}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 402, y: 335, width: 68, height: 65}
   aux2:
     name: AUX2 按鈕
     description: 輔助控制按鈕 2
@@ -25,8 +25,8 @@ buttons:
     lift_duration: 0.5
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 369, y: 338, width: 59, height: 62}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 339, y: 336, width: 65, height: 65}
   light3:
     name: Light3 按鈕
     description: 燈光控制 3
@@ -37,8 +37,8 @@ buttons:
     lift_duration: 0.5
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 309, y: 340, width: 58, height: 62}
+      observe_angles: [2.02, 6.76, -135.26, 32.78, 3.07, -44.2]
+      roi: {x: 202, y: 346, width: 75, height: 69}
   light8:
     name: Light8 按鈕
     description: 燈光控制 8
@@ -49,8 +49,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 246, y: 341, width: 62, height: 60}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 207, y: 340, width: 70, height: 66}
   select:
     name: Select 按鈕
     description: 選擇按鈕
@@ -61,8 +61,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 178, y: 342, width: 63, height: 62}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 128, y: 341, width: 77, height: 69}
   aux1:
     name: AUX1 按鈕
     description: 輔助控制按鈕 1
@@ -73,8 +73,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 368, y: 281, width: 62, height: 55}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 339, y: 273, width: 67, height: 63}
   light2:
     name: Light2 按鈕
     description: 燈光控制 2
@@ -85,8 +85,48 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 306, y: 280, width: 62, height: 60}
+      observe_angles: [1.49, 9.22, -135.0, 33.57, 2.63, -44.82]
+      roi: {x: 248, y: 280, width: 67, height: 62}
+    aruco_reference:
+      angles: [1.49, 9.22, -135.0, 33.57, 2.63, -44.82]
+      markers:
+      - center: [527, 53.25]
+        center_x: 527
+        center_y: 53.25
+        corners:
+        - [554, 25]
+        - [553, 83]
+        - [500, 82]
+        - [501, 23]
+        id: 2
+      - center: [524, 422.25]
+        center_x: 524
+        center_y: 422.25
+        corners:
+        - [499, 451]
+        - [498, 397]
+        - [549, 394]
+        - [550, 447]
+        id: 1
+      - center: [42.5, 60.25]
+        center_x: 42.5
+        center_y: 60.25
+        corners:
+        - [75, 29]
+        - [76, 92]
+        - [10, 92]
+        - [9, 28]
+        id: 3
+      - center: [55, 435]
+        center_x: 55
+        center_y: 435
+        corners:
+        - [85, 404]
+        - [88, 463]
+        - [26, 466]
+        - [21, 407]
+        id: 4
+      timestamp: 1763110704.7123375
   light7:
     name: Light7 按鈕
     description: 燈光控制 7
@@ -97,8 +137,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 242, y: 281, width: 68, height: 60}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 205, y: 276, width: 72, height: 66}
   door_lock:
     name: Door Lock 按鈕
     description: 門鎖控制
@@ -109,8 +149,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 367, y: 220, width: 63, height: 62}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 338, y: 210, width: 68, height: 65}
   light1:
     name: Light1 按鈕
     description: 燈光控制 1
@@ -121,8 +161,48 @@ buttons:
     lift_duration: 0.1
     press_duration: 0.5
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 307, y: 219, width: 60, height: 60}
+      observe_angles: [1.93, 8.34, -135.0, 33.57, 2.63, -44.56]
+      roi: {x: 197, y: 205, width: 71, height: 67}
+    aruco_reference:
+      angles: [1.93, 8.34, -135.0, 33.57, 2.63, -44.56]
+      markers:
+      - center: [527, 53.25]
+        center_x: 527
+        center_y: 53.25
+        corners:
+        - [554, 25]
+        - [553, 83]
+        - [500, 82]
+        - [501, 23]
+        id: 2
+      - center: [524, 422.25]
+        center_x: 524
+        center_y: 422.25
+        corners:
+        - [499, 451]
+        - [498, 397]
+        - [549, 394]
+        - [550, 447]
+        id: 1
+      - center: [42.5, 60.25]
+        center_x: 42.5
+        center_y: 60.25
+        corners:
+        - [75, 29]
+        - [76, 92]
+        - [10, 92]
+        - [9, 28]
+        id: 3
+      - center: [55, 435]
+        center_x: 55
+        center_y: 435
+        corners:
+        - [85, 404]
+        - [88, 463]
+        - [26, 466]
+        - [21, 407]
+        id: 4
+      timestamp: 1763110704.7123375
   light6:
     name: Light6 按鈕
     description: 燈光控制 6
@@ -133,8 +213,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 245, y: 221, width: 63, height: 59}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 202, y: 211, width: 74, height: 66}
   retract:
     name: Retract 按鈕
     description: 縮回控制
@@ -145,8 +225,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 7.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 157, y: 220, width: 86, height: 65}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 107, y: 212, width: 96, height: 65}
   tanker_heater:
     name: Tanker Heater 按鈕
     description: 水箱加熱器
@@ -157,8 +237,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 367, y: 160, width: 62, height: 59}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 339, y: 147, width: 65, height: 65}
   gas:
     name: Gas 按鈕
     description: 瓦斯控制
@@ -169,8 +249,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 308, y: 160, width: 61, height: 59}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 273, y: 147, width: 66, height: 64}
   light5:
     name: Light5 按鈕
     description: 燈光控制 5
@@ -181,8 +261,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 243, y: 159, width: 62, height: 60}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 205, y: 148, width: 68, height: 62}
   extend:
     name: Extend 按鈕
     description: 伸展控制
@@ -193,8 +273,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 7.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 151, y: 160, width: 90, height: 60}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 103, y: 145, width: 100, height: 66}
   water_pump:
     name: Water Pump 按鈕
     description: 水泵控制
@@ -205,8 +285,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 365, y: 100, width: 66, height: 58}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 338, y: 85, width: 65, height: 61}
   water_heater:
     name: Water Heater 按鈕
     description: 熱水器控制
@@ -217,8 +297,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 306, y: 98, width: 60, height: 61}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 272, y: 79, width: 66, height: 67}
   light4:
     name: Light4 按鈕
     description: 燈光控制 4
@@ -229,8 +309,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 240, y: 96, width: 66, height: 63}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 203, y: 76, width: 71, height: 69}
   hvac:
     name: HVAC 按鈕
     description: 空調控制
@@ -241,8 +321,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 1.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 170, y: 97, width: 71, height: 62}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 125, y: 74, width: 74, height: 71}
   camera_observe:
     name: 相機觀測點
     description: 相機觀測位置
@@ -262,8 +342,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 0.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.84, -45.61]
-      roi: {x: 427, y: 98, width: 64, height: 64}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 402, y: 82, width: 68, height: 67}
   mic_observe:
     name: 相機觀測點
     description: 相機觀測位置
@@ -274,8 +354,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 0.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 519, y: 153, width: 33, height: 84}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 497, y: 157, width: 27, height: 67}
   wifi_observe:
     name: 相機觀測點
     description: 相機觀測位置
@@ -286,8 +366,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 0.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 514, y: 261, width: 34, height: 75}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 497, y: 262, width: 33, height: 69}
   awning1_observe:
     name: 相機觀測點
     description: 相機觀測位置
@@ -298,8 +378,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 0.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.84, -45.61]
-      roi: {x: 223, y: 286, width: 17, height: 50}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 181, y: 285, width: 21, height: 48}
   awning2_observe:
     name: 相機觀測點
     description: 相機觀測位置
@@ -310,8 +390,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 0.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.84, -45.61]
-      roi: {x: 206, y: 284, width: 18, height: 54}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 163, y: 284, width: 20, height: 49}
   slide1_observe:
     name: 相機觀測點
     description: 相機觀測位置
@@ -322,8 +402,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 0.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.84, -45.61]
-      roi: {x: 191, y: 288, width: 16, height: 46}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 147, y: 287, width: 18, height: 45}
   slide2_observe:
     name: 相機觀測點
     description: 相機觀測位置
@@ -334,8 +414,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 0.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.84, -45.61]
-      roi: {x: 174, y: 288, width: 17, height: 44}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 129, y: 286, width: 18, height: 48}
   slide3_observe:
     name: 相機觀測點
     description: 相機觀測位置
@@ -346,8 +426,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 0.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.84, -45.61]
-      roi: {x: 158, y: 287, width: 17, height: 48}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 110, y: 287, width: 19, height: 44}
   slide4_observe:
     name: 相機觀測點
     description: 相機觀測位置
@@ -358,8 +438,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 0.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.84, -45.61]
-      roi: {x: 142, y: 288, width: 17, height: 47}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 91, y: 287, width: 21, height: 48}
   slide5_observe:
     name: 相機觀測點
     description: 相機觀測位置
@@ -370,8 +450,8 @@ buttons:
     lift_duration: 0.1
     press_duration: 0.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 124, y: 289, width: 19, height: 45}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 72, y: 287, width: 20, height: 47}
   lockout_observe:
     name: 相機觀測點
     description: 相機觀測位置
@@ -382,5 +462,5 @@ buttons:
     lift_duration: 0.1
     press_duration: 0.0
     vision:
-      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
-      roi: {x: 104, y: 284, width: 23, height: 56}
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi: {x: 50, y: 284, width: 23, height: 55}

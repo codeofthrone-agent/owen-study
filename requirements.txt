@@ -42,3 +42,6 @@ pyserial>=3.5
 # 開發與測試工具
 pytest>=7.0.0
 pytest-cov>=4.0.0
+
+# PDF Generation
+reportlab>=3.6.0
