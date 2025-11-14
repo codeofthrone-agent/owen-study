@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROI 校準工具 - 機器手臂視覺檢測系統</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 0;
+            min-height: calc(100vh - 200px);
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            padding: 15px;
+            overflow-y: auto;
+            max-height: calc(100vh - 200px);
+        }
+
+        .sidebar h2 {
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+        }
+
+        .button-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .button-item {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .button-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .button-item.active {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .button-item.calibrated {
+            border-left: 4px solid #28a745;
+        }
+
+        .button-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 3px;
+            font-size: 0.95rem;
+        }
+
+        .button-desc {
+            font-size: 0.8rem;
+            color: #6c757d;
+            line-height: 1.3;
+        }
+
+        .button-status {
+            font-size: 0.75rem;
+            margin-top: 3px;
+            color: #28a745;
+        }
+
+        .main-area {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .status-bar {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #dee2e6;
+            flex-shrink: 0;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .status-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #imageCanvas {
+            max-width: 100%;
+            max-height: 100%;
+            cursor: crosshair;
+        }
+
+        .placeholder {
+            color: #6c757d;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .placeholder-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #5a6268;
+        }
+
+        .roi-info {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            padding: 12px;
+            flex-shrink: 0;
+        }
+
+        .roi-info h3 {
+            color: #856404;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .roi-coords {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            font-family: monospace;
+        }
+
+        .coord-item {
+            background: white;
+            padding: 6px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .coord-label {
+            font-size: 0.75rem;
+            color: #6c757d;
+        }
+
+        .coord-value {
+            font-weight: 600;
+            color: #333;
+            font-size: 1rem;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .message {
+            padding: 10px 16px;
+            border-radius: 6px;
+            display: none;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .message.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 ROI 校準工具</h1>
+            <p>機器手臂視覺檢測系統 - 網頁版標註介面</p>
+        </div>
+
+        <div class="content">
+            <!-- 側邊欄：按鈕列表 -->
+            <div class="sidebar">
+                <h2>📋 按鈕列表</h2>
+                <div id="buttonList" class="button-list">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">⏳</div>
+                        <p>載入中...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主要區域：影像標註 -->
+            <div class="main-area">
+                <!-- 狀態列 -->
+                <div class="status-bar">
+                    <div class="status-item">
+                        <span class="status-label">當前按鈕：</span>
+                        <span class="status-value" id="currentButton">未選擇</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">機器手臂狀態：</span>
+                        <span class="status-value" id="armStatus">連接中...</span>
+                    </div>
+                </div>
+
+                <!-- 訊息顯示 -->
+                <div id="message" class="message"></div>
+
+                <!-- Canvas 容器 -->
+                <div class="canvas-container" id="canvasContainer">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">🖼️</div>
+                        <p>請選擇左側的按鈕以開始校準</p>
+                    </div>
+                    <canvas id="imageCanvas" style="display: none;"></canvas>
+                </div>
+
+                <!-- ROI 資訊 -->
+                <div id="roiInfo" class="roi-info" style="display: none;">
+                    <h3>📐 ROI 座標</h3>
+                    <div class="roi-coords">
+                        <div class="coord-item">
+                            <div class="coord-label">X</div>
+                            <div class="coord-value" id="roiX">-</div>
+                        </div>
+                        <div class="coord-item">
+                            <div class="coord-label">Y</div>
+                            <div class="coord-value" id="roiY">-</div>
+                        </div>
+                        <div class="coord-item">
+                            <div class="coord-label">寬度</div>
+                            <div class="coord-value" id="roiWidth">-</div>
+                        </div>
+                        <div class="coord-item">
+                            <div class="coord-label">高度</div>
+                            <div class="coord-value" id="roiHeight">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 控制按鈕 -->
+                <div class="controls">
+                    <button class="btn btn-primary" id="captureBtn" disabled>
+                        📷 擷取影像
+                    </button>
+                    <button class="btn btn-secondary" id="clearBtn" disabled>
+                        🗑️ 清除選取
+                    </button>
+                    <button class="btn btn-success" id="saveBtn" disabled>
+                        💾 儲存 ROI
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全域變數
+        let selectedButton = null;
+        let currentImage = null;
+        let canvas = document.getElementById('imageCanvas');
+        let ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let startX, startY, currentX, currentY;
+        let roi = null;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadButtons();
+            checkArmStatus();
+
+            // Canvas 事件監聽
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+
+            // 按鈕事件
+            document.getElementById('captureBtn').addEventListener('click', captureImage);
+            document.getElementById('clearBtn').addEventListener('click', clearROI);
+            document.getElementById('saveBtn').addEventListener('click', saveROI);
+        });
+
+        // 載入按鈕列表
+        async function loadButtons() {
+            try {
+                const response = await fetch('/api/buttons');
+                const data = await response.json();
+
+                if (data.success) {
+                    displayButtons(data.buttons);
+                } else {
+                    showMessage('載入按鈕列表失敗: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('網路錯誤: ' + error.message, 'error');
+            }
+        }
+
+        // 顯示按鈕列表
+        function displayButtons(buttons) {
+            const listContainer = document.getElementById('buttonList');
+            listContainer.innerHTML = '';
+
+            buttons.forEach(button => {
+                const item = document.createElement('div');
+                item.className = 'button-item' + (button.has_roi ? ' calibrated' : '');
+                item.innerHTML = `
+                    <div class="button-name">${button.name}</div>
+                    <div class="button-desc">${button.description}</div>
+                    ${button.has_roi ? '<div class="button-status">✅ 已校準</div>' : ''}
+                `;
+                item.addEventListener('click', () => selectButton(button.name));
+                listContainer.appendChild(item);
+            });
+        }
+
+        // 選擇按鈕
+        function selectButton(buttonName) {
+            selectedButton = buttonName;
+            document.getElementById('currentButton').textContent = buttonName;
+
+            // 更新按鈕列表的選中狀態
+            document.querySelectorAll('.button-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.querySelector('.button-name').textContent === buttonName) {
+                    item.classList.add('active');
+                }
+            });
+
+            // 啟用擷取按鈕
+            document.getElementById('captureBtn').disabled = false;
+
+            // 清除之前的影像和 ROI
+            clearCanvas();
+        }
+
+        // 擷取影像
+        async function captureImage() {
+            if (!selectedButton) return;
+
+            const btn = document.getElementById('captureBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading"></div> 擷取中...';
+
+            try {
+                const response = await fetch('/api/calibrate/prepare', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ button_name: selectedButton })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayImage(data.image_base64);
+                    showMessage(`成功擷取 ${selectedButton} 的影像`, 'success');
+                } else {
+                    showMessage('擷取影像失敗: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('網路錯誤: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '📷 擷取影像';
+            }
+        }
+
+        // 顯示影像
+        function displayImage(base64Image) {
+            const img = new Image();
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                currentImage = img;
+
+                document.getElementById('canvasContainer').querySelector('.placeholder')?.remove();
+                canvas.style.display = 'block';
+                document.getElementById('clearBtn').disabled = false;
+            };
+            img.src = 'data:image/jpeg;base64,' + base64Image;
+        }
+
+        // 滑鼠事件處理
+        function handleMouseDown(e) {
+            if (!currentImage) return;
+
+            const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+            isDrawing = true;
+        }
+
+        function handleMouseMove(e) {
+            if (!isDrawing) return;
+
+            const rect = canvas.getBoundingClientRect();
+            currentX = e.clientX - rect.left;
+            currentY = e.clientY - rect.top;
+
+            // 重繪影像和矩形
+            redrawCanvas();
+        }
+
+        function handleMouseUp(e) {
+            if (!isDrawing) return;
+
+            isDrawing = false;
+
+            const rect = canvas.getBoundingClientRect();
+            currentX = e.clientX - rect.left;
+            currentY = e.clientY - rect.top;
+
+            // 計算 ROI
+            const x = Math.min(startX, currentX);
+            const y = Math.min(startY, currentY);
+            const width = Math.abs(currentX - startX);
+            const height = Math.abs(currentY - startY);
+
+            if (width > 10 && height > 10) {
+                roi = { x, y, width, height };
+                displayROI(roi);
+                document.getElementById('saveBtn').disabled = false;
+            }
+
+            redrawCanvas();
+        }
+
+        // 重繪 Canvas
+        function redrawCanvas() {
+            if (!currentImage) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(currentImage, 0, 0);
+
+            if (isDrawing) {
+                // 繪製拖曳中的矩形
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+            } else if (roi) {
+                // 繪製已確定的 ROI
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(roi.x, roi.y, roi.width, roi.height);
+
+                // 半透明填充
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
+                ctx.fillRect(roi.x, roi.y, roi.width, roi.height);
+            }
+        }
+
+        // 顯示 ROI 資訊
+        function displayROI(roi) {
+            document.getElementById('roiInfo').style.display = 'block';
+            document.getElementById('roiX').textContent = Math.round(roi.x);
+            document.getElementById('roiY').textContent = Math.round(roi.y);
+            document.getElementById('roiWidth').textContent = Math.round(roi.width);
+            document.getElementById('roiHeight').textContent = Math.round(roi.height);
+        }
+
+        // 清除 ROI
+        function clearROI() {
+            roi = null;
+            redrawCanvas();
+            document.getElementById('roiInfo').style.display = 'none';
+            document.getElementById('saveBtn').disabled = true;
+        }
+
+        // 清除 Canvas
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.style.display = 'none';
+            currentImage = null;
+            roi = null;
+            document.getElementById('roiInfo').style.display = 'none';
+            document.getElementById('clearBtn').disabled = true;
+            document.getElementById('saveBtn').disabled = true;
+
+            const placeholder = document.createElement('div');
+            placeholder.className = 'placeholder';
+            placeholder.innerHTML = `
+                <div class="placeholder-icon">🖼️</div>
+                <p>點擊「擷取影像」以開始</p>
+            `;
+            const container = document.getElementById('canvasContainer');
+            if (!container.querySelector('.placeholder')) {
+                container.appendChild(placeholder);
+            }
+        }
+
+        // 儲存 ROI
+        async function saveROI() {
+            if (!selectedButton || !roi) return;
+
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading"></div> 儲存中...';
+
+            try {
+                const response = await fetch('/api/calibrate/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        button_name: selectedButton,
+                        roi: {
+                            x: Math.round(roi.x),
+                            y: Math.round(roi.y),
+                            width: Math.round(roi.width),
+                            height: Math.round(roi.height)
+                        }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage(`✅ ${selectedButton} 的 ROI 已成功儲存！`, 'success');
+                    loadButtons(); // 重新載入按鈕列表以更新狀態
+                } else {
+                    showMessage('儲存失敗: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('網路錯誤: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '💾 儲存 ROI';
+            }
+        }
+
+        // 檢查機器手臂狀態
+        async function checkArmStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                if (data.success) {
+                    const status = data.power_on ? '✅ 已上電' : '⚠️ 未上電';
+                    document.getElementById('armStatus').textContent = status;
+                } else {
+                    document.getElementById('armStatus').textContent = '❌ 連接失敗';
+                }
+            } catch (error) {
+                document.getElementById('armStatus').textContent = '❌ 網路錯誤';
+            }
+
+            // 每 5 秒更新一次狀態
+            setTimeout(checkArmStatus, 5000);
+        }
+
+        // 顯示訊息
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = 'message ' + type + ' show';
+
+            setTimeout(() => {
+                messageEl.classList.remove('show');
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

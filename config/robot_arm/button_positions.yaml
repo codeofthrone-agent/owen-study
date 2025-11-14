@@ -1,234 +1,386 @@
-# MyCobot 280 按鈕位置配置
-# 從 click_angles 文件轉換而來
-# 每個按鈕包含上下位置角度、速度、次數等參數
-
-# Robot Arm 連接配置
 connection:
-  # Socket 連接配置 (優先)
-  socket:
-    host: "10.42.0.180"  # MyCobot 280 的 IP 地址
-    port: 9000           # 預設端口
-
-  # 串口連接配置 (備用)
-  serial:
-    port: "/dev/ttyTHS1"  # JetsonNano 預設串口
-    baudrate: 1000000
-
-# 全局預設值
-defaults:
-  speed: 100
-  press_duration: 1.0  # 按下保持時間 (秒)
-  lift_duration: 0.1   # 抬起後等待時間 (秒)
-  count: 1             # 按壓次數
-
-# 按鈕位置定義
+  socket: {host: 10.42.0.180, port: 9000}
+  serial: {port: /dev/ttyTHS1, baudrate: 1000000}
+defaults: {speed: 100, press_duration: 1.0, lift_duration: 0.1, count: 1}
 buttons:
   bluetooth:
-    name: "Bluetooth 按鈕"
-    description: "藍牙控制按鈕"
+    name: Bluetooth 按鈕
+    description: 藍牙控制按鈕
     down_angles: [16.5, -51, -130, 73.7, 0, 0]
     up_angles: [16.5, -13, -130, 73.7, 0, 0]
     speed: 100
     count: 2
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 429, y: 339, width: 62, height: 59}
   aux2:
-    name: "AUX2 按鈕"
-    description: "輔助控制按鈕 2"
+    name: AUX2 按鈕
+    description: 輔助控制按鈕 2
     down_angles: [14, -58, -92, 23.9, 0, 0]
     up_angles: [14, -15, -92, 23.9, 0, 0]
     speed: 100
     count: 2
     lift_duration: 0.5
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 369, y: 338, width: 59, height: 62}
   light3:
-    name: "Light3 按鈕"
-    description: "燈光控制 3"
+    name: Light3 按鈕
+    description: 燈光控制 3
     down_angles: [13, -58, -85, 23.8, 0, 0]
     up_angles: [13, -35, -85, 23.8, 0, 0]
     speed: 100
     count: 2
     lift_duration: 0.5
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 309, y: 340, width: 58, height: 62}
   light8:
-    name: "Light8 按鈕"
-    description: "燈光控制 8"
+    name: Light8 按鈕
+    description: 燈光控制 8
     down_angles: [11.9, -62, -77.4, 23.8, 0, 0]
     up_angles: [11.9, -35, -77.4, 23.8, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 246, y: 341, width: 62, height: 60}
   select:
-    name: "Select 按鈕"
-    description: "選擇按鈕"
+    name: Select 按鈕
+    description: 選擇按鈕
     down_angles: [11.6, -63.8, -69, 22.5, 0, 0]
     up_angles: [11.6, -35, -69, 22.5, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 178, y: 342, width: 63, height: 62}
   aux1:
-    name: "AUX1 按鈕"
-    description: "輔助控制按鈕 1"
+    name: AUX1 按鈕
+    description: 輔助控制按鈕 1
     down_angles: [8, -59, -92, 25, 0, 0]
     up_angles: [8, -35, -92, 25, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 368, y: 281, width: 62, height: 55}
   light2:
-    name: "Light2 按鈕"
-    description: "燈光控制 2"
+    name: Light2 按鈕
+    description: 燈光控制 2
     down_angles: [6.8, -59.5, -85, 25, 0, 0]
     up_angles: [6.8, -35, -85, 25, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 306, y: 280, width: 62, height: 60}
   light7:
-    name: "Light7 按鈕"
-    description: "燈光控制 7"
+    name: Light7 按鈕
+    description: 燈光控制 7
     down_angles: [6.8, -59.5, -79, 25, 0, 0]
     up_angles: [6.8, -35, -79, 25, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 242, y: 281, width: 68, height: 60}
   door_lock:
-    name: "Door Lock 按鈕"
-    description: "門鎖控制"
+    name: Door Lock 按鈕
+    description: 門鎖控制
     down_angles: [3.5, -58, -90, 25, 0, 0]
     up_angles: [3.5, -35, -90, 25, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 367, y: 220, width: 63, height: 62}
   light1:
-    name: "Light1 按鈕"
-    description: "燈光控制 1"
+    name: Light1 按鈕
+    description: 燈光控制 1
     down_angles: [3.5, -60, -82, 25, 0, 0]
     up_angles: [3.5, -35, -82, 25, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.1
     press_duration: 0.5
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 307, y: 219, width: 60, height: 60}
   light6:
-    name: "Light6 按鈕"
-    description: "燈光控制 6"
+    name: Light6 按鈕
+    description: 燈光控制 6
     down_angles: [3.3, -59, -77, 25, 0, 0]
     up_angles: [3.3, -35, -77, 25, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 245, y: 221, width: 63, height: 59}
   retract:
-    name: "Retract 按鈕"
-    description: "縮回控制"
+    name: Retract 按鈕
+    description: 縮回控制
     down_angles: [3.1, -68, -67, 22, 0, 0]
     up_angles: [3.1, -35, -67, 22, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.1
-    press_duration: 7.0  # 長按 7 秒
-
+    press_duration: 7.0
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 157, y: 220, width: 86, height: 65}
   tanker_heater:
-    name: "Tanker Heater 按鈕"
-    description: "水箱加熱器"
+    name: Tanker Heater 按鈕
+    description: 水箱加熱器
     down_angles: [-3, -58, -83, 20, 0, 0]
     up_angles: [-3, -25, -83, 20, 0, 0]
     speed: 100
     count: 4
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 367, y: 160, width: 62, height: 59}
   gas:
-    name: "Gas 按鈕"
-    description: "瓦斯控制"
+    name: Gas 按鈕
+    description: 瓦斯控制
     down_angles: [-2.7, -60, -75.5, 17, 0, 0]
     up_angles: [-2.7, -30, -75.5, 17, 0, 0]
     speed: 100
     count: 4
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 308, y: 160, width: 61, height: 59}
   light5:
-    name: "Light5 按鈕"
-    description: "燈光控制 5"
+    name: Light5 按鈕
+    description: 燈光控制 5
     down_angles: [-1.7, -66, -70, 20, 0, 0]
     up_angles: [-1.7, -35, -70, 20, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 243, y: 159, width: 62, height: 60}
   extend:
-    name: "Extend 按鈕"
-    description: "伸展控制"
+    name: Extend 按鈕
+    description: 伸展控制
     down_angles: [-1.7, -69, -62, 19, 0, 0]
     up_angles: [-1.8, -30, -61, 20, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.1
-    press_duration: 7.0  # 長按 7 秒
-
+    press_duration: 7.0
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 151, y: 160, width: 90, height: 60}
   water_pump:
-    name: "Water Pump 按鈕"
-    description: "水泵控制"
+    name: Water Pump 按鈕
+    description: 水泵控制
     down_angles: [-8.5, -58, -80, 20, 0, 0]
     up_angles: [-8.5, -25, -80, 20, 0, 0]
     speed: 100
     count: 4
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 365, y: 100, width: 66, height: 58}
   water_heater:
-    name: "Water Heater 按鈕"
-    description: "熱水器控制"
+    name: Water Heater 按鈕
+    description: 熱水器控制
     down_angles: [-8.2, -62, -72.2, 20, 0, 0]
     up_angles: [-8.2, -25, -72.2, 20, 0, 0]
     speed: 100
     count: 4
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 306, y: 98, width: 60, height: 61}
   light4:
-    name: "Light4 按鈕"
-    description: "燈光控制 4"
+    name: Light4 按鈕
+    description: 燈光控制 4
     down_angles: [-7.9, -64.2, -65, 20, 0, 0]
     up_angles: [-7.9, -25, -65, 20, 0, 0]
     speed: 100
     count: 2
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 240, y: 96, width: 66, height: 63}
   hvac:
-    name: "HVAC 按鈕"
-    description: "空調控制"
+    name: HVAC 按鈕
+    description: 空調控制
     down_angles: [-7.1, -68.8, -61.6, 23.9, 0, 0]
     up_angles: [-6.8, -52.5, -61.3, 23.3, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.1
     press_duration: 1.0
-
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 170, y: 97, width: 71, height: 62}
   camera_observe:
-    name: "相機觀測點"
-    description: "相機觀測位置"
-    down_angles: [0, -4, 0, -75.5, 2, -74.7]
-    up_angles: [0, -4, 0, -75.5, 2, -74.7]  # 觀測點不需要上下移動
-    speed: 50  # 觀測時使用較慢速度以保持穩定
+    name: 相機觀測點
+    description: 相機觀測位置
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
     count: 1
     lift_duration: 0.1
-    press_duration: 0.0  # 觀測點不需要按壓
+    press_duration: 0.0
+  fridge_observe:
+    name: 冰箱 按鈕
+    description: 冰箱控制
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.84, -45.61]
+      roi: {x: 427, y: 98, width: 64, height: 64}
+  mic_observe:
+    name: 相機觀測點
+    description: 相機觀測位置
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 519, y: 153, width: 33, height: 84}
+  wifi_observe:
+    name: 相機觀測點
+    description: 相機觀測位置
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 514, y: 261, width: 34, height: 75}
+  awning1_observe:
+    name: 相機觀測點
+    description: 相機觀測位置
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.84, -45.61]
+      roi: {x: 223, y: 286, width: 17, height: 50}
+  awning2_observe:
+    name: 相機觀測點
+    description: 相機觀測位置
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.84, -45.61]
+      roi: {x: 206, y: 284, width: 18, height: 54}
+  slide1_observe:
+    name: 相機觀測點
+    description: 相機觀測位置
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.84, -45.61]
+      roi: {x: 191, y: 288, width: 16, height: 46}
+  slide2_observe:
+    name: 相機觀測點
+    description: 相機觀測位置
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.84, -45.61]
+      roi: {x: 174, y: 288, width: 17, height: 44}
+  slide3_observe:
+    name: 相機觀測點
+    description: 相機觀測位置
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.84, -45.61]
+      roi: {x: 158, y: 287, width: 17, height: 48}
+  slide4_observe:
+    name: 相機觀測點
+    description: 相機觀測位置
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.84, -45.61]
+      roi: {x: 142, y: 288, width: 17, height: 47}
+  slide5_observe:
+    name: 相機觀測點
+    description: 相機觀測位置
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 124, y: 289, width: 19, height: 45}
+  lockout_observe:
+    name: 相機觀測點
+    description: 相機觀測位置
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.4, 11.42, -134.47, 35.33, 1.75, -45.61]
+      roi: {x: 104, y: 284, width: 23, height: 56}

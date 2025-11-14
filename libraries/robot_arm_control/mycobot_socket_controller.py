@@ -186,10 +186,11 @@ class MyCobotSocketController:
 
         try:
             angles = self.mc.get_angles()
-            if angles and len(angles) == 6:
-                return angles
+            # 檢查 angles 是否為列表或元組
+            if angles is not None and isinstance(angles, (list, tuple)) and len(angles) == 6:
+                return list(angles)
             else:
-                raise RuntimeError(f"讀取到的角度數據異常: {angles}")
+                raise RuntimeError(f"讀取到的角度數據異常: {angles} (type: {type(angles)})")
 
         except Exception as e:
             logger.error(f"讀取角度失敗: {e}")
