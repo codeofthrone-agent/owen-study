@@ -28,7 +28,7 @@
 ping <mycobot_ip>
 
 # 檢查 Socket Server 運行狀態
-ssh pi@<mycobot_ip>
+ssh user@<mycobot_ip>
 ps aux | grep robot_arm_server.py
 
 # 如果未運行，啟動 Server
@@ -991,7 +991,7 @@ EOF
 
 ```bash
 # 方法 1: 環境變數
-export MYCOBOT_IP=192.168.1.100
+export MYCOBOT_IP=<your_mycobot_ip>
 robot tests/robot_arm/
 
 # 方法 2: 使用場景切換腳本（推薦）

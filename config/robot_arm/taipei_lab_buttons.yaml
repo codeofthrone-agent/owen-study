@@ -1,0 +1,499 @@
+# 台北實驗室按鈕配置 (Taipei Laboratory Button Configuration)
+# 版本: v4.1.0
+# 日期: 2025-11-18
+# 環境: taipei_lab (台北實驗室)
+# 面板類型: 3510a (控制面板)
+# 從 button_positions.yaml 遷移
+
+# 環境資訊
+environment:
+  name: "taipei_lab"
+  display_name: "台北實驗室"
+  panel_type: "3510a"
+  description: "台北實驗室控制面板，包含 8 個燈光按鈕和 5 個控制按鈕"
+
+# 機器手臂連接配置
+connection:
+  socket:
+    host: "10.42.0.180"
+    port: 9000
+  serial:
+    port: "/dev/ttyTHS1"
+    baudrate: 1000000
+
+# 預設參數
+defaults:
+  speed: 100
+  press_duration: 1.0
+  lift_duration: 0.1
+  count: 1
+
+# 按鈕配置
+buttons:
+  # ========================================
+  # 燈光控制按鈕 (Panel Light Buttons)
+  # ========================================
+
+  light1:
+    name: "Light1 按鈕"
+    description: "燈光控制 1"
+    type: "panel_light"
+    panel_section: "3510a"
+    down_angles: [3.5, -60, -82, 25, 0, 0]
+    up_angles: [3.5, -35, -82, 25, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.5  # 特殊: 較短按壓時間
+    vision:
+      observe_angles: [1.93, 8.34, -135.0, 33.57, 2.63, -44.56]
+      roi:
+        x: 197
+        y: 205
+        width: 71
+        height: 67
+      aruco_markers:
+        # ArUco 參考標記 (用於精確定位校準)
+        - id: 2
+          center: [527, 53.25]
+          corners:
+            - [554, 25]
+            - [553, 83]
+            - [500, 82]
+            - [501, 23]
+        - id: 1
+          center: [524, 422.25]
+          corners:
+            - [499, 451]
+            - [498, 397]
+            - [549, 394]
+            - [550, 447]
+        - id: 3
+          center: [42.5, 60.25]
+          corners:
+            - [75, 29]
+            - [76, 92]
+            - [10, 92]
+            - [9, 28]
+        - id: 4
+          center: [55, 435]
+          corners:
+            - [85, 404]
+            - [88, 463]
+            - [26, 466]
+            - [21, 407]
+      aruco_timestamp: 1763110704.7123375
+
+  light2:
+    name: "Light2 按鈕"
+    description: "燈光控制 2"
+    type: "panel_light"
+    panel_section: "3510a"
+    down_angles: [6.8, -59.5, -85, 25, 0, 0]
+    up_angles: [6.8, -35, -85, 25, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.49, 9.22, -135.0, 33.57, 2.63, -44.82]
+      roi:
+        x: 248
+        y: 280
+        width: 67
+        height: 62
+      aruco_markers:
+        # ArUco 參考標記 (用於精確定位校準)
+        - id: 2
+          center: [527, 53.25]
+          corners:
+            - [554, 25]
+            - [553, 83]
+            - [500, 82]
+            - [501, 23]
+        - id: 1
+          center: [524, 422.25]
+          corners:
+            - [499, 451]
+            - [498, 397]
+            - [549, 394]
+            - [550, 447]
+        - id: 3
+          center: [42.5, 60.25]
+          corners:
+            - [75, 29]
+            - [76, 92]
+            - [10, 92]
+            - [9, 28]
+        - id: 4
+          center: [55, 435]
+          corners:
+            - [85, 404]
+            - [88, 463]
+            - [26, 466]
+            - [21, 407]
+      aruco_timestamp: 1763110704.7123375
+
+  light3:
+    name: "Light3 按鈕"
+    description: "燈光控制 3"
+    type: "panel_light"
+    panel_section: "3510a"
+    down_angles: [13, -58, -85, 23.8, 0, 0]
+    up_angles: [13, -35, -85, 23.8, 0, 0]
+    speed: 100
+    count: 2  # 特殊: 按壓 2 次
+    lift_duration: 0.5  # 特殊: 較長抬起時間
+    press_duration: 1.0
+    vision:
+      observe_angles: [2.02, 6.76, -135.26, 32.78, 3.07, -44.2]
+      roi:
+        x: 202
+        y: 346
+        width: 75
+        height: 69
+
+  light4:
+    name: "Light4 按鈕"
+    description: "燈光控制 4"
+    type: "panel_light"
+    panel_section: "3510a"
+    down_angles: [-7.9, -64.2, -65, 20, 0, 0]
+    up_angles: [-7.9, -25, -65, 20, 0, 0]
+    speed: 100
+    count: 2  # 特殊: 按壓 2 次
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 203
+        y: 76
+        width: 71
+        height: 69
+
+  light5:
+    name: "Light5 按鈕"
+    description: "燈光控制 5"
+    type: "panel_light"
+    panel_section: "3510a"
+    down_angles: [-1.7, -66, -70, 20, 0, 0]
+    up_angles: [-1.7, -35, -70, 20, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 205
+        y: 148
+        width: 68
+        height: 62
+
+  light6:
+    name: "Light6 按鈕"
+    description: "燈光控制 6"
+    type: "panel_light"
+    panel_section: "3510a"
+    down_angles: [3.3, -59, -77, 25, 0, 0]
+    up_angles: [3.3, -35, -77, 25, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 202
+        y: 211
+        width: 74
+        height: 66
+
+  light7:
+    name: "Light7 按鈕"
+    description: "燈光控制 7"
+    type: "panel_light"
+    panel_section: "3510a"
+    down_angles: [6.8, -59.5, -79, 25, 0, 0]
+    up_angles: [6.8, -35, -79, 25, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 205
+        y: 276
+        width: 72
+        height: 66
+
+  light8:
+    name: "Light8 按鈕"
+    description: "燈光控制 8"
+    type: "panel_light"
+    panel_section: "3510a"
+    down_angles: [11.9, -62, -77.4, 23.8, 0, 0]
+    up_angles: [11.9, -35, -77.4, 23.8, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 207
+        y: 340
+        width: 70
+        height: 66
+
+  # ========================================
+  # 控制按鈕 (Control Buttons)
+  # ========================================
+
+  bluetooth:
+    name: "Bluetooth 按鈕"
+    description: "藍牙控制按鈕"
+    type: "control"
+    panel_section: "3510a"
+    down_angles: [16.5, -51, -130, 73.7, 0, 0]
+    up_angles: [16.5, -13, -130, 73.7, 0, 0]
+    speed: 100
+    count: 2  # 特殊: 按壓 2 次
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 402
+        y: 335
+        width: 68
+        height: 65
+
+  select:
+    name: "Select 按鈕"
+    description: "選擇按鈕"
+    type: "control"
+    panel_section: "3510a"
+    down_angles: [11.6, -63.8, -69, 22.5, 0, 0]
+    up_angles: [11.6, -35, -69, 22.5, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 128
+        y: 341
+        width: 77
+        height: 69
+
+  aux1:
+    name: "AUX1 按鈕"
+    description: "輔助控制按鈕 1"
+    type: "control"
+    panel_section: "3510a"
+    down_angles: [8, -59, -92, 25, 0, 0]
+    up_angles: [8, -35, -92, 25, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 339
+        y: 273
+        width: 67
+        height: 63
+
+  aux2:
+    name: "AUX2 按鈕"
+    description: "輔助控制按鈕 2"
+    type: "control"
+    panel_section: "3510a"
+    down_angles: [14, -58, -92, 23.9, 0, 0]
+    up_angles: [14, -15, -92, 23.9, 0, 0]
+    speed: 100
+    count: 2  # 特殊: 按壓 2 次
+    lift_duration: 0.5  # 特殊: 較長抬起時間
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 339
+        y: 336
+        width: 65
+        height: 65
+
+  door_lock:
+    name: "Door Lock 按鈕"
+    description: "門鎖控制"
+    type: "control"
+    panel_section: "3510a"
+    down_angles: [3.5, -58, -90, 25, 0, 0]
+    up_angles: [3.5, -35, -90, 25, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 338
+        y: 210
+        width: 68
+        height: 65
+
+# ========================================
+# 物理環境燈光配置 (Physical Environment Lights)
+# 從 ipcam_config.yaml 整合
+# 使用固定 IP Camera: level2 (192.168.165.127)
+# ========================================
+
+environment_lights:
+  # 燈光陣列配置
+  light_array:
+    name: "實驗室燈泡陣列"
+    type: "light_array"
+    environment: "taipei_lab"
+    camera_id: "level2"  # 使用 level2 Camera 進行檢測
+    camera_ip: "192.168.165.127"
+    camera_purpose: "light_array_detection"
+
+    # 陣列布局
+    layout:
+      rows: 3
+      cols: 4
+      total_lights: 12
+
+    # 亮度分級設定
+    brightness_levels:
+      off: [0, 50]         # 關閉：0-50
+      dim: [51, 100]       # 微弱：51-100
+      medium: [101, 180]   # 中等：101-180
+      bright: [181, 255]   # 明亮：181-255
+
+    # 個別燈泡配置 (3x4 網格)
+    lights:
+      # 第 0 行 (Row A)
+      "0_0":
+        name: "燈泡 A1"
+        position: [0, 0]  # [row, col]
+        roi: [0.00, 0.00, 0.25, 0.33]  # [x_min, y_min, x_max, y_max] (相對座標 0.0-1.0)
+        bright_threshold: 150
+        dark_threshold: 50
+
+      "0_1":
+        name: "燈泡 A2"
+        position: [0, 1]
+        roi: [0.25, 0.00, 0.50, 0.33]
+        bright_threshold: 150
+        dark_threshold: 50
+
+      "0_2":
+        name: "燈泡 A3"
+        position: [0, 2]
+        roi: [0.50, 0.00, 0.75, 0.33]
+        bright_threshold: 150
+        dark_threshold: 50
+
+      "0_3":
+        name: "燈泡 A4"
+        position: [0, 3]
+        roi: [0.75, 0.00, 1.00, 0.33]
+        bright_threshold: 150
+        dark_threshold: 50
+
+      # 第 1 行 (Row B)
+      "1_0":
+        name: "燈泡 B1"
+        position: [1, 0]
+        roi: [0.00, 0.33, 0.25, 0.67]
+        bright_threshold: 150
+        dark_threshold: 50
+
+      "1_1":
+        name: "燈泡 B2"
+        position: [1, 1]
+        roi: [0.25, 0.33, 0.50, 0.67]
+        bright_threshold: 150
+        dark_threshold: 50
+
+      "1_2":
+        name: "燈泡 B3"
+        position: [1, 2]
+        roi: [0.50, 0.33, 0.75, 0.67]
+        bright_threshold: 150
+        dark_threshold: 50
+
+      "1_3":
+        name: "燈泡 B4"
+        position: [1, 3]
+        roi: [0.75, 0.33, 1.00, 0.67]
+        bright_threshold: 150
+        dark_threshold: 50
+
+      # 第 2 行 (Row C)
+      "2_0":
+        name: "燈泡 C1"
+        position: [2, 0]
+        roi: [0.00, 0.67, 0.25, 1.00]
+        bright_threshold: 150
+        dark_threshold: 50
+
+      "2_1":
+        name: "燈泡 C2"
+        position: [2, 1]
+        roi: [0.25, 0.67, 0.50, 1.00]
+        bright_threshold: 150
+        dark_threshold: 50
+
+      "2_2":
+        name: "燈泡 C3"
+        position: [2, 2]
+        roi: [0.50, 0.67, 0.75, 1.00]
+        bright_threshold: 150
+        dark_threshold: 50
+
+      "2_3":
+        name: "燈泡 C4"
+        position: [2, 3]
+        roi: [0.75, 0.67, 1.00, 1.00]
+        bright_threshold: 150
+        dark_threshold: 50
+
+# ========================================
+# 環境專屬 HSV 調整（如果有）
+# ========================================
+hsv_adjustments:
+  blue:
+    lower: [95, 50, 50]
+    upper: [135, 255, 255]
+
+# ========================================
+# 配置元數據
+# ========================================
+metadata:
+  version: "4.1.0"
+  created_date: "2025-11-18"
+  last_updated: "2025-11-18"
+  migrated_from:
+    - "config/robot_arm/button_positions.yaml"
+    - "config/ipcam_config.yaml (multi_light_arrays)"
+  total_buttons: 13
+  total_environment_lights: 12
+  button_breakdown:
+    panel_light: 8
+    control: 5
+  environment_light_breakdown:
+    light_array: 12  # 3x4 網格
+  notes:
+    - "按鈕檢測使用機器手臂 Socket 影像源"
+    - "環境燈光檢測使用固定 IP Camera (level2: 192.168.165.127)"
+    - "所有按鈕使用標準觀測角度 [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]"
+    - "light1 和 light2 包含 ArUco marker 參考數據，可用於精確定位校準"
+    - "部分按鈕有特殊按壓參數（count=2, press_duration=0.5, lift_duration=0.5）"
+    - "物理燈光陣列使用相對座標 (0.0-1.0)，方便不同解析度的 Camera"

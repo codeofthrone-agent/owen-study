@@ -16,6 +16,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - ROI 互動式校準工具
   - 26 個 BDD 中文關鍵字
   - 17 個完整測試案例（快速測試、功能測試、整合測試）
+- 🎯 **本機化視覺檢測系統 (✅ 已完成 - v4.0.0, 2025-11-18)**
+  - 影像判定從 Server 遷移至本機端
+  - 3 個測試環境（Taipei LAB / Taoyuan LAB / RV Car）
+  - 8 種顏色檢測（藍/白/紅/綠/黃/橙/紫/關）
+  - 11 級亮度檢測（0-100%，10% 步進）
+  - 雙影像源支援（RTSP IP Camera / Socket USB Camera）
+  - 32+ BDD 中文關鍵字（Given-When-Then）
+  - 環境專屬 YAML 配置管理
+  - ROI 互動式校準工具
 - 👁️ **多感官檢測系統 (✅ 已完成 - v1.0.0, 2025-11-07)**
   - IP Camera 視覺檢測（螢幕亮度變化）
   - RTSP 音訊檢測（提示音檢測）
@@ -170,6 +179,83 @@ robot libraries/testlink_integration/examples/testlink_example.robot
 python3 -c "from config.testlink_config import validate_config, get_config_summary; validate_config(); print(get_config_summary())"
 ```
 
+### 本機化視覺檢測系統 (v4.0.0)
+
+```bash
+# === 環境設定與驗證 ===
+
+# 驗證環境配置
+python3 -c "
+from config.robot_arm.environment_config import EnvironmentConfig
+for env in EnvironmentConfig.list_environments():
+    config = EnvironmentConfig.get_environment(env)
+    print(f'✅ {env}: {config[\"name\"]} - {config[\"image_source\"]}')
+"
+
+# 啟動機器手臂 Server (在 Jetson Nano 上)
+cd ~/server
+./run_server.sh
+
+# 測試機器手臂連接
+curl http://10.42.0.180:9000/health
+
+# === ROI 校準工具 ===
+
+# 啟動 ROI 校準工具（互動式網頁介面）
+cd scripts
+python web_roi_calibrator.py
+# 瀏覽器開啟 http://localhost:5000
+
+# === 執行視覺檢測測試 ===
+
+# 執行基礎按鈕測試
+robot tests/robot_arm/basic_button_test.robot
+
+# 執行多環境測試
+robot tests/robot_arm/multi_environment_test.robot
+
+# 執行多色彩檢測測試
+robot tests/robot_arm/multi_color_detection_test.robot
+
+# 執行亮度檢測測試
+robot tests/robot_arm/brightness_level_test.robot
+
+# === 單元測試 ===
+
+# 執行 EnvironmentConfig 測試
+pytest tests/test_environment_config.py -v
+
+# 執行 LocalVisionAnalyzer 測試
+pytest libraries/robot_arm_control/tests/test_local_vision_analyzer.py -v
+
+# 執行 ImageSourceManager 測試
+pytest libraries/robot_arm_control/tests/test_image_source_manager.py -v
+
+# === 產生 API 文檔 ===
+
+# 產生 Robot Framework 關鍵字文檔
+python -m robot.libdoc libraries/robot_arm_control/RobotArmKeywords.py \
+    docs/RobotArmKeywords.html
+
+# 開啟文檔
+xdg-open docs/RobotArmKeywords.html
+
+# === 診斷與故障排除 ===
+
+# 驗證完整環境
+./scripts/verify_environment.sh
+
+# 測試 RTSP 串流 (taipei_lab)
+ffmpeg -i rtsp://10.42.0.100:554/stream1 -frames:v 1 test_frame.jpg
+
+# 檢查 debug 影像
+ls -lh output/debug_*.jpg
+xdg-open output/debug_latest.jpg
+
+# 查看詳細日誌
+tail -f libraries/robot_arm_control/logs/vision_analyzer.log
+```
+
 ## 架構與關鍵目錄
 
 ### 核心架構模式
@@ -184,6 +270,11 @@ Robot Framework 核心
 │   └── AudioKeywords (專業音訊硬體控制)
 ├── 電源管理 (SwitchBot)
 ├── 多感官檢測 (✅ 已完成)
+├── 本機化視覺檢測 (✅ 已完成 v4.0.0)
+│   ├── LocalVisionAnalyzer (本機影像分析)
+│   ├── ImageSourceManager (雙影像源管理)
+│   ├── EnvironmentConfig (多環境配置)
+│   └── RobotArmKeywords (32+ BDD 關鍵字)
 └── TestLink 整合 (✅ 已完成)
 ```
 
@@ -194,23 +285,36 @@ robot-multiplatform-automation/
 ├── config/                      # 統一配置管理
 │   ├── voice_config.py         # 語音系統配置
 │   ├── switchbot_config.py     # SwitchBot 配置
-│   ├── testlink_config.py      # TestLink 配置（✅ 新增）
+│   ├── testlink_config.py      # TestLink 配置
+│   ├── robot_arm/              # 機器手臂視覺檢測配置（✅ v4.0.0）
+│   │   ├── environment_config.py      # 環境配置管理
+│   │   ├── taipei_lab_buttons.yaml    # 台北實驗室配置
+│   │   ├── taoyuan_lab_buttons.yaml   # 桃園實驗室配置
+│   │   └── rv_car_buttons.yaml        # RV Car 配置
 │   └── mobile/                 # 移動測試配置
 │       ├── appium_config.py    # Appium 統一配置
 │       └── ios_config.py       # iOS 專屬配置
 │
 ├── libraries/                   # 自定義 Robot Framework Libraries
-│   ├── local_voice_verifying/  # 語音驗證庫（已實現）
+│   ├── local_voice_verifying/  # 語音驗證庫
 │   ├── voice_control/          # 專業音訊硬體控制（Scarlett 4i4）
-│   ├── switchbot_smartplug_control/  # SwitchBot 控制（已實現）
-│   ├── testlink_integration/   # TestLink 整合（✅ 新增）
+│   ├── switchbot_smartplug_control/  # SwitchBot 控制
+│   ├── testlink_integration/   # TestLink 整合
+│   ├── robot_arm_control/      # 機器手臂視覺檢測（✅ v4.0.0）
+│   │   ├── RobotArmKeywords.py        # Robot Framework 關鍵字（32+）
+│   │   ├── local_vision_analyzer.py   # 本機影像分析
+│   │   ├── image_source_manager.py    # 影像源管理
+│   │   ├── image_sources/             # 影像源實作
+│   │   │   ├── rtsp_source.py         # RTSP IP Camera
+│   │   │   └── socket_image_source.py # Socket USB Camera
+│   │   └── tests/                     # 單元測試
 │   └── mobile_testing/common/  # 移動測試通用庫
 │
 ├── resources/                   # Robot Framework 資源與關鍵字
 │   ├── common_keywords.robot   # 通用關鍵字
 │   ├── mobile_keywords.robot   # 移動設備關鍵字
 │   ├── switchbot_keywords.robot # SwitchBot 關鍵字
-│   ├── testlink_keywords.robot # TestLink 關鍵字（✅ 新增）
+│   ├── testlink_keywords.robot # TestLink 關鍵字
 │   ├── api_keywords.robot      # API 關鍵字
 │   └── web_keywords.robot      # Web 關鍵字
 │
@@ -218,12 +322,30 @@ robot-multiplatform-automation/
 │   ├── mobile/                 # 移動應用測試
 │   │   ├── ios/               # iOS 測試案例
 │   │   └── android/           # Android 測試案例
+│   ├── robot_arm/              # 機器手臂視覺檢測測試（✅ v4.0.0）
+│   │   ├── basic_button_test.robot
+│   │   ├── multi_environment_test.robot
+│   │   ├── multi_color_detection_test.robot
+│   │   └── brightness_level_test.robot
 │   ├── physical_interaction/   # 實體互動測試
 │   ├── power_management/       # 電源管理測試
-│   └── testlink_integration/   # TestLink 整合測試（✅ 新增）
+│   ├── testlink_integration/   # TestLink 整合測試
+│   └── test_environment_config.py  # 環境配置單元測試
 │
 ├── scripts/                     # 輔助腳本
+│   ├── web_roi_calibrator.py   # ROI 校準工具（✅ v4.0.0）
+│   ├── robot_arm_server.py     # 機器手臂 Server（Jetson Nano）
+│   └── verify_environment.sh   # 環境驗證腳本
+│
 ├── docs/                        # 文檔
+│   ├── vision_detection_local_migration_plan.md    # 遷移計畫（✅ v4.0.0）
+│   ├── vision_detection_local_spec.md              # 技術規格
+│   ├── vision_detection_tdd_guide.md               # TDD 開發指南
+│   ├── vision_detection_deployment_checklist.md    # 部署檢查清單
+│   ├── vision_detection_quick_start_guide.md       # 快速上手指南
+│   ├── vision_detection_troubleshooting_guide.md   # 故障排除指南
+│   └── keyword_design_guidelines.md                # BDD 關鍵字設計規範
+│
 └── results/                     # 測試結果輸出
 ```
 
@@ -233,7 +355,10 @@ robot-multiplatform-automation/
 
 - `config/voice_config.py` - 語音系統所有配置
 - `config/switchbot_config.py` - SwitchBot 配置（支援多來源：專案根目錄 .env、系統環境變數）
-- `config/testlink_config.py` - TestLink 配置（✅ 新增，支援 API URL、API Key、專案設定等）
+- `config/testlink_config.py` - TestLink 配置（支援 API URL、API Key、專案設定等）
+- `config/robot_arm/environment_config.py` - 本機化視覺檢測環境配置（✅ v4.1.0，支援 3 個測試環境 + 多 Camera）
+- `config/robot_arm/config_loader.py` - YAML 配置統一載入器（✅ v1.0.0，2025-11-18 新增）
+- `config/robot_arm/*.yaml` - 環境專屬按鈕與燈光配置（YAML 格式）
 - `config/mobile/appium_config.py` - Appium 統一配置（iOS + Android）
 - `config/mobile/ios_config.py` - iOS 專屬配置與設備管理
 
@@ -241,6 +366,33 @@ robot-multiplatform-automation/
 1. 系統環境變數 (最高優先)
 2. 專案根目錄 `.env` 檔案
 3. 配置檔案中的預設值
+
+**機器手臂配置系統（v4.1.0）:**
+- **EnvironmentConfig**: 管理環境配置（taipei_lab, taoyuan_lab, rv_car）
+  - 支援多 IP Camera 配置（taipei_lab 有 3 個 Camera：level1, level2, motor）
+  - 混合模式支援（RTSP + Socket）
+  - 環境名稱映射（laboratory ↔ taipei_lab, rv_vehicle ↔ rv_car）
+- **ConfigLoader**: 載入環境專屬 YAML 配置
+  - 按鈕配置管理（buttons）
+  - 環境燈光配置管理（environment_lights）
+  - 類別級別快取機制
+  - 深拷貝保護（避免外部修改影響原始配置）
+
+**使用範例:**
+```python
+from config.robot_arm.environment_config import EnvironmentConfig
+from config.robot_arm.config_loader import ConfigLoader
+
+# 取得環境配置
+config = EnvironmentConfig.get_environment("taipei_lab")
+cameras = EnvironmentConfig.get_cameras("taipei_lab")  # 取得 3 個 Camera
+
+# 載入按鈕與燈光配置
+loader = ConfigLoader("taipei_lab")
+buttons = loader.get_buttons()  # 13 個按鈕
+lights = loader.get_environment_lights()  # 1 個燈光陣列（12 燈泡）
+light1 = loader.get_button("light1")  # 取得特定按鈕
+```
 
 ### 移動測試架構
 
@@ -580,7 +732,7 @@ Log    1. Open Application 使用 http://localhost:4723 和 capabilities 字典
 
 ### 版本控制
 
-**當前狀態 (2025-11-13):**
+**當前狀態 (2025-11-18):**
 - Phase 1 基礎架構：✅ 完成
 - iOS 真機測試環境：✅ 完成（2025-06-27）
   - 支援 iPhone 13 系列（已測試：iPhone 13 mini, iOS 18.6.2）
@@ -608,9 +760,16 @@ Log    1. Open Application 使用 http://localhost:4723 和 capabilities 字典
   - Phase 3: Robot Framework 整合（26 個 BDD 關鍵字、17 個測試案例）
   - RobotArmKeywords v3.0.0（新增 10 個視覺檢測關鍵字）
   - 完整測試文檔與使用指南
+- **本機化視覺檢測系統：✅ 完成（2025-11-18, v4.0.0）**
+  - Phase 1-2: LocalVisionAnalyzer + ImageSourceManager（影像分析與雙影像源）
+  - Phase 3: 環境管理與配置系統（3 環境 + YAML 配置）
+  - Phase 5: 完整文檔系統（部署、快速上手、故障排除）
+  - RobotArmKeywords v4.0.0（32+ BDD 關鍵字）
+  - 8 種顏色 + 11 級亮度檢測
+  - 支援 RTSP (taipei_lab) 與 Socket (taoyuan_lab/rv_car) 影像源
 
 **下一階段重點:**
-- 機器手臂視覺檢測 Phase 4: 測試與優化（真機測試、性能優化、準確度調整）
+- **Phase 4: 真機測試與調校**（需硬體環境）
 - 進階 TestLink 功能（測試案例同步、自動建立 Bug）
 - 多感官檢測測試案例完善
 
@@ -824,6 +983,11 @@ robot --dryrun tests/path/to/test.robot
 - `docs/robot_arm_vision_detection_design.md` - 視覺檢測設計文檔（Phase 1-6 完整規劃）
 - `docs/robot_arm_vision_calibration_guide.md` - ROI 校準操作指南
 - `docs/robot_arm_vision_phase3_completion_summary.md` - Phase 3 完成報告
+
+**本機化視覺檢測文檔（📋 新增 2025-11-16）:**
+- `docs/vision_detection_local_migration_plan.md` - 影像判定本機化遷移計畫（完整規劃）
+- `docs/vision_detection_local_spec.md` - 技術規格書（含 UML 圖表）
+- `docs/vision_detection_tdd_guide.md` - TDD 開發指南（測試驅動開發）
 - `tests/robot_arm/VISION_DETECTION_TESTS_README.md` - 測試案例詳細說明
 - `docs/keyword_design_guidelines.md` - BDD 關鍵字設計規範（最佳實踐）
 
@@ -837,7 +1001,7 @@ robot --dryrun tests/path/to/test.robot
 
 完成架構後需產生：
 - `spec.md` - 規格文件（包含 UML 圖）
-- `todo.md` - 任務清單
+- `todo.md` - 任務清單，額外將需要人工協助及實體裝置，測試及分析的區塊分別出來
 
 ### 3. Code 模式
 

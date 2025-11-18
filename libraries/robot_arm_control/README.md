@@ -1,8 +1,8 @@
 # Robot Arm Control Library
 
-**MyCobot 280 機器手臂控制庫 - Socket 連接方式 (BDD 風格 v2.0)**
+**MyCobot 280 機器手臂控制庫 - Socket 連接方式 (BDD 風格 v4.0.0)**
 
-本模組提供基於 TCP/IP Socket 的 MyCobot 280 機器手臂控制功能，採用 BDD (Gherkin) 風格關鍵字，用於 Robot Framework 自動化測試中按壓實體面板按鈕。
+本模組提供基於 TCP/IP Socket 的 MyCobot 280 機器手臂控制功能，採用 BDD (Gherkin) 風格關鍵字，用於 Robot Framework 自動化測試中按壓實體面板按鈕，並整合本機化視覺檢測系統。
 
 ---
 
@@ -30,11 +30,15 @@
 
 ### 特色
 
-- ✅ **BDD 風格關鍵字**: 採用 Gherkin 語法（Given-When-Then-And），提供 26 個完整測試關鍵字
+- ✅ **BDD 風格關鍵字**: 採用 Gherkin 語法（Given-When-Then-And），提供 32+ 個完整測試關鍵字
 - ✅ **Socket 連接**: 基於 TCP/IP 網路控制，無需 USB 連接
 - ✅ **YAML 配置管理**: 彈性的按鈕位置配置，易於調整和維護
 - ✅ **中文關鍵字**: 符合專案規範，所有關鍵字使用中文命名
-- ✅ **視覺檢測整合**: 支援燈光狀態檢測、顏色識別和多按鈕檢測
+- ✅ **本機化視覺檢測** ⭐ NEW (v4.0.0):
+  - 多環境支援（台北實驗室 / 桃園實驗室 / RV Car）
+  - 多色彩檢測（藍/白/紅/綠/黃/橙/紫/關閉）
+  - 多級亮度檢測（0-100%，11 級）
+  - 雙影像源（RTSP / Socket）
 - ✅ **完整的錯誤處理**: 連接檢查、移動超時、電源管理等
 - ✅ **支援長按功能**: 可自定義按壓時間（如 Retract/Extend 長按 7 秒）
 - ✅ **雙層架構**: 與 Voice Control 模式一致，直接使用 Python Library 中的 @keyword
@@ -54,16 +58,18 @@
 - 連接狀態檢查
 - 回到初始位置
 
-### 2. 按鈕控制
+### 2. 按鈕控制與視覺檢測
 
-#### BDD 風格關鍵字（21個）
+#### BDD 風格關鍵字（v4.0.0: 30+ 個）
 
-**Given 關鍵字（3個）**:
+**Given 關鍵字（5個）**:
 - 機器手臂已正確連接到控制面板
 - 控制面板電源狀態為 "指定狀態"
 - 機器手臂系統處於待命狀態
+- ⭐ 測試環境設定為 "環境名稱" (NEW v4.0.0)
+- ⭐ 面板類型設定為 "面板型號" (NEW v4.0.0)
 
-**When 關鍵字（10個）**:
+**When 關鍵字（12個）**:
 - 用戶透過機器手臂開啟第 "X" 號燈光
 - 用戶透過機器手臂切換藍牙連接
 - 用戶透過機器手臂啟動 "設備名" 設備
@@ -74,13 +80,17 @@
 - 用戶連接到機器手臂
 - 用戶中斷與機器手臂的連接
 - 用戶按壓第 "按鈕ID" 按鈕
+- ⭐ 用戶檢測面板按鈕 "按鈕ID" 的顏色 (NEW v4.0.0)
+- ⭐ 用戶檢測實體燈光亮度 "燈光ID" (NEW v4.0.0)
 
-**Then 關鍵字（5個）**:
+**Then 關鍵字（7個）**:
 - 機器手臂操作應該成功完成
 - 控制面板應該顯示 "預期狀態" 狀態
 - 按鈕燈光應該為 "顏色" 色
 - 按鈕燈光應該為 "狀態" 狀態
 - 上一步操作應該成功
+- ⭐ 面板按鈕顏色應該為 "顏色" (NEW v4.0.0)
+- ⭐ 實體燈光亮度應該為 "級別" % (NEW v4.0.0)
 
 **And 關鍵字（3個）**:
 - 機器手臂應該返回待命位置
@@ -105,6 +115,61 @@
 - 讀取當前角度
 - 移動狀態檢查
 
+### 4. 本機化視覺檢測 ⭐ NEW (v4.0.0)
+
+#### 4.1 多環境支援
+
+支援 3 個獨立測試環境，每個環境有專屬配置：
+
+| 環境 | 影像源 | 面板類型 | 說明 |
+|------|--------|----------|------|
+| **taipei_lab** | RTSP | 3510a, 3611a, 3611c | 台北實驗室，使用 IP Camera |
+| **taoyuan_lab** | Socket | 3510a, 3611a | 桃園實驗室，使用機器手臂 USB Camera |
+| **rv_car** | Socket | 3611c | RV Car 車載環境 |
+
+#### 4.2 多色彩檢測
+
+支援 7+ 種顏色的 LED 按鈕檢測：
+- **藍色 (blue)**: HSV 色彩空間檢測
+- **白色 (white)**: 高飽和度判定
+- **紅色 (red)**: 處理色調環繞問題
+- **綠色 (green)**
+- **黃色 (yellow)**
+- **橙色 (orange)**
+- **紫色 (purple)**
+- **關閉 (off)**: 低亮度判定
+
+**特性**:
+- 多幀平均（5 frames）+ 暖機幀（20 frames）解決 LED PWM 同步問題
+- ROI 精確定位
+- 信心度評分
+- 除錯影像自動儲存
+
+#### 4.3 多級亮度檢測
+
+支援 11 級實體燈光亮度檢測：
+- **級別**: 0%, 10%, 20%, ..., 100%
+- **誤差容忍**: ±10%
+- **應用**: 天花板燈、桌燈、車燈等實體照明
+
+**特性**:
+- 原始亮度值 (0-255)
+- 燈光狀態判定 (on/off)
+- 信心度計算
+
+#### 4.4 雙影像源
+
+**RTSP 影像源**:
+- 使用 IP Camera 進行遠端視覺檢測
+- 適用於固定場景
+- OpenCV + FFmpeg 支援
+
+**Socket 影像源**:
+- 使用機器手臂上的 USB Camera (/dev/video0)
+- 透過 Socket 協定請求影像
+- Base64 編碼傳輸
+- 伺服器端多幀平均
+
 ---
 
 ## 系統架構
@@ -113,20 +178,39 @@
 
 ```
 libraries/robot_arm_control/
-├── __init__.py                    # 套件初始化
-├── README.md                      # 本文件
-├── button_config_loader.py        # YAML 配置載入器
-├── mycobot_socket_controller.py   # Socket 控制核心
-└── RobotArmKeywords.py            # Robot Framework 關鍵字庫
+├── __init__.py                      # 套件初始化
+├── README.md                        # 本文件
+├── button_config_loader.py          # YAML 配置載入器
+├── mycobot_socket_controller.py     # Socket 控制核心
+├── RobotArmKeywords.py              # Robot Framework 關鍵字庫 (v4.0.0)
+├── local_vision_analyzer.py         # ⭐ 本機視覺分析器 (NEW v4.0.0)
+├── image_source_manager.py          # ⭐ 影像源管理器 (NEW v4.0.0)
+├── image_sources/                   # ⭐ 影像源模組 (NEW v4.0.0)
+│   ├── __init__.py
+│   ├── rtsp_source.py               # RTSP 影像源
+│   └── socket_image_source.py       # Socket 影像源
+└── tests/                           # 單元測試
+    ├── conftest.py
+    ├── test_local_vision_analyzer.py
+    └── test_image_source_manager.py
 
 config/robot_arm/
-└── button_positions.yaml          # 按鈕位置配置
+├── button_positions.yaml            # 按鈕位置配置（舊版）
+├── environment_config.py            # ⭐ 環境配置管理 (NEW v4.0.0)
+├── taipei_lab_buttons.yaml          # ⭐ 台北實驗室配置 (NEW v4.0.0)
+├── taoyuan_lab_buttons.yaml         # ⭐ 桃園實驗室配置 (NEW v4.0.0)
+└── rv_car_buttons.yaml              # ⭐ RV Car 配置 (NEW v4.0.0)
 
 tests/robot_arm/
-└── basic_button_test.robot        # 基礎測試案例
+├── basic_button_test.robot          # 基礎測試案例
+└── (更多測試案例...)
+
+tests/
+└── test_environment_config.py       # ⭐ 環境配置測試 (NEW v4.0.0)
 
 docs/
-└── robot_arm_socket_control_design.md  # 設計文檔
+├── robot_arm_socket_control_design.md
+└── vision_detection_local_migration_plan.md  # ⭐ 視覺檢測遷移計畫
 ```
 
 ### 技術棧
@@ -137,6 +221,10 @@ docs/
 | **控制庫** | pymycobot (官方 Python SDK) |
 | **配置格式** | YAML (PyYAML) |
 | **測試框架** | Robot Framework 7.3.1+ |
+| **視覺處理** ⭐ | OpenCV 4.x (cv2) |
+| **影像源** ⭐ | RTSP (FFmpeg) / Socket (Base64) |
+| **色彩空間** ⭐ | HSV (Hue-Saturation-Value) |
+| **測試工具** ⭐ | pytest 9.0.0 |
 | **Python 版本** | 3.12 |
 | **日誌系統** | loguru |
 
@@ -179,13 +267,13 @@ pipenv install pymycobot pyyaml loguru
 
 ### 2. MyCobot 280 硬體設置
 
-#### 方法 A: 使用 Raspberry Pi (推薦)
+#### 方法 A: 使用 MyCobot 280 Jetson Nano (推薦)
 
-1. **在 Raspberry Pi 上啟動 Socket Server:**
+1. **在 MyCobot 280 Jetson Nano 上啟動 Socket Server:**
 
    ```bash
-   # SSH 連接到 Raspberry Pi
-   ssh pi@<mycobot_ip>
+   # SSH 連接到 MyCobot 280 Jetson Nano
+   ssh user@<mycobot_ip>
 
    # 啟動 Server_280.py
    cd ~/mycobot_scripts
@@ -207,9 +295,9 @@ pipenv install pymycobot pyyaml loguru
 
    [Service]
    Type=simple
-   User=pi
-   WorkingDirectory=/home/pi/mycobot_scripts
-   ExecStart=/usr/bin/python3 /home/pi/mycobot_scripts/Server_280.py
+   User=user
+   WorkingDirectory=/home/user/mycobot_scripts
+   ExecStart=/usr/bin/python3 /home/user/mycobot_scripts/Server_280.py
    Restart=always
    RestartSec=10
 
@@ -1106,7 +1194,7 @@ ConnectionError: 無法連接到機器手臂 10.42.0.180:9000
 
 2. **檢查 Server_280.py 是否運行**:
    ```bash
-   ssh pi@10.42.0.180
+   ssh user@10.42.0.180
    ps aux | grep Server_280.py
    ```
 

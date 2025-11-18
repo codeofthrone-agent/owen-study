@@ -15,9 +15,10 @@ import threading
 import json
 import yaml
 from typing import Optional, Dict, List, Tuple
-import cv2
 import numpy as np
-
+import cv2
+import cv2.aruco as aruco
+import base64
 try:
     import RPi.GPIO as GPIO
     GPIO_AVAILABLE = True
@@ -56,42 +57,30 @@ Enhanced features:
 has_return = [0x01,0x02,0x03,0x04,0x09,0x12, 0x14, 0x15, 0x17,0x1B, 0x20,0x23, 0x27, 0x2A,0x2B,0x2D,0x2E, 0x3B,0x3D, 0x40,0x42,0x43,0x44,0x4A, 0x4B,0x50,0x51,0x53,0x62,0x65,0x69,0x90,0x91,0x92,0xC0, 0xC3,0x82,0x84,0x86,0x88,0x8A,0xD0,0xD1,0xD5,0xE1,0xE2,0xE3,0xE4,0xE5,0XE6, 0xB0]
 
 
-# ==================== VisionAnalyzer 類別 ====================
+# ==================== CameraCapture 類別 ====================
+# v4.0.0 更新：移除影像判定邏輯，只保留影像截取功能
+# 影像分析已遷移至本機端 LocalVisionAnalyzer
 
-class VisionAnalyzer:
-    """視覺分析引擎 - 藍/白/關 LED 檢測（HSV 方案）
+class CameraCapture:
+    """影像截取引擎 - 提供基礎影像截取功能
 
     功能：
     - 多幀平均截圖（解決 LED 掃描頻率問題）
-    - HSV 顏色檢測（藍色/白色）
-    - 亮度檢測（關閉狀態）
-    - ROI 區域分析
+    - Base64 影像編碼
     """
 
     def __init__(self, camera_device="/dev/video0", logger=None):
-        """初始化視覺分析器
+        """初始化影像截取器
 
         Args:
             camera_device: 攝影機設備路徑
             logger: 日誌記錄器（可選）
         """
         self.camera_device = camera_device
-        self.logger = logger or logging.getLogger("VisionAnalyzer")
+        self.logger = logger or logging.getLogger("CameraCapture")
         self.camera_lock = threading.Lock()
 
-        # HSV 顏色範圍配置
-        self.color_ranges = {
-            'blue': {
-                'lower': np.array([100, 50, 50]),
-                'upper': np.array([130, 255, 255])
-            },
-            'white': {
-                'lower': np.array([0, 0, 200]),
-                'upper': np.array([180, 50, 255])
-            }
-        }
-
-        self.logger.info(f"VisionAnalyzer 初始化完成，攝影機: {camera_device}")
+        self.logger.info(f"CameraCapture 初始化完成，攝影機: {camera_device}")
 
     def capture_multi_frame_average(self, num_frames=5, warmup_frames=20) -> np.ndarray:
         """多幀平均截圖（解決 LED 掃描頻率與自動曝光問題）
@@ -145,184 +134,123 @@ class VisionAnalyzer:
 
             return avg_frame
 
-    def detect_button_state(self, image: np.ndarray, roi_config: dict, save_roi: bool = False, save_path: Optional[str] = None, save_full_frame: bool = False, full_frame_path: Optional[str] = None) -> dict:
-        """檢測單一按鈕狀態
+    # ========== v4.0.0 已移除的方法 ==========
+    # 以下影像判定方法已遷移至本機端 LocalVisionAnalyzer：
+    # - detect_button_state()
+    # - _extract_roi()
+    # - _detect_brightness()
+    # - _detect_color_hsv()
+    # Server 只保留影像截取與 ArUco 檢測功能
 
+    def detect_aruco_markers(self, image: np.ndarray, marker_size: float = 0.05) -> Dict:
+        """檢測 ArUco 標記並計算位置資訊（支援所有 OpenCV 版本）
+        
         Args:
-            image: 輸入圖像 (BGR 格式)
-            roi_config: ROI 配置
-            save_roi: 是否儲存 ROI 圖像
-            save_path: ROI 圖像儲存路徑
-            save_full_frame: 是否儲存標記 ROI 的完整圖像
-            full_frame_path: 完整圖像儲存路徑
-
+            image: 輸入影像
+            marker_size: 標記實際大小（公尺）
+            
         Returns:
-            {
-                "light": "on" | "off",
-                "color": "blue" | "white" | "off" | "unknown",
-                "brightness": 0-255,
-                "confidence": 0.0-1.0,
-                "debug_info": {...}
-            }
+            包含檢測到的標記資訊的字典
         """
         try:
-            # 1. 提取 ROI
-            roi = self._extract_roi(image, roi_config)
-
-            # 如果請求，儲存完整幀和 ROI
-            if save_full_frame and full_frame_path:
-                try:
-                    # 在完整圖像上繪製 ROI 矩形
-                    x, y, w, h = roi_config['x'], roi_config['y'], roi_config['width'], roi_config['height']
-                    debug_frame = image.copy()
-                    cv2.rectangle(debug_frame, (x, y), (x + w, y + h), (0, 255, 0), 2) # Green rectangle
+            # 檢查 OpenCV 版本並使用適當的 API
+            cv_version = cv2.__version__
+            self.logger.debug(f"🔍 OpenCV 版本: {cv_version}")
+            
+            aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
+            parameters = aruco.DetectorParameters()
+            detector = aruco.ArucoDetector(aruco_dict, parameters)
+            self.logger.debug("✓ 使用最新版 ArUco API (ArucoDetector)")
+            
+            # 使用 ArucoDetector 進行檢測
+            corners, ids, _ = detector.detectMarkers(image)
+            
+            result = {
+                "success": True,
+                "markers_count": len(corners) if corners is not None else 0,
+                "markers": []
+            }
+            
+            if corners is not None and len(corners) > 0:
+                self.logger.info(f"🎯 檢測到 {len(corners)} 個 ArUco 標記")
+                
+                for i, corner in enumerate(corners):
+                    marker_id = int(ids[i][0]) if ids is not None and len(ids) > i else i
                     
-                    from pathlib import Path
-                    output_dir = Path(full_frame_path).parent
-                    output_dir.mkdir(parents=True, exist_ok=True)
-                    cv2.imwrite(str(full_frame_path), debug_frame)
-                    self.logger.info(f"附有 ROI 的完整圖像已儲存至: {full_frame_path}")
-                except Exception as e:
-                    self.logger.error(f"儲存完整圖像失敗: {e}")
-
-            # 如果請求，儲存 ROI 圖像
-            if save_roi and save_path:
-                try:
-                    from pathlib import Path
-                    output_dir = Path(save_path).parent
-                    output_dir.mkdir(parents=True, exist_ok=True)
-                    cv2.imwrite(str(save_path), roi)
-                    self.logger.info(f"ROI 圖像已儲存至: {save_path}")
-                except Exception as e:
-                    self.logger.error(f"儲存 ROI 圖像失敗: {e}")
-
-            # 2. 檢測亮度
-            brightness = self._detect_brightness(roi)
-
-            # 3. 判斷開/關
-            threshold = roi_config.get('brightness_threshold', 100)
-
-            if brightness < threshold:
-                return {
-                    "light": "off",
-                    "color": "off",
-                    "brightness": int(brightness),
-                    "confidence": 1.0,
-                    "debug_info": {
-                        "blue_ratio": 0.0,
-                        "white_ratio": 0.0,
-                        "roi_size": [roi.shape[1], roi.shape[0]]
+                    # 計算標記中心
+                    center = np.mean(corner[0], axis=0)
+                    
+                    marker_info = {
+                        "id": marker_id,
+                        "center": [float(center[0]), float(center[1])],
+                        "corners": corner[0].tolist(),
                     }
-                }
-
-            # 4. 顏色檢測（HSV）
-            color, confidence, debug_info = self._detect_color_hsv(roi)
-
-            return {
-                "light": "on",
-                "color": color,
-                "brightness": int(brightness),
-                "confidence": confidence,
-                "debug_info": {
-                    **debug_info,
-                    "roi_size": [roi.shape[1], roi.shape[0]]
-                }
-            }
-
+                    result["markers"].append(marker_info)
+            else:
+                self.logger.debug("🔍 未檢測到任何 ArUco 標記")
+                    
+            return result
+            
         except Exception as e:
-            self.logger.error(f"按鈕狀態檢測失敗: {e}")
+            self.logger.error(f"❌ ArUco 檢測失敗: {e}")
             return {
-                "light": "error",
-                "color": "error",
-                "brightness": 0,
-                "confidence": 0.0,
-                "debug_info": {"error": str(e)}
+                "success": False,
+                "error": str(e),
+                "markers_count": 0,
+                "markers": []
             }
 
-    def _extract_roi(self, image: np.ndarray, roi_config: dict) -> np.ndarray:
-        """提取 ROI 區域
-
+    def calculate_position_correction(self, current_markers: List[Dict], 
+                                    reference_markers: List[Dict]) -> Optional[Dict]:
+        """計算位置校正資訊
+        
         Args:
-            image: 完整圖像
-            roi_config: ROI 配置 {"x": int, "y": int, "width": int, "height": int}
-
+            current_markers: 當前檢測到的標記
+            reference_markers: 參考位置的標記
+            
         Returns:
-            ROI 圖像
+            位置校正資訊或 None
         """
-        x = roi_config['x']
-        y = roi_config['y']
-        w = roi_config['width']
-        h = roi_config['height']
-
-        # 邊界檢查
-        img_h, img_w = image.shape[:2]
-        x = max(0, min(x, img_w - 1))
-        y = max(0, min(y, img_h - 1))
-        w = min(w, img_w - x)
-        h = min(h, img_h - y)
-
-        roi = image[y:y+h, x:x+w]
-
-        if roi.size == 0:
-            raise ValueError(f"ROI 區域無效: x={x}, y={y}, w={w}, h={h}")
-
-        return roi
-
-    def _detect_brightness(self, roi: np.ndarray) -> float:
-        """檢測亮度（使用 HSV 的 V 通道）
-
-        Args:
-            roi: ROI 圖像
-
-        Returns:
-            平均亮度 (0-255)
-        """
-        hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-        brightness = np.mean(hsv[:, :, 2])  # V channel
-        return brightness
-
-    def _detect_color_hsv(self, roi: np.ndarray) -> Tuple[str, float, dict]:
-        """HSV 顏色檢測（藍 vs 白）
-
-        Args:
-            roi: ROI 圖像
-
-        Returns:
-            (color_name, confidence, debug_info)
-            - color_name: "blue" | "white" | "unknown"
-            - confidence: 0.0-1.0
-            - debug_info: {"blue_ratio": float, "white_ratio": float}
-        """
-        hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-        total_pixels = roi.shape[0] * roi.shape[1]
-
-        # 藍色檢測
-        blue_mask = cv2.inRange(hsv,
-                                 self.color_ranges['blue']['lower'],
-                                 self.color_ranges['blue']['upper'])
-        blue_ratio = cv2.countNonZero(blue_mask) / total_pixels
-
-        # 白色檢測（低飽和度 + 高亮度）
-        white_mask = cv2.inRange(hsv,
-                                  self.color_ranges['white']['lower'],
-                                  self.color_ranges['white']['upper'])
-        white_ratio = cv2.countNonZero(white_mask) / total_pixels
-
-        # 判斷邏輯
-        confidence_threshold = 0.3  # 至少 30% 像素符合
-
-        debug_info = {
-            "blue_ratio": float(blue_ratio),
-            "white_ratio": float(white_ratio)
-        }
-
-        if blue_ratio > white_ratio and blue_ratio > confidence_threshold:
-            return "blue", float(blue_ratio), debug_info
-        elif white_ratio > confidence_threshold:
-            return "white", float(white_ratio), debug_info
-        else:
-            return "unknown", max(blue_ratio, white_ratio), debug_info
-
+        try:
+            if not current_markers or not reference_markers:
+                return None
+            
+            current_ids = {m["id"]: {"center_x": m["center"][0], "center_y": m["center"][1]} for m in current_markers}
+            reference_ids = {m["id"]: {"center_x": m["center"][0], "center_y": m["center"][1]} for m in reference_markers}
+            
+            common_ids = set(current_ids.keys()) & set(reference_ids.keys())
+            
+            if not common_ids:
+                self.logger.warning("⚠️  沒有找到共同的 ArUco 標記 ID")
+                return None
+            
+            self.logger.info(f"📍 找到 {len(common_ids)} 個共同標記: {list(common_ids)}")
+            
+            total_offset_x = 0
+            total_offset_y = 0
+            
+            for marker_id in common_ids:
+                offset_x = current_ids[marker_id]["center_x"] - reference_ids[marker_id]["center_x"]
+                offset_y = current_ids[marker_id]["center_y"] - reference_ids[marker_id]["center_y"]
+                total_offset_x += offset_x
+                total_offset_y += offset_y
+            
+            avg_offset_x = total_offset_x / len(common_ids)
+            avg_offset_y = total_offset_y / len(common_ids)
+            
+            result = {
+                "offset_x": float(avg_offset_x),
+                "offset_y": float(avg_offset_y),
+                "common_markers": int(len(common_ids)),
+            }
+            
+            self.logger.info(f"📐 位置校正結果: 平均偏移=({avg_offset_x:.1f}, {avg_offset_y:.1f})")
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"❌ 計算位置校正失敗: {e}")
+            return None
 
 # ==================== get_logger 函數 ====================
 
@@ -392,10 +320,10 @@ class MycobotServer(object):
         self.serial_lock_file = None  # 用於文件鎖
         self.is_running = True
 
-        # 視覺檢測系統配置
+        # 影像截取系統配置（v4.0.0：影像判定已移至本機端）
         self.camera_device = camera_device
         self.enable_vision = enable_vision
-        self.vision_analyzer = None
+        self.camera_capture = None
 
         # 初始化 socket
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -418,13 +346,13 @@ class MycobotServer(object):
         # 現在我們將此功能禁用，將歸位職責完全交還給客戶端。
         # =================================================================
 
-        # 初始化視覺檢測系統
+        # 初始化影像截取系統（v4.0.0：只提供影像截取，判定在本機端）
         if self.enable_vision:
             try:
-                self.vision_analyzer = VisionAnalyzer(camera_device, self.logger)
-                self.logger.info("✅ 視覺檢測系統已啟用")
+                self.camera_capture = CameraCapture(camera_device, self.logger)
+                self.logger.info("✅ 影像截取系統已啟用（影像判定在本機端執行）")
             except Exception as e:
-                self.logger.warning(f"⚠️ 視覺檢測系統初始化失敗: {e}")
+                self.logger.warning(f"⚠️ 影像截取系統初始化失敗: {e}")
                 self.logger.warning("   伺服器將以無視覺模式運行")
                 self.enable_vision = False
 
@@ -593,9 +521,7 @@ class MycobotServer(object):
             if not command_type:
                 return {"status": "error", "message": "缺少 'command' 欄位"}
 
-            if command_type == "detect_button":
-                return self._cmd_detect_button(cmd)
-            elif command_type == "move_to_angles":
+            if command_type == "move_to_angles":
                 return self._cmd_move_to_angles(cmd)
             elif command_type == "get_angles":
                 return self._cmd_get_angles(cmd)
@@ -608,93 +534,9 @@ class MycobotServer(object):
             self.logger.error(f"JSON 命令處理失敗: {e}")
             return {"status": "error", "message": str(e)}
 
-    def _cmd_detect_button(self, cmd: dict) -> dict:
-        """檢測按鈕狀態（客戶端提供 ROI、觀測角度等完整參數）
-
-        Args:
-            cmd: {
-                "command": "detect_button",
-                "roi": {...},
-                "observe_angles": [...],
-                "num_frames": int,
-                "save_roi": bool,      // 新增
-                "button_name": str   // 新增
-            }
-
-        Returns:
-            {...}
-        """
-        if not self.enable_vision or not self.vision_analyzer:
-            return {"status": "error", "message": "視覺檢測系統未啟用"}
-
-        try:
-            # 1. 移動到觀測位置（如果提供）
-            self.logger.info(f"檢測按鈕命令 - observe_angles: {cmd.get('observe_angles')}")
-            if "observe_angles" in cmd and cmd["observe_angles"] is not None:
-                # 讀取當前角度
-                current_angles = self.get_angles()
-                self.logger.info(f"當前手臂角度: {[round(a, 2) if a is not None else None for a in current_angles]}")
-                self.logger.info(f"目標觀測角度: {cmd['observe_angles']}")
-
-                move_result = self._cmd_move_to_angles({
-                    "command": "move_to_angles",
-                    "angles": cmd["observe_angles"],
-                    "speed": cmd.get("speed", 50)
-                })
-
-                if move_result["status"] != "success":
-                    return {"status": "error", "message": f"移動到觀測位置失敗: {move_result['message']}"}
-
-                # 等待移動完成 + 機器手臂穩定 + 相機畫面穩定
-                # 注意：MyCobot 的 is_moving 指令不可靠，使用固定延遲
-                self.logger.info("等待機器手臂移動到觀測位置並穩定...")
-                time.sleep(5.0)  # 固定延遲：移動 + 穩定
-
-                # 讀取移動後的角度
-                final_angles = self.get_angles()
-                self.logger.info(f"移動後手臂角度: {[round(a, 2) if a is not None else None for a in final_angles]}")
-                self.logger.info("✓ 機器手臂已穩定")
-
-            # 2. 多幀平均截圖
-            num_frames = cmd.get("num_frames", 5)
-            image = self.vision_analyzer.capture_multi_frame_average(num_frames)
-
-            # 3. 檢測按鈕狀態
-            roi_config = cmd.get("roi")
-            if not roi_config:
-                return {"status": "error", "message": "缺少 'roi' 參數"}
-
-            # 處理 ROI 和完整幀的儲存
-            save_roi = cmd.get("save_roi", False)
-            save_full_frame = cmd.get("save_full_frame", False)
-            save_path = None
-            full_frame_path = None
-            
-            if save_roi or save_full_frame:
-                from pathlib import Path
-                button_name = cmd.get("button_name", "unknown")
-                output_dir = Path('output/roi_debug')
-                timestamp = time.strftime("%Y%m%d-%H%M%S")
-                if save_roi:
-                    save_path = str(output_dir / f"roi_{button_name}_{timestamp}.jpg")
-                if save_full_frame:
-                    full_frame_path = str(output_dir / f"full_{button_name}_{timestamp}.jpg")
-
-            result = self.vision_analyzer.detect_button_state(
-                image, roi_config, 
-                save_roi, save_path, 
-                save_full_frame, full_frame_path
-            )
-
-            return {
-                "status": "success",
-                "result": result,
-                "message": f"按鈕檢測完成: {result['color']}"
-            }
-
-        except Exception as e:
-            self.logger.error(f"按鈕檢測失敗: {e}")
-            return {"status": "error", "message": str(e)}
+    # ========== v4.0.0 已移除的命令 ==========
+    # _cmd_detect_button() 已移除，影像判定已遷移至本機端
+    # Server 只提供影像截取功能（capture_image）
 
     def _cmd_get_angles(self, cmd: dict) -> dict:
         """讀取當前手臂角度
@@ -799,15 +641,15 @@ class MycobotServer(object):
                 "message": str
             }
         """
-        if not self.enable_vision or not self.vision_analyzer:
-            return {"status": "error", "message": "視覺檢測系統未啟用"}
+        if not self.enable_vision or not self.camera_capture:
+            return {"status": "error", "message": "影像截取系統未啟用"}
 
         try:
             import base64
 
             # 多幀平均截圖
             num_frames = cmd.get("num_frames", 5)
-            image = self.vision_analyzer.capture_multi_frame_average(num_frames)
+            image = self.camera_capture.capture_multi_frame_average(num_frames)
 
             # 編碼為指定格式
             image_format = cmd.get("format", "jpeg").lower()

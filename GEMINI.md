@@ -16,5 +16,17 @@
 16. All Document should using chinese
 17. 所有的程式碼註解和文件都應使用中文
 18. 虛擬環境 使用 uv run 指令啟動
+19. 設定計畫時，將需要人工協助及實體裝置，測試及分析的區塊分別出來
 
 
+## Shell Tools Usage Guidelines
+⚠️ **IMPORTANT**: Use the following specialized tools instead of traditional Unix commands: (Install if missing)
+| Task Type | Must Use | Do Not Use |
+|-----------|----------|------------|
+| Find Files | `fd` | `find`, `ls -R` |
+| Search Text | `rg` (ripgrep) | `grep`, `ag` |
+| Analyze Code Structure | `ast-grep` | `grep`, `sed` |
+| Interactive Selection | `fzf` | Manual filtering |
+| Process JSON | `jq` | `python -m json.tool` |
+| Process YAML/XML | `yq` | Manual parsing |
+====

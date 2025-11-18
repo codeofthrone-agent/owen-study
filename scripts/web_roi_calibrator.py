@@ -144,68 +144,78 @@ class HybridRobotArmClient:
             
             # 嘗試不同的 ArUco API 方法
             aruco_dict = None
-            parameters = None
+            detector = None
             corners = None
             ids = None
             
-            # 方法 1: OpenCV 4.7+ 新版 API
+            # 方法 1: OpenCV 4.11+ 最新版 API（ArucoDetector 類）
             try:
-                if hasattr(aruco, 'getPredefinedDictionary'):
+                if hasattr(aruco, 'ArucoDetector') and hasattr(aruco, 'getPredefinedDictionary'):
                     aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
-                    if hasattr(aruco, 'DetectorParameters'):
-                        parameters = aruco.DetectorParameters()
-                    else:
-                        parameters = aruco.DetectorParameters_create()
-                    print("✓ 使用新版 ArUco API (getPredefinedDictionary)")
+                    parameters = aruco.DetectorParameters()
+                    detector = aruco.ArucoDetector(aruco_dict, parameters)
+                    print("✓ 使用最新版 ArUco API (ArucoDetector)")
+                    
+                    # 使用 ArucoDetector 進行檢測
+                    corners, ids, _ = detector.detectMarkers(image)
             except Exception as e:
-                print(f"⚠️ 新版 API 失敗: {e}")
+                print(f"⚠️ 最新版 API (ArucoDetector) 失敗: {e}")
                 
-            # 方法 2: OpenCV 4.0-4.6 舊版 API
-            if aruco_dict is None:
+            # 方法 2: OpenCV 4.7-4.10 新版 API
+            if aruco_dict is None or corners is None:
+                try:
+                    if hasattr(aruco, 'getPredefinedDictionary') and hasattr(aruco, 'detectMarkers'):
+                        aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
+                        if hasattr(aruco, 'DetectorParameters'):
+                            parameters = aruco.DetectorParameters()
+                        else:
+                            parameters = aruco.DetectorParameters_create()
+                        print("✓ 使用新版 ArUco API (getPredefinedDictionary)")
+                        
+                        # 直接使用 detectMarkers 函數
+                        corners, ids, _ = aruco.detectMarkers(image, aruco_dict, parameters=parameters)
+                except Exception as e:
+                    print(f"⚠️ 新版 API 失敗: {e}")
+                
+            # 方法 3: OpenCV 4.0-4.6 舊版 API
+            if aruco_dict is None or corners is None:
                 try:
                     if hasattr(aruco, 'Dictionary_get'):
                         aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
                         parameters = aruco.DetectorParameters_create()
                         print("✓ 使用舊版 ArUco API (Dictionary_get)")
+                        
+                        corners, ids, _ = aruco.detectMarkers(image, aruco_dict, parameters=parameters)
                 except Exception as e:
                     print(f"⚠️ 舊版 API 失敗: {e}")
             
-            # 方法 3: 最新版本的替代方案
-            if aruco_dict is None:
+            # 方法 4: 備用方案
+            if aruco_dict is None or corners is None:
                 try:
                     # 嘗試直接創建字典
                     aruco_dict = aruco.Dictionary(aruco.DICT_4X4_50)
                     parameters = aruco.DetectorParameters()
-                    print("✓ 使用最新版 ArUco API (Dictionary)")
+                    print("✓ 使用備用 ArUco API (Dictionary)")
+                    
+                    # 嘗試不同的檢測方法
+                    try:
+                        corners, ids, _ = aruco.detectMarkers(image, aruco_dict)
+                    except:
+                        # 如果上述都失敗，嘗試更簡單的方法
+                        print("🔍 嘗試簡單檢測方法...")
+                        corners, ids = [], None
                 except Exception as e:
-                    print(f"⚠️ 最新版 API 失敗: {e}")
+                    print(f"⚠️ 備用 API 失敗: {e}")
             
-            if aruco_dict is None:
+            # 檢查結果有效性
+            if corners is None:
+                print("❌ 所有 ArUco API 都無法檢測")
                 return {
                     "success": False,
-                    "error": f"無法初始化 ArUco 字典 (OpenCV {cv_version})",
+                    "error": f"無法初始化 ArUco 檢測器 (OpenCV {cv_version})",
                     "markers_count": 0,
                     "markers": []
                 }
-            
-            # 檢測標記 - 嘗試不同的參數格式
-            try:
-                # 新版本格式
-                if parameters is not None:
-                    corners, ids, _ = aruco.detectMarkers(image, aruco_dict, parameters=parameters)
-                else:
-                    corners, ids, _ = aruco.detectMarkers(image, aruco_dict)
-            except Exception as e:
-                try:
-                    # 備用方法：只使用字典
-                    corners, ids, _ = aruco.detectMarkers(image, aruco_dict)
-                except Exception as e2:
-                    return {
-                        "success": False,
-                        "error": f"ArUco 檢測失敗: {str(e2)}",
-                        "markers_count": 0,
-                        "markers": []
-                    }
             
             result = {
                 "success": True,
@@ -217,7 +227,7 @@ class HybridRobotArmClient:
                 print(f"🎯 檢測到 {len(corners)} 個 ArUco 標記")
                 
                 for i, corner in enumerate(corners):
-                    marker_id = int(ids[i][0]) if ids is not None else i
+                    marker_id = int(ids[i][0]) if ids is not None and len(ids) > i else i
                     
                     # 計算標記中心
                     center = np.mean(corner[0], axis=0)
@@ -242,7 +252,7 @@ class HybridRobotArmClient:
                         
                         dist_coeffs = np.zeros((4, 1))
                         
-                        # 嘗試姿態估計
+                        # 嘗試姿態估計（如果可用）
                         if hasattr(aruco, 'estimatePoseSingleMarkers'):
                             rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(
                                 [corner], marker_size, camera_matrix, dist_coeffs
@@ -259,7 +269,7 @@ class HybridRobotArmClient:
                                 "z": float(rvecs[0][0][2])
                             }
                     except Exception as pose_error:
-                        print(f"⚠️ 姿態估計失敗 (標記 {marker_id}): {pose_error}")
+                        # 姿態估計失敗是正常的，不影響基本檢測
                         marker_info["position"] = None
                         marker_info["rotation"] = None
                     
@@ -372,9 +382,9 @@ class HybridRobotArmClient:
                 "offset_x": float(avg_offset_x),
                 "offset_y": float(avg_offset_y),
                 "offset_distance": float(offset_distance),
-                "common_markers": len(common_ids),
-                "needs_correction": offset_distance > correction_threshold,
-                "threshold": correction_threshold
+                "common_markers": int(len(common_ids)),
+                "needs_correction": bool(offset_distance > correction_threshold),
+                "threshold": float(correction_threshold)
             }
             
             print(f"📐 位置校正結果: 平均偏移=({avg_offset_x:.1f}, {avg_offset_y:.1f}), 距離={offset_distance:.1f}")
@@ -814,10 +824,13 @@ class WebButtonROICalibrator:
             
             # 檢查是否有參考位置
             reference_markers = None
+            has_reference = False
             if 'aruco_reference' in button_config:
                 reference_markers = button_config['aruco_reference'].get('markers', [])
+                has_reference = bool(reference_markers)
             
             correction_info = None
+            correction_needed = False
             if reference_markers and aruco_result["markers"]:
                 # 計算位置校正
                 correction_info = self.client.calculate_position_correction(
@@ -827,16 +840,17 @@ class WebButtonROICalibrator:
                 if correction_info:
                     print(f"📏 位置偏移: X={correction_info['offset_x']:.1f}, Y={correction_info['offset_y']:.1f}, 距離={correction_info['offset_distance']:.1f}")
                     
-                    if correction_info["needs_correction"]:
+                    correction_needed = bool(correction_info.get("needs_correction", False))
+                    if correction_needed:
                         print("⚠️  建議進行位置校正")
             
             return {
                 "aruco_detected": True,
-                "markers_count": markers_count,
+                "markers_count": int(markers_count),
                 "markers": aruco_result["markers"],
                 "correction_info": correction_info,
-                "correction_needed": correction_info["needs_correction"] if correction_info else False,
-                "has_reference": reference_markers is not None
+                "correction_needed": correction_needed,
+                "has_reference": has_reference
             }
             
         except Exception as e:
@@ -857,15 +871,25 @@ class WebButtonROICalibrator:
         Returns:
             儲存結果
         """
+        print(f"🔖 嘗試儲存 ArUco 參考位置: 按鈕={button_name}, 標記數量={len(aruco_markers) if aruco_markers else 0}")
+        
         if button_name not in self.buttons:
             return {"success": False, "error": f"按鈕 '{button_name}' 不存在"}
         
         button_config = self.buttons[button_name]
         
-        # 獲取當前角度
-        angles = self.client.get_angles()
-        if not angles:
-            return {"success": False, "error": "無法讀取當前手臂角度"}
+        # 獲取當前角度（允許失敗）
+        angles = None
+        try:
+            angles = self.client.get_angles()
+            if angles:
+                print(f"✅ 成功讀取手臂角度: {[round(a, 2) for a in angles]}")
+            else:
+                print("⚠️  無法讀取手臂角度，使用預設值")
+                angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        except Exception as e:
+            print(f"⚠️  讀取角度時發生異常: {e}，使用預設值")
+            angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         
         # 儲存 ArUco 參考資料
         if 'aruco_reference' not in button_config:
@@ -877,12 +901,16 @@ class WebButtonROICalibrator:
             'timestamp': time.time()
         }
         
+        print(f"💾 準備儲存配置，標記數量: {len(aruco_markers)}")
+        
         if self.save_config():
+            print(f"✅ ArUco 參考位置儲存成功")
             return {
                 "success": True,
                 "message": f"按鈕 '{button_name}' 的 ArUco 參考位置已儲存"
             }
         else:
+            print(f"❌ 配置檔案儲存失敗")
             return {"success": False, "error": "儲存配置失敗"}
 
 
@@ -1087,15 +1115,48 @@ def detect_aruco():
         # 獲取當前截圖
         image = global_client.capture_image(num_frames=3)
         if image is None:
-            return jsonify({"success": False, "error": "無法獲取截圖"})
+            return jsonify({
+                "success": False, 
+                "error": "無法獲取截圖",
+                "aruco_detected": False,
+                "markers_count": 0,
+                "correction_needed": False
+            })
         
         # 檢測 ArUco 標記
-        result = global_client.detect_aruco_markers(image)
-        return jsonify(result)
+        aruco_result = global_client.detect_aruco_markers(image)
+        
+        if not aruco_result["success"]:
+            return jsonify({
+                "success": False,
+                "error": aruco_result.get("error", "ArUco 檢測失敗"),
+                "aruco_detected": False,
+                "markers_count": 0,
+                "correction_needed": False
+            })
+        
+        # 轉換為前端期望的格式
+        response = {
+            "success": True,
+            "aruco_detected": True,
+            "markers_count": aruco_result.get("markers_count", 0),
+            "markers": aruco_result.get("markers", []),
+            "correction_needed": False,
+            "has_reference": False,
+            "correction_info": None
+        }
+        
+        return jsonify(response)
         
     except Exception as e:
         print(f"❌ ArUco 檢測失敗: {e}")
-        return jsonify({"success": False, "error": f"ArUco 檢測失敗: {str(e)}"})
+        return jsonify({
+            "success": False, 
+            "error": f"ArUco 檢測失敗: {str(e)}",
+            "aruco_detected": False,
+            "markers_count": 0,
+            "correction_needed": False
+        })
 
 
 @app.route('/api/aruco/calculate_correction', methods=['POST'])

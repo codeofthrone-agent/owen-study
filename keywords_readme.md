@@ -1,5 +1,87 @@
 # Robot Framework 關鍵字說明文件 - Gherkin 風格 (最新更新)
 
+## 🚀 重大更新 (2025-11-18) - v4.0.0 本機化視覺檢測系統
+
+### ✅ 機器手臂視覺檢測系統 - 本機化遷移完成
+
+**更新概覽:**
+- ✅ 影像判定從 Server 遷移至本機端（Client-side Vision Detection）
+- ✅ 新增 32+ BDD 中文關鍵字（Given-When-Then 結構）
+- ✅ 支援 3 個測試環境（Taipei LAB / Taoyuan LAB / RV Car）
+- ✅ 雙影像源支援（RTSP IP Camera / Socket USB Camera）
+- ✅ 8 種顏色檢測 + 11 級亮度檢測（0-100%，10% 步進）
+- ✅ 環境專屬 YAML 配置管理
+
+**核心架構變更:**
+```
+v3.0.0（舊版）: Client → Server（影像判定在 Jetson Nano）
+v4.0.0（新版）: Client（本機影像判定）+ Server（僅提供影像截取）
+```
+
+**影像源用途區分:**
+| 檢測目標 | 影像源類型 | 配置位置 | 用途 |
+|---------|----------|---------|------|
+| **面板按鈕 LED** | Socket | `buttons` → `type: "panel_light"` | 機器手臂 USB Camera |
+| **環境實體燈光** | RTSP | `environment_lights` → `camera_id` | IP Camera (level2) |
+
+**新增 BDD 關鍵字（32+）:**
+
+**Given 關鍵字（前置條件）- 4 個:**
+- `Given 測試環境設定為 "${environment}"` - 設定測試環境（taipei_lab / taoyuan_lab / rv_car）
+- `Given 面板類型設定為 "${panel_type}"` - 設定面板類型（3510a / 3611a / 3611c）
+- `Given TTS 引擎已設定為 "${engine}"` - 設定 TTS 引擎
+- `Given API 服務已在端點 "${endpoint}" 運行` - API 服務前置條件
+
+**When 關鍵字（執行動作）- 16 個:**
+- `When 用戶連接到機器手臂 "${host}" "${port}"` - 建立連接
+- `When 用戶中斷與機器手臂的連接` - 斷開連接
+- `When 用戶移動機器手臂到初始位置` - 歸位操作
+- `When 用戶按壓第 "${button_id}" 按鈕` - 按壓按鈕
+- `When 用戶長按第 "${button_id}" 按鈕 "${duration}" 秒` - 長按按鈕
+- `When 用戶檢測第 "${button_id}" 按鈕的燈光狀態` - 檢測面板按鈕 LED（Socket）
+- `When 用戶檢測多個按鈕的燈光狀態 "${button_ids}"` - 批次檢測
+- `When 用戶檢測實體燈光亮度 "${light_id}"` - 檢測環境燈光（RTSP）
+- `When 使用者發送 GET 請求到 "${url}"` - API GET 請求
+- `When 使用者發送 POST 請求到 "${url}" 帶資料 "${data}"` - API POST 請求
+- 以及其他 6 個操作關鍵字...
+
+**Then 關鍵字（驗證結果）- 12 個:**
+- `Then 機器手臂操作應該成功完成` - 驗證操作成功
+- `Then 按鈕燈光應該為 "${expected_color}" 色` - 驗證顏色
+- `Then 按鈕亮度應該為 "${expected_level}" %` - 驗證亮度
+- `Then 檢測信心度應該大於 ${min_confidence}` - 驗證信心度
+- `Then 實體燈光亮度應該為 "${expected_level}" %` - 驗證環境燈光
+- `Then 回應狀態碼應該為 "${status_code}"` - API 驗證
+- `Then 回應內容應該包含 "${expected_content}"` - 內容驗證
+- 以及其他 5 個驗證關鍵字...
+
+**技術細節:**
+- **LocalVisionAnalyzer**: 本機影像分析引擎（HSV 色彩空間 + 多幀平均）
+- **ImageSourceManager**: 雙影像源管理（RTSP / Socket）
+- **EnvironmentConfig**: 多環境配置管理系統
+- **ConfigLoader**: YAML 配置統一載入器
+
+**測試案例:**
+- `tests/robot_arm/basic_button_test.robot` - 基礎按鈕測試
+- `tests/robot_arm/multi_environment_test.robot` - 多環境測試
+- `tests/robot_arm/multi_color_detection_test.robot` - 多色彩檢測
+- `tests/robot_arm/brightness_level_test.robot` - 亮度檢測
+- `tests/robot_arm/button_press_feedback_test.robot` - 按壓反饋測試
+
+**相關文檔:**
+- `docs/vision_detection_local_spec.md` - 技術規格書
+- `docs/vision_detection_tdd_guide.md` - TDD 開發指南
+- `docs/vision_detection_quick_start_guide.md` - 快速上手指南
+- `docs/keyword_design_guidelines.md` - BDD 關鍵字設計規範
+
+**版本歷程:**
+- v1.0.0 (2025-11-05): 基礎 Socket 控制
+- v2.0.0 (2025-11-10): ArUco 標記檢測
+- v3.0.0 (2025-11-13): Server-side 視覺檢測
+- **v4.0.0 (2025-11-18): 本機化視覺檢測 ← 當前版本**
+
+---
+
 ## 🔧 最新維護更新 (2025-11-13)
 
 ### ✅ Mobile Keywords 英文關鍵字修復完成
@@ -1422,28 +1504,52 @@ brightness = float(np.mean(gray[center_region]))
 
 ---
 
-## 🤖 機器手臂控制關鍵字 (MyCobot 280 Socket 控制)
+## 🤖 機器手臂視覺檢測關鍵字 (v4.0.0 - BDD 風格)
+
+> ⚠️ **版本說明**: 本節為 v4.0.0（2025-11-18）最新版本，使用 BDD Given-When-Then 結構和本機化視覺檢測。
+>
+> 📌 **舊版本說明**: 如需查看 v1.0.0-v3.0.0 的舊式關鍵字（已棄用），請參考文件末尾的「歷史版本關鍵字」章節。
 
 ### 📋 模組資訊
 
 - **庫名稱**: `RobotArmKeywords`
-- **控制方式**: TCP/IP Socket (基於 pymycobot)
+- **版本**: v4.0.0（本機化視覺檢測）
+- **控制方式**: Socket 控制 + 本機視覺分析
 - **支援型號**: MyCobot 280
-- **總關鍵字數**: 23個 (3個連接管理 + 18個點擊按鈕 + 2個長按按鈕)
-- **配置文件**: `config/robot_arm/button_positions.yaml`
-- **測試案例**: `tests/robot_arm/basic_button_test.robot`
-- **設計文檔**: `docs/robot_arm_socket_control_design.md`
-- **建立日期**: 2025-11-05
+- **總關鍵字數**: 32+ 個 BDD 中文關鍵字
+- **關鍵字結構**: Given-When-Then（Gherkin 風格）
+- **配置系統**:
+  - 環境配置: `config/robot_arm/environment_config.py`
+  - 台北實驗室: `config/robot_arm/taipei_lab_buttons.yaml`
+  - 桃園實驗室: `config/robot_arm/taoyuan_lab_buttons.yaml`
+  - RV Car: `config/robot_arm/rv_car_buttons.yaml`
+- **測試案例**:
+  - 基礎測試: `tests/robot_arm/basic_button_test.robot`
+  - 多環境測試: `tests/robot_arm/multi_environment_test.robot`
+  - 按壓反饋: `tests/robot_arm/button_press_feedback_test.robot`
+  - 亮度檢測: `tests/robot_arm/brightness_level_test.robot`
+- **設計文檔**:
+  - 技術規格: `docs/vision_detection_local_spec.md`
+  - 關鍵字設計: `docs/keyword_design_guidelines.md`
+  - 快速上手: `docs/vision_detection_quick_start_guide.md`
+- **最後更新**: 2025-11-18
 
 ### 🎯 使用說明
 
-機器手臂控制系統用於自動化按壓實體面板按鈕，通過 Socket 連接控制 MyCobot 280 機器手臂。
+**v4.0.0 核心特性：**
+- ✅ **本機化視覺檢測** - 影像分析在本機端執行，Server 只提供影像截取
+- ✅ **雙影像源支援** - Socket（機器手臂 USB Camera）+ RTSP（IP Camera）
+- ✅ **多環境配置** - 支援 3 個測試環境（Taipei LAB / Taoyuan LAB / RV Car）
+- ✅ **8 種顏色檢測** - 藍/白/紅/綠/黃/橙/紫/關（HSV 色彩空間）
+- ✅ **11 級亮度檢測** - 0-100%，10% 步進
+- ✅ **BDD 中文關鍵字** - Given-When-Then 結構，完整中文命名
 
 **使用前提：**
 1. MyCobot 280 已開機並連接網路
-2. Raspberry Pi 上的 Server_280.py 正在運行
-3. 配置文件中的 IP 地址正確（預設 172.20.10.14:9000）
-4. 機器手臂已校準到正確的按鈕位置
+2. Jetson Nano 上的 `robot_arm_server.py` 正在運行
+3. 已選擇並設定測試環境（taipei_lab / taoyuan_lab / rv_car）
+4. 按鈕已校準 ROI（Region of Interest）
+5. 影像源已正確配置（Socket 或 RTSP）
 
 ### 📦 依賴安裝
 
@@ -1650,7 +1756,7 @@ ConnectionError: 無法連接到機器手臂 172.20.10.14:9000
 ```
 **解決方法**:
 1. 確認機器手臂電源已開啟
-2. 檢查 Raspberry Pi 上的 Server_280.py 是否運行
+2. 檢查 MyCobot 280 Jetson Nano 上的 Server_280.py 是否運行
 3. 驗證 IP 地址和端口配置
 4. 測試網路連接: `ping 172.20.10.14`
 
@@ -1661,7 +1767,7 @@ RuntimeError: 連接測試失敗: 無法讀取角度資料
 **解決方法**:
 1. 重啟 Server_280.py
 2. 重啟機器手臂
-3. 檢查 USB 連接（Raspberry Pi 端）
+3. 檢查 USB 連接（MyCobot 280 Jetson Nano 端）
 
 #### 移動超時
 ```

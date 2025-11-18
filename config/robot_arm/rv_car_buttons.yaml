@@ -1,0 +1,498 @@
+# RV Car 按鈕配置 (RV Car Button Configuration)
+# 版本: v4.1.0
+# 日期: 2025-11-18
+# 環境: rv_car (RV Car 測試環境)
+# 面板類型: 3611a/3611c (RV 控制面板)
+# 從 button_positions.yaml 遷移
+
+# 環境資訊
+environment:
+  name: "rv_car"
+  display_name: "RV Car 測試環境"
+  panel_type: "3611c"
+  description: "RV Car 控制面板，包含 7 個控制按鈕和 16 個觀測點"
+
+# 機器手臂連接配置
+connection:
+  socket:
+    host: "10.42.0.180"
+    port: 9000
+  serial:
+    port: "/dev/ttyTHS1"
+    baudrate: 1000000
+
+# 預設參數
+defaults:
+  speed: 100
+  press_duration: 1.0
+  lift_duration: 0.1
+  count: 1
+
+# 按鈕配置
+buttons:
+  # ========================================
+  # RV 控制按鈕 (RV Control Buttons)
+  # ========================================
+
+  hvac:
+    name: "HVAC 按鈕"
+    description: "空調控制"
+    type: "rv_control"
+    panel_section: "3611c"
+    down_angles: [-7.1, -68.8, -61.6, 23.9, 0, 0]
+    up_angles: [-6.8, -52.5, -61.3, 23.3, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 125
+        y: 74
+        width: 74
+        height: 71
+
+  water_pump:
+    name: "Water Pump 按鈕"
+    description: "水泵控制"
+    type: "rv_control"
+    panel_section: "3611c"
+    down_angles: [-8.5, -58, -80, 20, 0, 0]
+    up_angles: [-8.5, -25, -80, 20, 0, 0]
+    speed: 100
+    count: 4  # 特殊: 按壓 4 次
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 338
+        y: 85
+        width: 65
+        height: 61
+
+  water_heater:
+    name: "Water Heater 按鈕"
+    description: "熱水器控制"
+    type: "rv_control"
+    panel_section: "3611c"
+    down_angles: [-8.2, -62, -72.2, 20, 0, 0]
+    up_angles: [-8.2, -25, -72.2, 20, 0, 0]
+    speed: 100
+    count: 4  # 特殊: 按壓 4 次
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 272
+        y: 79
+        width: 66
+        height: 67
+
+  gas:
+    name: "Gas 按鈕"
+    description: "瓦斯控制"
+    type: "rv_control"
+    panel_section: "3611c"
+    down_angles: [-2.7, -60, -75.5, 17, 0, 0]
+    up_angles: [-2.7, -30, -75.5, 17, 0, 0]
+    speed: 100
+    count: 4  # 特殊: 按壓 4 次
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 273
+        y: 147
+        width: 66
+        height: 64
+
+  extend:
+    name: "Extend 按鈕"
+    description: "伸展控制"
+    type: "rv_control"
+    panel_section: "3611c"
+    down_angles: [-1.7, -69, -62, 19, 0, 0]
+    up_angles: [-1.8, -30, -61, 20, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.1
+    press_duration: 7.0  # 特殊: 7 秒長按
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 103
+        y: 145
+        width: 100
+        height: 66
+
+  retract:
+    name: "Retract 按鈕"
+    description: "縮回控制"
+    type: "rv_control"
+    panel_section: "3611c"
+    down_angles: [3.1, -68, -67, 22, 0, 0]
+    up_angles: [3.1, -35, -67, 22, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.1
+    press_duration: 7.0  # 特殊: 7 秒長按
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 107
+        y: 212
+        width: 96
+        height: 65
+
+  tanker_heater:
+    name: "Tanker Heater 按鈕"
+    description: "水箱加熱器"
+    type: "rv_control"
+    panel_section: "3611c"
+    down_angles: [-3, -58, -83, 20, 0, 0]
+    up_angles: [-3, -25, -83, 20, 0, 0]
+    speed: 100
+    count: 4  # 特殊: 按壓 4 次
+    lift_duration: 0.1
+    press_duration: 1.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 339
+        y: 147
+        width: 65
+        height: 65
+
+# ========================================
+# 觀測點 (Observation Positions)
+# 用於視覺檢測，不用於按壓
+# ========================================
+
+observation_positions:
+  camera_observe:
+    name: "相機觀測點"
+    description: "相機觀測位置"
+    type: "observe_position"
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0  # 不按壓
+    vision: null  # 無 ROI（純觀測角度）
+
+  fridge_observe:
+    name: "冰箱 按鈕"
+    description: "冰箱控制"
+    type: "observe_position"
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 402
+        y: 82
+        width: 68
+        height: 67
+
+  mic_observe:
+    name: "麥克風觀測點"
+    description: "麥克風觀測位置"
+    type: "observe_position"
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 497
+        y: 157
+        width: 27
+        height: 67
+
+  wifi_observe:
+    name: "WiFi 觀測點"
+    description: "WiFi 觀測位置"
+    type: "observe_position"
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 497
+        y: 262
+        width: 33
+        height: 69
+
+  awning1_observe:
+    name: "遮陽棚 1 觀測點"
+    description: "遮陽棚 1 觀測位置"
+    type: "observe_position"
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 181
+        y: 285
+        width: 21
+        height: 48
+
+  awning2_observe:
+    name: "遮陽棚 2 觀測點"
+    description: "遮陽棚 2 觀測位置"
+    type: "observe_position"
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 163
+        y: 284
+        width: 20
+        height: 49
+
+  slide1_observe:
+    name: "滑軌 1 觀測點"
+    description: "滑軌 1 觀測位置"
+    type: "observe_position"
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 147
+        y: 287
+        width: 18
+        height: 45
+
+  slide2_observe:
+    name: "滑軌 2 觀測點"
+    description: "滑軌 2 觀測位置"
+    type: "observe_position"
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 129
+        y: 286
+        width: 18
+        height: 48
+
+  slide3_observe:
+    name: "滑軌 3 觀測點"
+    description: "滑軌 3 觀測位置"
+    type: "observe_position"
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 110
+        y: 287
+        width: 19
+        height: 44
+
+  slide4_observe:
+    name: "滑軌 4 觀測點"
+    description: "滑軌 4 觀測位置"
+    type: "observe_position"
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 91
+        y: 287
+        width: 21
+        height: 48
+
+  slide5_observe:
+    name: "滑軌 5 觀測點"
+    description: "滑軌 5 觀測位置"
+    type: "observe_position"
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 72
+        y: 287
+        width: 20
+        height: 47
+
+  lockout_observe:
+    name: "鎖定觀測點"
+    description: "鎖定觀測位置"
+    type: "observe_position"
+    down_angles: [1, 11, -134, 35, 1, -45]
+    up_angles: [1, 11, -134, 35, 1, -45]
+    speed: 50
+    count: 1
+    lift_duration: 0.1
+    press_duration: 0.0
+    vision:
+      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
+      roi:
+        x: 50
+        y: 284
+        width: 23
+        height: 55
+
+# ========================================
+# 物理環境燈光配置 (Physical Environment Lights)
+# RV Car 專用燈光檢測
+# ========================================
+
+environment_lights:
+  # RV Car 車載燈光
+  headlight_left:
+    name: "左前燈"
+    type: "vehicle_light"
+    environment: "rv_car"
+    camera_id: null  # RV Car 使用 Socket 影像源
+    image_source: "socket"  # 使用機器手臂 Socket
+    camera_ip: "10.42.0.180"
+
+    # 亮度檢測 ROI (絕對座標)
+    roi:
+      x: 120
+      y: 80
+      width: 100
+      height: 100
+
+    brightness_levels:
+      off: [0, 50]
+      on: [51, 255]
+
+  headlight_right:
+    name: "右前燈"
+    type: "vehicle_light"
+    environment: "rv_car"
+    camera_id: null
+    image_source: "socket"
+    camera_ip: "10.42.0.180"
+
+    roi:
+      x: 520
+      y: 80
+      width: 100
+      height: 100
+
+    brightness_levels:
+      off: [0, 50]
+      on: [51, 255]
+
+  taillight:
+    name: "尾燈"
+    type: "vehicle_light"
+    environment: "rv_car"
+    camera_id: null
+    image_source: "socket"
+    camera_ip: "10.42.0.180"
+    description: "煞車燈"
+
+    roi:
+      x: 320
+      y: 400
+      width: 80
+      height: 80
+
+    brightness_levels:
+      off: [0, 50]
+      on: [51, 255]
+
+  interior_light:
+    name: "車內照明"
+    type: "vehicle_light"
+    environment: "rv_car"
+    camera_id: null
+    image_source: "socket"
+    camera_ip: "10.42.0.180"
+
+    roi:
+      x: 320
+      y: 240
+      width: 120
+      height: 120
+
+    brightness_levels:
+      off: [0, 50]
+      dim: [51, 100]
+      medium: [101, 180]
+      bright: [181, 255]
+
+# ========================================
+# 環境專屬 HSV 調整
+# ========================================
+hsv_adjustments: {}  # RV Car 使用預設 HSV 範圍
+
+# ========================================
+# 配置元數據
+# ========================================
+metadata:
+  version: "4.1.0"
+  created_date: "2025-11-18"
+  last_updated: "2025-11-18"
+  migrated_from: "config/robot_arm/button_positions.yaml"
+  total_buttons: 7
+  total_observation_positions: 16
+  total_environment_lights: 4
+  button_breakdown:
+    rv_control: 7
+    observe_position: 16
+  environment_light_breakdown:
+    vehicle_light: 4  # 車載燈光
+  notes:
+    - "按鈕檢測使用機器手臂 Socket 影像源"
+    - "環境燈光檢測也使用 Socket 影像源 (RV Car 無固定 IP Camera)"
+    - "所有 RV 控制按鈕使用標準觀測角度 [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]"
+    - "觀測點使用較慢速度 50 (vs 標準 100)"
+    - "特殊按壓行為: water_pump/water_heater/gas/tanker_heater = 4 次按壓"
+    - "特殊按壓行為: extend/retract = 7 秒長按"
+    - "觀測點 press_duration=0.0 表示不執行按壓動作"
+    - "車載燈光使用絕對座標 ROI，需根據實際 Camera 解析度調整"

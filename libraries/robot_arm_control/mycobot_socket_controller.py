@@ -115,9 +115,9 @@ class MyCobotSocketController:
                         f"連接測試失敗: 重試 {max_retries} 次後仍無法讀取有效的角度資料。\n"
                         f"   最後收到的資料: {test_angles}\n"
                         f"請重點檢查:\n"
-                        f"  1. Raspberry Pi 上的 Server_280.py 是否正常運行且未卡住\n"
-                        f"  2. 檢查 Raspberry Pi 與機器手臂之間的 USB/序列埠連接\n"
-                        f"  3. 嘗試重啟 Raspberry Pi 上的 Server_280.py 腳本\n"
+                        f"  1. MyCobot 280 Jetson Nano 上的 Server_280.py 是否正常運行且未卡住\n"
+                        f"  2. 檢查 MyCobot 280 Jetson Nano 與機器手臂之間的 USB/序列埠連接\n"
+                        f"  3. 嘗試重啟 MyCobot 280 Jetson Nano 上的 Server_280.py 腳本\n"
                         f"  4. 檢查網路連接是否正常"
                     )
 
@@ -134,7 +134,7 @@ class MyCobotSocketController:
                 f"錯誤: {e}\n"
                 f"請確認:\n"
                 f"  1. 機器手臂電源已開啟\n"
-                f"  2. Raspberry Pi Server_280.py 正在運行\n"
+                f"  2. MyCobot 280 Jetson Nano Server_280.py 正在運行\n"
                 f"  3. 網路連接正常\n"
                 f"  4. IP 和端口配置正確"
             ) from e

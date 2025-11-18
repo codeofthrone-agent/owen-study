@@ -1,0 +1,52 @@
+# 桃園實驗室按鈕配置 (Taoyuan Laboratory Button Configuration)
+# 版本: v4.1.0
+# 日期: 2025-11-18
+# 環境: taoyuan_lab (桃園實驗室)
+# 面板類型: 3510a, 3611a
+# 注意: 目前無實際按鈕配置，僅保留架構
+
+# 環境資訊
+environment:
+  name: "taoyuan_lab"
+  display_name: "桃園實驗室"
+  panel_type: "3611a"
+  description: "桃園實驗室控制面板（待配置）"
+
+# 機器手臂連接配置
+connection:
+  socket:
+    host: "192.168.1.100"
+    port: 9000
+  serial:
+    port: "/dev/ttyTHS1"
+    baudrate: 1000000
+
+# 預設參數
+defaults:
+  speed: 100
+  press_duration: 1.0
+  lift_duration: 0.1
+  count: 1
+
+# 按鈕配置（目前為空，待實際部署時填入）
+buttons: {}
+
+# 環境燈光配置（目前為空）
+environment_lights: {}
+
+# 環境專屬 HSV 調整
+hsv_adjustments: {}
+
+# 配置元數據
+metadata:
+  version: "4.1.0"
+  created_date: "2025-11-18"
+  last_updated: "2025-11-18"
+  total_buttons: 0
+  total_environment_lights: 0
+  button_breakdown: {}
+  environment_light_breakdown: {}
+  notes:
+    - "桃園實驗室目前無實際按鈕配置"
+    - "使用 Socket 影像源 (192.168.1.100:9000)"
+    - "待實際部署時補充按鈕與燈光配置"

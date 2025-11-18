@@ -7,8 +7,9 @@ import time
 import sys
 import socket
 import json
+import yaml
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 from robot.api import logger
 from robot.api.deco import keyword
 
@@ -19,13 +20,23 @@ try:
     # 方式 1: 絕對匯入（作為模組）
     from libraries.robot_arm_control.button_config_loader import ButtonConfigLoader
     from libraries.robot_arm_control.mycobot_socket_controller import MyCobotSocketController
+    from libraries.robot_arm_control.local_vision_analyzer import LocalVisionAnalyzer
+    from libraries.robot_arm_control.image_source_manager import ImageSourceManager
+    from config.robot_arm.environment_config import EnvironmentConfig
 except ImportError:
     # 方式 2: 將當前目錄加入 sys.path，然後直接匯入
     current_dir = Path(__file__).parent
     if str(current_dir) not in sys.path:
         sys.path.insert(0, str(current_dir))
+    # 加入專案根目錄到 sys.path
+    project_root = current_dir.parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
     from button_config_loader import ButtonConfigLoader
     from mycobot_socket_controller import MyCobotSocketController
+    from local_vision_analyzer import LocalVisionAnalyzer
+    from image_source_manager import ImageSourceManager
+    from config.robot_arm.environment_config import EnvironmentConfig
 
 
 class RobotArmKeywords:
@@ -68,7 +79,7 @@ class RobotArmKeywords:
     """
 
     ROBOT_LIBRARY_SCOPE = 'GLOBAL'
-    ROBOT_LIBRARY_VERSION = '3.0.0'  # v3.0.0: 新增視覺檢測關鍵字
+    ROBOT_LIBRARY_VERSION = '4.0.0'  # v4.0.0: 新增環境管理、多色彩檢測、亮度檢測
 
     def __init__(self, config_path: Optional[str] = None):
         """
@@ -82,6 +93,16 @@ class RobotArmKeywords:
         self._last_operation_success = False  # 記錄最後一次操作是否成功
         self._last_detection_result = None  # 記錄最後一次視覺檢測結果
         self._last_batch_detection_results = None  # 記錄批次檢測結果
+
+        # v4.0.0 新增：環境管理
+        self.current_environment: Optional[str] = None  # 當前環境名稱
+        self.env_config: Optional[Dict[str, Any]] = None  # 當前環境配置
+        self.image_source_config: Optional[Dict[str, Any]] = None  # 影像源配置
+        self.current_panel_type: Optional[str] = None  # 當前面板類型
+        self.panel_button_config: Optional[Dict[str, Any]] = None  # 面板按鈕配置
+        self.image_source_manager: Optional[ImageSourceManager] = None  # 影像源管理器
+        self.local_vision: Optional[LocalVisionAnalyzer] = None  # 本機視覺分析器
+
         logger.info(f"RobotArmKeywords 初始化完成 (v{self.ROBOT_LIBRARY_VERSION})")
 
     # ==================== 連接管理關鍵字 ====================
@@ -178,7 +199,7 @@ class RobotArmKeywords:
         self._ensure_connected()
 
         # 獲取按鈕配置
-        config = self.config_loader.get_button_config(button_id)
+        config = self._get_button_config(button_id)
         button_name = config.get('name', button_id)
 
         logger.info(f"開始按壓按鈕: {button_name} ({button_id})")
@@ -207,6 +228,9 @@ class RobotArmKeywords:
         time.sleep(config['lift_duration'])
 
         logger.info(f"✅ 完成按壓按鈕: {button_name}")
+        
+        # 標記操作成功
+        self._last_operation_success = True
 
 
     # ==================== BDD Given 關鍵字 ====================
@@ -321,6 +345,154 @@ class RobotArmKeywords:
             self.go_to_home_position()
             self._last_operation_success = True
             return True
+
+    # ==================== BDD Given 關鍵字 - 環境管理 (v4.0.0) ====================
+
+    @keyword('Given 測試環境設定為 "${environment}"')
+    def given_test_environment_is(self, environment: str):
+        """Given: 測試環境設定為指定環境
+
+        設定測試環境，並智能地初始化視覺分析模組。
+        如果機器手臂已連接，則使用共享 Socket；否則，使用獨立連接。
+
+        Args:
+            environment: 環境名稱 ("taipei_lab" | "taoyuan_lab" | "rv_car")
+
+        Examples:
+            | Given | 測試環境設定為 "taipei_lab" |
+            | Given | 測試環境設定為 "taoyuan_lab" |
+
+        Raises:
+            ValueError: 未知環境名稱
+        """
+        logger.info(f"正在設定測試環境: {environment}")
+
+        # 取得環境配置
+        self.env_config = EnvironmentConfig.get_environment(environment)
+        self.current_environment = environment
+
+        # 智能初始化視覺模組
+        shared_socket = None
+        if self.controller and self.controller.is_connected():
+            try:
+                shared_socket = self.controller.socket
+                logger.info("檢測到已存在的控制器連接，視覺模組將使用共享 Socket。")
+            except Exception as e:
+                logger.warning(f"無法從控制器取得共享 Socket: {e}。視覺模組將使用獨立連接。")
+
+        # 初始化影像源管理器 (可能帶有共享 socket)
+        self.image_source_manager = ImageSourceManager(shared_socket=shared_socket)
+
+        # 取得影像源配置並設定
+        self.image_source_config = EnvironmentConfig.get_image_source_config(environment)
+        self.image_source_manager.set_image_source(
+            self.image_source_config["type"],
+            self.image_source_config
+        )
+
+        # 初始化本機視覺分析器
+        self.local_vision = LocalVisionAnalyzer(self.image_source_manager)
+
+        logger.info(f"✅ 測試環境已切換至: {self.env_config['name']}")
+        logger.info(f"   影像源: {self.image_source_config['type']}")
+        if shared_socket:
+            logger.info("   視覺模組狀態: 使用共享 Socket")
+        else:
+            logger.info("   視覺模組狀態: 將建立獨立連接")
+
+    @keyword('Given 面板類型設定為 "${panel_type}"')
+    def given_panel_type_is(self, panel_type: str):
+        """Given: 面板類型設定為指定型號
+
+        設定面板類型並載入對應的按鈕配置。
+
+        Args:
+            panel_type: 面板型號 ("3510a" | "3611a" | "3611c")
+
+        Examples:
+            | Given | 面板類型設定為 "3611a" |
+            | Given | 面板類型設定為 "3611c" |
+
+        Raises:
+            RuntimeError: 尚未設定測試環境
+            ValueError: 當前環境不支援該面板類型
+        """
+        if self.current_environment is None or self.env_config is None:
+            raise RuntimeError(
+                "尚未設定測試環境，請先使用 'Given 測試環境設定為 \"${environment}\"' 關鍵字"
+            )
+
+        # 驗證面板類型
+        if panel_type not in self.env_config["panel_types"]:
+            raise ValueError(
+                f"當前環境 '{self.current_environment}' 不支援面板類型: {panel_type}\n"
+                f"支援的面板: {', '.join(self.env_config['panel_types'])}"
+            )
+
+        self.current_panel_type = panel_type
+
+        # 載入對應的按鈕配置
+        config_path = self.env_config["button_config_path"]
+        self.panel_button_config = self._load_panel_button_config(config_path, panel_type)
+
+        logger.info(f"✅ 面板類型已設定為: {panel_type}")
+        logger.info(f"   載入配置: {config_path}")
+        logger.info(f"   按鈕數量: {len(self.panel_button_config)}")
+
+    def _load_panel_button_config(self, config_path: str, panel_type: str) -> Dict[str, Any]:
+        """載入面板按鈕配置（從 YAML 檔案）
+
+        Args:
+            config_path: YAML 配置檔案路徑
+            panel_type: 面板類型
+
+        Returns:
+            dict: 按鈕配置字典
+
+        Raises:
+            FileNotFoundError: 配置檔案不存在
+            ValueError: 面板類型不存在於配置中
+        """
+        # 支援相對路徑和絕對路徑
+        config_file = Path(config_path)
+        if not config_file.is_absolute():
+            # 相對於專案根目錄
+            project_root = Path(__file__).parent.parent.parent
+            config_file = project_root / config_path
+
+        if not config_file.exists():
+            raise FileNotFoundError(f"配置檔案不存在: {config_file}")
+
+        # 載入 YAML 配置
+        with open(config_file, 'r', encoding='utf-8') as f:
+            config_data = yaml.safe_load(f)
+
+        # 取得面板配置
+        # 檢查新格式（有 panels 結構）還是舊格式（直接的 buttons）
+        if "panels" in config_data and panel_type in config_data["panels"]:
+            # 新格式：支援多面板
+            panel_config = config_data["panels"][panel_type]
+            result = {
+                "buttons": panel_config.get("buttons", {}),
+                "physical_lights": config_data.get("physical_lights", {})
+            }
+        elif "buttons" in config_data:
+            # 舊格式（現有格式）：單一面板配置
+            # 驗證面板類型是否匹配
+            if "environment" in config_data and config_data["environment"].get("panel_type") != panel_type:
+                raise ValueError(
+                    f"配置檔案的面板類型 '{config_data['environment'].get('panel_type')}' "
+                    f"與請求的面板類型 '{panel_type}' 不匹配"
+                )
+            
+            result = {
+                "buttons": config_data.get("buttons", {}),
+                "environment_lights": config_data.get("environment_lights", {})
+            }
+        else:
+            raise ValueError(f"配置檔案中找不到面板類型或按鈕配置")
+
+        return result
 
     # ==================== BDD When 關鍵字 ====================
 
@@ -490,6 +662,249 @@ class RobotArmKeywords:
             self._last_operation_success = False
             raise
 
+    # ==================== BDD When 關鍵字 - 多色彩檢測 (v4.0.0) ====================
+
+    @keyword('When 用戶檢測面板按鈕 "${button_id}" 的顏色')
+    def when_user_detects_panel_button_color(self, button_id: str, save_debug_image: bool = False) -> Dict[str, Any]:
+        """When: 用戶檢測面板按鈕的顏色
+
+        執行動作：檢測指定面板按鈕的 LED 顏色（本機視覺檢測）
+
+        支援顏色: 藍/白/紅/綠/黃/橙/紫/關閉
+
+        Args:
+            button_id: 按鈕 ID（定義在環境配置中，如 "light1", "bluetooth"）
+
+        Returns:
+            dict: 檢測結果字典，包含:
+                - color (str): 檢測到的顏色
+                - brightness (int): 亮度級別 (0-100)
+                - confidence (float): 檢測信心度 (0.0-1.0)
+                - hsv_mean (tuple): HSV 平均值
+                - brightness_value (float): 原始亮度值 (0-255)
+                - light_state (str): 燈光狀態 ("on" | "off")
+
+        Examples:
+            | When | 用戶檢測面板按鈕 "light1" 的顏色 |
+            | When | 用戶檢測面板按鈕 "bluetooth" 的顏色 |
+
+        Raises:
+            RuntimeError: 尚未設定測試環境或面板類型
+            ValueError: 按鈕不存在
+            RuntimeError: 檢測失敗
+
+        Note:
+            檢測結果會儲存在 self._last_detection_result，供 Then 關鍵字驗證使用
+        """
+        # 驗證前置條件
+        if self.current_environment is None or self.current_panel_type is None:
+            raise RuntimeError(
+                "尚未設定測試環境或面板類型，請先使用:\n"
+                "  'Given 測試環境設定為 \"${environment}\"'\n"
+                "  'Given 面板類型設定為 \"${panel_type}\"'"
+            )
+
+        # 取得按鈕配置
+        button_config = self._get_button_config(button_id)
+
+        logger.info(f"📸 正在檢測面板按鈕 '{button_id}' 的顏色...")
+
+        # 移動機器手臂到觀測角度（如果需要且已連接機器手臂）
+        if "vision" in button_config and "observe_angles" in button_config["vision"] and self.controller is not None:
+            try:
+                observe_angles = button_config["vision"]["observe_angles"]
+                logger.debug(f"移動到觀測角度: {observe_angles}")
+                self.controller.send_angles(observe_angles, 30)
+                time.sleep(2)  # 等待穩定
+            except Exception as e:
+                logger.warning(f"移動到觀測角度失敗: {e}，繼續使用當前角度檢測")
+
+        # 準備 ROI 配置（單一按鈕）
+        if "vision" in button_config and "roi" in button_config["vision"]:
+            roi_config = {button_id: button_config["vision"]["roi"]}
+        else:
+            raise ValueError(f"按鈕 '{button_id}' 沒有配置 ROI 視覺檢測資訊")
+
+        # 本機執行視覺檢測
+        try:
+            results = self.local_vision.detect_panel_light(
+                panel_type=self.current_panel_type,
+                roi_config=roi_config,
+                image_source_config=self.image_source_manager.get_current_source()["config"],
+                num_frames=5,
+                warmup_frames=20,
+                save_debug_images=save_debug_image  # 根據參數決定是否儲存除錯影像
+            )
+
+            # 取得單一按鈕結果
+            result = results[button_id]
+
+            # 儲存結果供 Then 關鍵字驗證
+            self._last_detection_result = result
+
+            logger.info(
+                f"✅ 檢測完成: 顏色={result['color']}, "
+                f"亮度={result['brightness']}%, "
+                f"信心度={result['confidence']:.2f}, "
+                f"狀態={result['light_state']}"
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(f"❌ 視覺檢測失敗: {e}")
+            raise RuntimeError(f"無法檢測按鈕 '{button_id}' 的顏色: {e}")
+
+    def _get_button_config(self, button_id: str) -> Dict[str, Any]:
+        """取得按鈕配置（輔助方法）
+
+        Args:
+            button_id: 按鈕 ID
+
+        Returns:
+            dict: 按鈕配置字典
+
+        Raises:
+            ValueError: 按鈕不存在
+        """
+        if self.panel_button_config is None:
+            raise RuntimeError("尚未載入面板按鈕配置")
+
+        buttons = self.panel_button_config.get("buttons", {})
+
+        if button_id not in buttons:
+            available_buttons = ", ".join(buttons.keys())
+            raise ValueError(
+                f"按鈕 '{button_id}' 不存在於當前面板 '{self.current_panel_type}'。\n"
+                f"可用按鈕: {available_buttons}"
+            )
+
+        return buttons[button_id]
+
+    @keyword('When 用戶檢測實體燈光亮度 "${light_id}"')
+    def when_user_detects_physical_light_brightness(self, light_id: str, save_debug_image: bool = False) -> Dict[str, Any]:
+        """When: 用戶檢測實體燈光亮度
+
+        執行動作：檢測實體燈光的亮度級別（本機視覺檢測）
+
+        支援 11 級亮度: 0%, 10%, 20%, ..., 100%
+
+        Args:
+            light_id: 燈光 ID（定義在環境配置中，如 "ceiling_light_1", "desk_lamp"）
+
+        Returns:
+            dict: 檢測結果字典，包含:
+                - light_state (str): 燈光狀態 ("on" | "off")
+                - brightness_level (int): 亮度級別 (0-100)
+                - brightness_value (float): 原始亮度值 (0-255)
+                - confidence (float): 檢測信心度 (0.0-1.0)
+
+        Examples:
+            | When | 用戶檢測實體燈光亮度 "ceiling_light_1" |
+            | When | 用戶檢測實體燈光亮度 "desk_lamp" |
+
+        Raises:
+            RuntimeError: 尚未設定測試環境或面板類型
+            ValueError: 燈光不存在
+            RuntimeError: 檢測失敗
+
+        Note:
+            檢測結果會儲存在 self._last_detection_result，供 Then 關鍵字驗證使用
+        """
+        # 驗證前置條件
+        if self.current_environment is None:
+            raise RuntimeError(
+                "尚未設定測試環境，請先使用 'Given 測試環境設定為 \"${environment}\"'"
+            )
+
+        # 取得燈光配置
+        light_config = self._get_light_config(light_id)
+
+        logger.info(f"💡 正在檢測實體燈光 '{light_id}' 的亮度...")
+
+        # 移動機器手臂到觀測角度（如果需要且已連接機器手臂）
+        if "observe_angles" in light_config and self.controller is not None:
+            try:
+                observe_angles = light_config["observe_angles"]
+                # 檢查是否需要移動（觀測角度不是 [0,0,0,0,0,0]）
+                if any(angle != 0 for angle in observe_angles):
+                    logger.debug(f"移動到觀測角度: {observe_angles}")
+                    self.controller.send_angles(observe_angles, 30)
+                    time.sleep(2)  # 等待穩定
+            except Exception as e:
+                logger.warning(f"移動到觀測角度失敗: {e}，繼續使用當前角度檢測")
+
+        # 本機執行亮度檢測
+        try:
+            # 根據燈光配置中的 camera_id 取得對應的影像源配置
+            camera_id = light_config.get("camera_id")
+            if camera_id:
+                # 使用指定的 RTSP Camera
+                from config.robot_arm.environment_config import EnvironmentConfig
+                image_source_config = EnvironmentConfig.get_image_source_config(
+                    self.current_environment,
+                    camera_id=camera_id
+                )
+                logger.debug(f"使用 RTSP Camera: {camera_id} ({image_source_config.get('url', 'N/A')})")
+            else:
+                # 使用當前影像源（Socket）
+                image_source_config = self.image_source_manager.get_current_source()["config"]
+                logger.debug(f"使用當前影像源: {image_source_config['type']}")
+
+            result = self.local_vision.detect_physical_light_brightness(
+                roi_config=light_config["roi"],
+                image_source_config=image_source_config,
+                num_frames=5,
+                warmup_frames=20,
+                save_debug_images=save_debug_image  # 根據參數決定是否儲存除錯影像
+            )
+
+            # 儲存結果供 Then 關鍵字驗證
+            self._last_detection_result = result
+
+            logger.info(
+                f"✅ 檢測完成: 亮度={result['brightness_level']}%, "
+                f"原始值={result['brightness_value']:.1f}, "
+                f"信心度={result['confidence']:.2f}, "
+                f"狀態={result['light_state']}"
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(f"❌ 亮度檢測失敗: {e}")
+            raise RuntimeError(f"無法檢測燈光 '{light_id}' 的亮度: {e}")
+
+    def _get_light_config(self, light_id: str) -> Dict[str, Any]:
+        """取得燈光配置（輔助方法）
+
+        Args:
+            light_id: 燈光 ID
+
+        Returns:
+            dict: 燈光配置字典
+
+        Raises:
+            ValueError: 燈光不存在
+        """
+        if self.current_environment is None:
+            raise RuntimeError("尚未設定測試環境")
+
+        # 直接從已載入的面板配置中取得環境燈光
+        if self.panel_button_config is None:
+            raise RuntimeError("尚未載入面板按鈕配置")
+
+        environment_lights = self.panel_button_config.get("environment_lights", {})
+
+        if light_id not in environment_lights:
+            available_lights = ", ".join(environment_lights.keys())
+            raise ValueError(
+                f"燈光 '{light_id}' 不存在於當前環境 '{self.current_environment}'。\n"
+                f"可用燈光: {available_lights}"
+            )
+
+        return environment_lights[light_id]
+
     # ==================== BDD Then 關鍵字 ====================
 
     @keyword("Then 機器手臂操作應該成功完成")
@@ -556,6 +971,107 @@ class RobotArmKeywords:
 
         logger.info(f"✓ 控制面板預期狀態: {expected_state}")
         return True
+
+    # ==================== BDD Then 關鍵字 - 多色彩檢測 (v4.0.0) ====================
+
+    @keyword('Then 面板按鈕顏色應該為 "${expected_color}"')
+    def then_panel_button_color_should_be(self, expected_color: str):
+        """Then: 面板按鈕顏色應該為指定顏色
+
+        預期結果：驗證面板按鈕的 LED 顏色是否符合預期
+
+        Args:
+            expected_color: 預期顏色 ("blue", "white", "red", "green", "yellow", "orange", "purple", "off")
+
+        Examples:
+            | Then | 面板按鈕顏色應該為 "blue" |
+            | Then | 面板按鈕顏色應該為 "white" |
+            | Then | 面板按鈕顏色應該為 "off" |
+
+        Raises:
+            RuntimeError: 尚未執行檢測
+            AssertionError: 顏色不符預期
+
+        Note:
+            此關鍵字會驗證最後一次檢測的結果（透過 When 用戶檢測... 儲存）
+        """
+        if self._last_detection_result is None:
+            raise RuntimeError(
+                "尚未執行檢測，請先使用 'When 用戶檢測面板按鈕 \"${button_id}\" 的顏色' 關鍵字"
+            )
+
+        actual_color = self._last_detection_result.get("color")
+        confidence = self._last_detection_result.get("confidence", 0.0)
+        brightness = self._last_detection_result.get("brightness", 0)
+        hsv_mean = self._last_detection_result.get("hsv_mean")
+
+        if actual_color != expected_color:
+            raise AssertionError(
+                f"❌ 面板按鈕顏色不符預期！\n"
+                f"   預期顏色: {expected_color}\n"
+                f"   實際顏色: {actual_color}\n"
+                f"   檢測信心度: {confidence:.2f}\n"
+                f"   亮度級別: {brightness}%\n"
+                f"   HSV 平均值: {hsv_mean}"
+            )
+
+        logger.info(
+            f"✅ 面板按鈕顏色驗證通過: {actual_color} "
+            f"(信心度: {confidence:.2f}, 亮度: {brightness}%)"
+        )
+
+    @keyword('Then 實體燈光亮度應該為 "${expected_level}" %')
+    def then_physical_light_brightness_should_be(self, expected_level: str):
+        """Then: 實體燈光亮度應該為指定級別
+
+        預期結果：驗證實體燈光亮度是否符合預期（允許 ±10% 誤差）
+
+        Args:
+            expected_level: 預期亮度百分比 (0-100)
+
+        Examples:
+            | Then | 實體燈光亮度應該為 "0" % |
+            | Then | 實體燈光亮度應該為 "50" % |
+            | Then | 實體燈光亮度應該為 "100" % |
+
+        Raises:
+            RuntimeError: 尚未執行檢測
+            AssertionError: 亮度不符預期（誤差超過 ±10%）
+
+        Note:
+            此關鍵字會驗證最後一次檢測的結果（透過 When 用戶檢測... 儲存）
+            允許 ±10% 的誤差範圍（例如預期 50%，實際 45%-55% 都算通過）
+        """
+        if self._last_detection_result is None:
+            raise RuntimeError(
+                "尚未執行檢測，請先使用 'When 用戶檢測實體燈光亮度 \"${light_id}\"' 關鍵字"
+            )
+
+        expected_level = int(expected_level)
+        actual_level = self._last_detection_result.get("brightness_level")
+        confidence = self._last_detection_result.get("confidence", 0.0)
+        brightness_value = self._last_detection_result.get("brightness_value", 0)
+        light_state = self._last_detection_result.get("light_state", "unknown")
+
+        # 允許 ±10% 誤差
+        error_margin = 10
+        error = abs(actual_level - expected_level)
+
+        if error > error_margin:
+            raise AssertionError(
+                f"❌ 實體燈光亮度不符預期！\n"
+                f"   預期亮度: {expected_level}%\n"
+                f"   實際亮度: {actual_level}%\n"
+                f"   誤差: {error}% (允許 ±{error_margin}%)\n"
+                f"   原始亮度值: {brightness_value:.1f}/255\n"
+                f"   檢測信心度: {confidence:.2f}\n"
+                f"   燈光狀態: {light_state}"
+            )
+
+        logger.info(
+            f"✅ 實體燈光亮度驗證通過: {actual_level}% "
+            f"(預期: {expected_level}%, 誤差: {error}%, 信心度: {confidence:.2f})"
+        )
 
     # ==================== BDD And 關鍵字 ====================
 
@@ -733,62 +1249,73 @@ class RobotArmKeywords:
             raise RuntimeError(f"視覺命令執行失敗: {e}")
 
     @keyword('When 用戶檢測第 "${button_id}" 按鈕的燈光狀態')
-    def when_user_detects_button_light_state(self, button_id: str) -> dict:
+    def when_user_detects_button_light_state(self, button_id: str, save_debug_image: bool = False) -> dict:
         """
-        When: 用戶檢測指定按鈕的燈光狀態（使用視覺檢測）
+        When: 用戶檢測指定按鈕的燈光狀態（本機化視覺檢測）
 
-        執行動作：透過機器手臂末端攝影機檢測按鈕的 LED 狀態
+        執行動作：透過本機 LocalVisionAnalyzer 檢測按鈕的 LED 狀態
 
         Args:
             button_id: 按鈕 ID（例如：light1, bluetooth, door_lock）
+            save_debug_image: 是否儲存除錯影像（預設：False）
 
         Returns:
             dict: 檢測結果
                 {
-                    "light": "on" | "off",
-                    "color": "blue" | "white" | "off",
-                    "brightness": 0-255,
-                    "confidence": 0.0-1.0
+                    "color": "blue" | "white" | "red" | "green" | "yellow" | "orange" | "purple" | "off" | "unknown",
+                    "brightness_level": 0-100,
+                    "confidence": 0.0-1.0,
+                    "raw_brightness": 0-255
                 }
 
         Examples:
             | When | 用戶檢測第 "light1" 按鈕的燈光狀態 |
-            | When | 用戶檢測第 "bluetooth" 按鈕的燈光狀態 |
+            | When | 用戶檢測第 "light1" 按鈕的燈光狀態 | save_debug_image=True |
 
         Raises:
-            RuntimeError: 如果機器手臂未連接或檢測失敗
-            ValueError: 如果按鈕 ID 不存在或未校準
+            RuntimeError: 如果檢測失敗
+            ValueError: 如果環境未設定或按鈕不存在
         """
         try:
-            # 獲取按鈕配置
-            button_config = self.config_loader.get_button_config(button_id)
+            # 確保環境已設定
+            if not self.current_environment:
+                raise ValueError("尚未設定測試環境，請先執行 'Given 當前測試環境為'")
 
-            # 檢查是否有視覺配置
-            if 'vision' not in button_config:
-                raise ValueError(f"按鈕 '{button_id}' 未校準視覺檢測 ROI。請先執行 calibrate_button_roi.py")
+            # 確保本機視覺分析器已初始化
+            if not self.local_vision:
+                raise RuntimeError("本機視覺分析器未初始化")
 
-            vision_config = button_config['vision']
+            # 從環境配置載入按鈕 ROI
+            try:
+                from config.robot_arm.config_loader import ConfigLoader
+            except ImportError:
+                # 回退到相對匯入
+                import sys
+                from pathlib import Path
+                config_dir = Path(__file__).parent.parent.parent / 'config' / 'robot_arm'
+                if str(config_dir) not in sys.path:
+                    sys.path.insert(0, str(config_dir.parent))
+                from robot_arm.config_loader import ConfigLoader
 
-            # 準備檢測命令
-            command = {
-                "command": "detect_button",
-                "roi": vision_config['roi'],
-                "observe_angles": vision_config.get('observe_angles'),
-                "num_frames": 5
-            }
+            config_loader = ConfigLoader(self.current_environment)
+            button_config = config_loader.get_button(button_id)
 
-            logger.info(f"開始檢測按鈕: {button_config.get('name', button_id)}")
+            if not button_config or 'vision' not in button_config:
+                raise ValueError(f"按鈕 '{button_id}' 未校準視覺檢測 ROI")
 
-            # 發送命令並接收結果
-            result = self._send_vision_command(command)
+            roi_config = button_config['vision']['roi']
 
-            if result.get("status") != "success":
-                raise RuntimeError(f"檢測失敗: {result.get('message')}")
+            # 檢測按鈕狀態（使用 LocalVisionAnalyzer.detect_single_button）
+            detection_result = self.local_vision.detect_single_button(
+                button_id=button_id,
+                roi_config=roi_config,
+                image_source_config=self.image_source_config,
+                save_debug_image=save_debug_image
+            )
 
-            detection_result = result['result']
-            logger.info(f"✓ 檢測完成 - 燈光: {detection_result['light']}, "
+            logger.info(f"✓ 檢測完成 - "
                        f"顏色: {detection_result['color']}, "
-                       f"亮度: {detection_result['brightness']}, "
+                       f"亮度: {detection_result['brightness_level']}%, "
                        f"信心度: {detection_result['confidence']:.2f}")
 
             # 儲存檢測結果供後續驗證使用
@@ -802,109 +1329,10 @@ class RobotArmKeywords:
             self._last_operation_success = False
             raise
 
-    @keyword('When 用戶檢測第 "${button_id}" 按鈕的燈光狀態並儲存ROI圖像')
-    def when_user_detects_button_light_state_and_save_roi(self, button_id: str) -> dict:
-        """
-        When: 用戶檢測指定按鈕的燈光狀態，並儲存 ROI 圖像以供除錯
-
-        執行動作：與「用戶檢測第...」相同，但會額外儲存 ROI 圖像
-
-        Args:
-            button_id: 按鈕 ID
-
-        Returns:
-            dict: 檢測結果
-
-        Examples:
-            | When | 用戶檢測第 "light1" 按鈕的燈光狀態並儲存ROI圖像 |
-
-        Raises:
-            RuntimeError: 如果檢測失敗
-        """
-        try:
-            button_config = self.config_loader.get_button_config(button_id)
-            if 'vision' not in button_config:
-                raise ValueError(f"按鈕 '{button_id}' 未校準視覺檢測 ROI。")
-
-            vision_config = button_config['vision']
-
-            command = {
-                "command": "detect_button",
-                "roi": vision_config['roi'],
-                "observe_angles": vision_config.get('observe_angles'),
-                "num_frames": 5,
-                "save_roi": True,
-                "button_name": button_id
-            }
-
-            logger.info(f"開始檢測按鈕 (儲存ROI): {button_config.get('name', button_id)}")
-            result = self._send_vision_command(command)
-
-            if result.get("status") != "success":
-                raise RuntimeError(f"檢測失敗: {result.get('message')}")
-
-            detection_result = result['result']
-            logger.info(f"✓ 檢測完成 - 燈光: {detection_result['light']}, "
-                       f"顏色: {detection_result['color']}")
-
-            self._last_detection_result = detection_result
-            self._last_operation_success = True
-            return detection_result
-
-        except Exception as e:
-            logger.error(f"✗ 按鈕檢測 (儲存ROI) 失敗: {e}")
-            self._last_operation_success = False
-            raise
-
-
-    @keyword('When 用戶檢測第 "${button_id}" 按鈕的燈光狀態並儲存完整圖像')
-    def when_user_detects_button_light_state_and_save_full_frame(self, button_id: str) -> dict:
-        """
-        When: 用戶檢測按鈕狀態，並儲存 ROI 和完整的除錯圖像
-
-        執行動作：最強大的除錯模式，儲存 ROI 和標記了 ROI 的完整畫面
-
-        Args:
-            button_id: 按鈕 ID
-
-        Returns:
-            dict: 檢測結果
-        """
-        try:
-            button_config = self.config_loader.get_button_config(button_id)
-            if 'vision' not in button_config:
-                raise ValueError(f"按鈕 '{button_id}' 未校準視覺檢測 ROI。")
-
-            vision_config = button_config['vision']
-
-            command = {
-                "command": "detect_button",
-                "roi": vision_config['roi'],
-                "observe_angles": vision_config.get('observe_angles'),
-                "num_frames": 5,
-                "save_roi": True,
-                "save_full_frame": True,
-                "button_name": button_id
-            }
-
-            logger.info(f"開始檢測按鈕 (儲存完整圖像): {button_config.get('name', button_id)}")
-            result = self._send_vision_command(command)
-
-            if result.get("status") != "success":
-                raise RuntimeError(f"檢測失敗: {result.get('message')}")
-
-            detection_result = result['result']
-            logger.info(f"✓ 檢測完成 - 燈光: {detection_result['light']}, "
-                       f"顏色: {detection_result['color']}")
-
-            self._last_detection_result = detection_result
-            self._last_operation_success = True
-            return detection_result
-
-        except Exception as e:
-            logger.error(f"✗ 按鈕檢測 (儲存完整圖像) 失敗: {e}")
-            self._last_operation_success = False
-            raise
+    # ========== 已棄用的 Keyword（v4.0.0 移除） ==========
+    # 以下 Keyword 已被 when_user_detects_button_light_state(save_debug_image=True) 取代
+    # - When 用戶檢測第 "${button_id}" 按鈕的燈光狀態並儲存ROI圖像
+    # - When 用戶檢測第 "${button_id}" 按鈕的燈光狀態並儲存完整圖像
 
     @keyword('Then 按鈕燈光應該為 "${expected_color}" 色')
     def then_button_light_should_be_color(self, expected_color: str) -> bool:
@@ -914,7 +1342,7 @@ class RobotArmKeywords:
         預期結果：驗證視覺檢測結果符合預期顏色
 
         Args:
-            expected_color: 預期顏色（blue/white/off）
+            expected_color: 預期顏色（blue/white/red/green/yellow/orange/purple/off）
 
         Returns:
             bool: 驗證是否通過
@@ -922,6 +1350,7 @@ class RobotArmKeywords:
         Examples:
             | Then | 按鈕燈光應該為 "blue" 色 |
             | Then | 按鈕燈光應該為 "white" 色 |
+            | Then | 按鈕燈光應該為 "red" 色 |
             | Then | 按鈕燈光應該為 "off" 色 |
 
         Raises:
@@ -939,51 +1368,16 @@ class RobotArmKeywords:
                 f"按鈕顏色不符合預期。\n"
                 f"  預期: {expected_color}\n"
                 f"  實際: {actual_color}\n"
-                f"  亮度: {result['brightness']}\n"
+                f"  亮度: {result.get('brightness_level', result.get('raw_brightness', 'N/A'))}%\n"
                 f"  信心度: {result['confidence']:.2f}"
             )
 
         logger.info(f"✓ 按鈕顏色驗證通過: {expected_color} (信心度: {result['confidence']:.2f})")
         return True
 
-    @keyword('Then 按鈕燈光應該為 "${expected_state}" 狀態')
-    def then_button_light_should_be_state(self, expected_state: str) -> bool:
-        """
-        Then: 按鈕燈光應該為指定狀態
-
-        預期結果：驗證按鈕燈光開啟或關閉狀態
-
-        Args:
-            expected_state: 預期狀態（on/off）
-
-        Returns:
-            bool: 驗證是否通過
-
-        Examples:
-            | Then | 按鈕燈光應該為 "on" 狀態 |
-            | Then | 按鈕燈光應該為 "off" 狀態 |
-
-        Raises:
-            AssertionError: 如果檢測結果不符合預期
-            RuntimeError: 如果沒有檢測結果可用
-        """
-        if not hasattr(self, '_last_detection_result'):
-            raise RuntimeError("沒有可用的檢測結果。請先執行視覺檢測。")
-
-        result = self._last_detection_result
-        actual_state = result['light']
-
-        if actual_state != expected_state:
-            raise AssertionError(
-                f"按鈕狀態不符合預期。\n"
-                f"  預期: {expected_state}\n"
-                f"  實際: {actual_state}\n"
-                f"  顏色: {result['color']}\n"
-                f"  亮度: {result['brightness']}"
-            )
-
-        logger.info(f"✓ 按鈕狀態驗證通過: {expected_state}")
-        return True
+    # ========== 已棄用的驗證 Keyword（v4.0.0 移除） ==========
+    # Then 按鈕燈光應該為 "${expected_state}" 狀態（改用 Then 按鈕燈光應該為 "${expected_color}" 色）
+    # 本機化版本使用 color="off" 來表示關閉狀態，不再使用 light="on/off"
 
     @keyword('When 用戶檢測多個按鈕的燈光狀態')
     def when_user_detects_multiple_buttons(self, button_ids: List[str]) -> List[Dict]:
@@ -1196,6 +1590,136 @@ class RobotArmKeywords:
             raise RuntimeError("沒有可用的批次檢測結果。請先執行批次檢測。")
 
         return self._last_batch_detection_results
+
+    # ==================== 新增關鍵字 - 面板觀測位置管理 ====================
+
+    @keyword("移動到面板觀測位置")
+    def move_to_panel_observation_position(self, button_id: str):
+        """移動機器手臂到指定按鈕的面板觀測位置
+
+        Args:
+            button_id: 按鈕 ID（如 "light1", "light2" 等）
+
+        Raises:
+            RuntimeError: 機器手臂未連接或移動失敗
+            ValueError: 按鈕不存在或沒有配置觀測角度
+
+        Example:
+            | 移動到面板觀測位置 | light2 |
+        """
+        self._ensure_connected()
+
+        # 取得按鈕配置
+        button_config = self._get_button_config(button_id)
+
+        if "vision" not in button_config or "observe_angles" not in button_config["vision"]:
+            raise ValueError(f"按鈕 '{button_id}' 沒有配置觀測角度")
+
+        observe_angles = button_config["vision"]["observe_angles"]
+        logger.info(f"🤖 移動到按鈕 '{button_id}' 的面板觀測位置: {observe_angles}")
+
+        try:
+            self.controller.send_angles(observe_angles, 30)  # 使用較慢速度確保精確定位
+            self.controller.wait_for_movement()
+            logger.info(f"✅ 已成功移動到面板觀測位置")
+        except Exception as e:
+            logger.error(f"❌ 移動到面板觀測位置失敗: {e}")
+            raise RuntimeError(f"移動到面板觀測位置失敗: {e}")
+
+    # ==================== 新增關鍵字 - 完整反饋結果比較 ====================
+
+    @keyword("比較完整反饋結果")
+    def compare_complete_feedback_results(self, before_panel: Dict, after_panel: Dict, 
+                                        before_environment: Dict, after_environment: Dict):
+        """比較面板LED和環境燈光的完整反饋結果
+
+        Args:
+            before_panel: 按壓前面板LED檢測結果
+            after_panel: 按壓後面板LED檢測結果  
+            before_environment: 按壓前環境燈光檢測結果
+            after_environment: 按壓後環境燈光檢測結果
+
+        Example:
+            | 比較完整反饋結果 | ${before_panel_result} | ${after_panel_result} | ${before_env_result} | ${after_env_result} |
+        """
+        # 計算面板LED變化
+        panel_color_changed = before_panel.get('color') != after_panel.get('color')
+        panel_brightness_diff = after_panel.get('brightness', 0) - before_panel.get('brightness', 0)
+        panel_brightness_change_percent = abs(panel_brightness_diff)
+
+        # 計算環境燈光變化 - 安全地處理可能的字串值
+        before_env_brightness = before_environment.get('brightness_level', 0)
+        after_env_brightness = after_environment.get('brightness_level', 0)
+        
+        # 確保為數字類型
+        if isinstance(before_env_brightness, str):
+            try:
+                before_env_brightness = float(before_env_brightness)
+            except:
+                before_env_brightness = 0
+        if isinstance(after_env_brightness, str):
+            try:
+                after_env_brightness = float(after_env_brightness)
+            except:
+                after_env_brightness = 0
+                
+        env_brightness_diff = after_env_brightness - before_env_brightness
+        env_brightness_change_percent = abs(env_brightness_diff)
+        env_level_changed = before_environment.get('level') != after_environment.get('level')
+
+        # 顯示詳細比較結果
+        logger.console(f"\n{'=' * 80}")
+        logger.console(f"🔍 完整按壓反饋結果分析")
+        logger.console(f"{'=' * 80}")
+        
+        logger.console(f"\n📱 【面板LED狀態】")
+        logger.console(f"   按壓前: 顏色={before_panel.get('color')}, 亮度={before_panel.get('brightness')}%, 信心度={before_panel.get('confidence')}")
+        logger.console(f"   按壓後: 顏色={after_panel.get('color')}, 亮度={after_panel.get('brightness')}%, 信心度={after_panel.get('confidence')}")
+        logger.console(f"   變化: 顏色變化={'是' if panel_color_changed else '否'}, 亮度變化={panel_brightness_diff}% (絕對值 {panel_brightness_change_percent:.2f}%)")
+        
+        logger.console(f"\n💡 【環境燈光狀態】")
+        logger.console(f"   按壓前: 亮度={before_env_brightness}%, 等級={before_environment.get('level')}")
+        logger.console(f"   按壓後: 亮度={after_env_brightness}%, 等級={after_environment.get('level')}")
+        logger.console(f"   變化: 等級變化={'是' if env_level_changed else '否'}, 亮度變化={env_brightness_diff}% (絕對值 {env_brightness_change_percent:.2f}%)")
+
+        # 綜合判斷
+        logger.console(f"\n📊 【變化分析】")
+        panel_significant_change = panel_color_changed or panel_brightness_change_percent > 20
+        env_significant_change = env_level_changed or env_brightness_change_percent > 20
+        
+        if panel_significant_change and env_significant_change:
+            logger.console(f"   ✅ 按壓效果: 面板LED和環境燈光都有顯著變化")
+        elif panel_significant_change:
+            logger.console(f"   🟡 按壓效果: 僅面板LED有顯著變化，環境燈光變化不明顯")
+        elif env_significant_change:
+            logger.console(f"   🟡 按壓效果: 僅環境燈光有顯著變化，面板LED變化不明顯")
+        else:
+            logger.console(f"   ⚠️  按壓效果: 面板LED和環境燈光變化都不明顯")
+
+        logger.console(f"\n📸 【截圖統計】")
+        logger.console(f"   預期產生圖像: 共8張")
+        logger.console(f"   - Socket 完整圖片: 2張 (按壓前/後)")
+        logger.console(f"   - Socket ROI 圖片: 2張 (按壓前/後)")
+        logger.console(f"   - RTSP 完整圖片: 2張 (按壓前/後)")  
+        logger.console(f"   - RTSP ROI 圖片: 2張 (按壓前/後)")
+        logger.console(f"   圖片儲存位置: output/debug_images/")
+
+        logger.console(f"{'=' * 80}\n")
+
+        # 儲存結果到測試報告
+        panel_summary = f"面板: {before_panel.get('color')} → {after_panel.get('color')} (亮度 {before_panel.get('brightness')}% → {after_panel.get('brightness')}%)"
+        env_summary = f"環境: {before_environment.get('level')} → {after_environment.get('level')} (亮度 {before_env_brightness}% → {after_env_brightness}%)"
+        
+        from robot.api import logger as robot_logger
+        robot_logger.info(f"完整反饋測試結果 | {panel_summary} | {env_summary}")
+
+        # 設定測試訊息
+        test_message = f"完整反饋: {panel_summary} | {env_summary}"
+        try:
+            from robot.libraries.BuiltIn import BuiltIn
+            BuiltIn().set_test_message(test_message)
+        except:
+            pass  # 如果不在 Robot Framework 環境中執行，忽略錯誤
 
 
 # 測試用例
