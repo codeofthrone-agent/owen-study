@@ -65,10 +65,105 @@
             font-size: 1.1rem;
         }
 
+        .environment-selector {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 2px solid #dee2e6;
+        }
+
+        .environment-selector label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .environment-selector select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .environment-selector select:hover {
+            border-color: #667eea;
+        }
+
+        .environment-selector select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
         .button-list {
             display: flex;
             flex-direction: column;
             gap: 6px;
+        }
+
+        /* 樹狀結構樣式 */
+        .tree-group {
+            margin-bottom: 10px;
+        }
+
+        .tree-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 600;
+            font-size: 0.95rem;
+            user-select: none;
+            transition: all 0.2s;
+        }
+
+        .tree-header:hover {
+            transform: translateX(2px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .tree-header-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tree-arrow {
+            transition: transform 0.2s;
+            font-size: 0.8rem;
+        }
+
+        .tree-group.collapsed .tree-arrow {
+            transform: rotate(-90deg);
+        }
+
+        .tree-items {
+            padding-left: 15px;
+            margin-top: 6px;
+            border-left: 2px solid #e9ecef;
+            transition: all 0.3s;
+        }
+
+        .tree-group.collapsed .tree-items {
+            display: none;
+        }
+
+        .tree-count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
         }
 
         .button-item {
@@ -105,6 +200,19 @@
             font-size: 0.8rem;
             color: #6c757d;
             line-height: 1.3;
+        }
+
+        .button-type {
+            font-size: 0.75rem;
+            margin-top: 3px;
+            color: #007bff;
+            font-weight: 500;
+        }
+
+        .button-source {
+            font-size: 0.75rem;
+            margin-top: 2px;
+            color: #6c757d;
         }
 
         .button-status {
@@ -391,7 +499,17 @@
         <div class="content">
             <!-- 側邊欄：按鈕列表 -->
             <div class="sidebar">
-                <h2>📋 按鈕列表</h2>
+                <!-- 環境選擇器 -->
+                <div class="environment-selector">
+                    <label for="envSelect">🌍 測試環境</label>
+                    <select id="envSelect" onchange="switchEnvironment()">
+                        <option value="taipei_lab">台北實驗室</option>
+                        <option value="taoyuan_lab">桃園實驗室</option>
+                        <option value="rv_car">RV Car</option>
+                    </select>
+                </div>
+
+                <h2>📋 項目列表</h2>
                 <div id="buttonList" class="button-list">
                     <div class="placeholder">
                         <div class="placeholder-icon">⏳</div>
@@ -511,6 +629,8 @@
     <script>
         // 全域變數
         let selectedButton = null;
+        let selectedItemType = null;  // 'button' 或 'environment_light'
+        let selectedImageSource = null;  // 影像來源資訊
         let currentImage = null;
         let canvas = document.getElementById('imageCanvas');
         let ctx = canvas.getContext('2d');
@@ -556,28 +676,121 @@
             }
         }
 
-        // 顯示按鈕列表
+        // 顯示按鈕列表（樹狀結構）
         function displayButtons(buttons) {
             const listContainer = document.getElementById('buttonList');
             listContainer.innerHTML = '';
 
+            // 分組按鈕
+            const groups = {
+                robot_arm: { title: '🤖 機器手臂', items: [], count: 0 },
+                level1: { title: '📷 Level1 Camera', items: [], count: 0 },
+                level2: { title: '📷 Level2 Camera', items: [], count: 0 },
+                motor: { title: '📷 Motor Camera', items: [], count: 0 }
+            };
+
+            // 分類所有按鈕
             buttons.forEach(button => {
-                const item = document.createElement('div');
-                item.className = 'button-item' + (button.has_roi ? ' calibrated' : '');
-                item.innerHTML = `
-                    <div class="button-name">${button.name}</div>
-                    <div class="button-desc">${button.description}</div>
-                    ${button.has_roi ? '<div class="button-status">✅ 已校準</div>' : ''}
+                if (button.type === 'button') {
+                    groups.robot_arm.items.push(button);
+                    groups.robot_arm.count += 1;
+                } else if (button.type === 'environment_light') {
+                    // 根據 image_source 判斷屬於哪個 Camera
+                    const subCount = button.sub_count || 0;  // 子燈泡數量
+                    const totalCount = 1 + subCount;  // 1 個陣列外框 + N 個子燈泡
+
+                    if (button.image_source.includes('level1')) {
+                        groups.level1.items.push(button);
+                        groups.level1.count += totalCount;
+                    } else if (button.image_source.includes('level2')) {
+                        groups.level2.items.push(button);
+                        groups.level2.count += totalCount;
+                    } else if (button.image_source.includes('motor')) {
+                        groups.motor.items.push(button);
+                        groups.motor.count += totalCount;
+                    }
+                }
+            });
+
+            // 渲染每個群組
+            Object.keys(groups).forEach(groupKey => {
+                const group = groups[groupKey];
+                if (group.items.length === 0) return;
+
+                // 建立群組容器
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'tree-group';
+                groupDiv.id = `group-${groupKey}`;
+
+                // 建立群組標題
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'tree-header';
+                headerDiv.innerHTML = `
+                    <div class="tree-header-content">
+                        <span class="tree-arrow">▼</span>
+                        <span>${group.title}</span>
+                    </div>
+                    <span class="tree-count">${group.count}</span>
                 `;
-                item.addEventListener('click', () => selectButton(button.name, button.has_roi));
-                listContainer.appendChild(item);
+                headerDiv.onclick = () => toggleGroup(groupKey);
+
+                // 建立項目容器
+                const itemsDiv = document.createElement('div');
+                itemsDiv.className = 'tree-items';
+
+                // 添加項目
+                group.items.forEach(button => {
+                    const item = document.createElement('div');
+                    item.className = 'button-item' + (button.has_roi ? ' calibrated' : '');
+
+                    // 如果是燈泡陣列，顯示子燈泡數量
+                    let subInfo = '';
+                    if (button.sub_count && button.sub_count > 0) {
+                        subInfo = `<div class="button-type">💡 燈泡陣列 (${button.sub_count} 個燈泡)</div>`;
+                    }
+
+                    item.innerHTML = `
+                        <div class="button-name">${button.name}</div>
+                        <div class="button-desc">${button.description}</div>
+                        ${subInfo}
+                        <div class="button-source">📷 ${button.image_source}</div>
+                        ${button.has_roi ? '<div class="button-status">✅ 已校準</div>' : ''}
+                    `;
+                    item.addEventListener('click', () => selectButton(button.name, button.has_roi, button.type, button.image_source));
+                    itemsDiv.appendChild(item);
+                });
+
+                groupDiv.appendChild(headerDiv);
+                groupDiv.appendChild(itemsDiv);
+                listContainer.appendChild(groupDiv);
             });
         }
 
+        // 切換群組展開/收合
+        function toggleGroup(groupKey) {
+            const group = document.getElementById(`group-${groupKey}`);
+            if (group) {
+                group.classList.toggle('collapsed');
+            }
+        }
+
+        // 切換環境
+        function switchEnvironment() {
+            const env = document.getElementById('envSelect').value;
+            showMessage(`切換環境到: ${env}`, 'info');
+            // TODO: 重新載入該環境的配置
+            // loadButtons(env);
+        }
+
         // 選擇按鈕
-        function selectButton(buttonName, hasROI = false) {
+        function selectButton(buttonName, hasROI = false, itemType = 'button', imageSource = 'socket') {
             selectedButton = buttonName;
-            document.getElementById('currentButton').textContent = buttonName;
+            selectedItemType = itemType;
+            selectedImageSource = imageSource;
+
+            // 顯示類型標籤
+            const typeLabel = itemType === 'environment_light' ? '💡 環境燈光' : '🔘 按鈕';
+            document.getElementById('currentButton').textContent = `${buttonName} (${typeLabel})`;
             armMoved = false;  // 重置移動狀態
 
             // 更新按鈕列表的選中狀態
@@ -609,23 +822,34 @@
             btn.innerHTML = '<div class="loading"></div> 擷取中...';
 
             try {
-                const response = await fetch('/api/calibrate/prepare', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ button_name: selectedButton })
-                });
+                let data;
 
-                const data = await response.json();
+                // 判斷影像來源類型
+                if (selectedItemType === 'environment_light' && selectedImageSource.includes('rtsp')) {
+                    // 環境燈光使用 RTSP 截圖
+                    data = await captureRTSPImage();
+                } else {
+                    // 按鈕使用 Socket 截圖（原有邏輯）
+                    const response = await fetch('/api/calibrate/prepare', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            button_name: selectedButton,
+                            item_type: selectedItemType  // ✨ 傳遞項目類型
+                        })
+                    });
+                    data = await response.json();
+                }
 
                 if (data.success) {
                     displayImage(data.image_base64, data.existing_roi);
-                    
-                    // 處理 ArUco 資訊
+
+                    // 處理 ArUco 資訊（僅 Socket 支援）
                     if (data.aruco_info) {
                         displayArucoInfo(data.aruco_info);
                         currentArucoData = data.aruco_info;
                     }
-                    
+
                     if (data.existing_roi) {
                         showMessage(`成功擷取 ${selectedButton} 的影像（已載入現有 ROI）`, 'success');
                     } else {
@@ -639,6 +863,106 @@
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '📷 擷取影像';
+            }
+        }
+
+        // 擷取 RTSP 影像
+        async function captureRTSPImage() {
+            // 從 selectedImageSource 提取 camera_id
+            // 格式: "rtsp (level2)" → camera_id = "level2"
+            const cameraIdMatch = selectedImageSource.match(/rtsp \((.+)\)/);
+            if (!cameraIdMatch) {
+                throw new Error('無法解析 RTSP Camera ID');
+            }
+            const cameraId = cameraIdMatch[1];
+
+            // 從 config 取得 RTSP URL
+            const configResponse = await fetch('/api/environment_config');
+            const configData = await configResponse.json();
+            if (!configData.success) {
+                throw new Error('無法取得環境配置');
+            }
+
+            // 找到對應的 Camera
+            const camera = configData.cameras.find(cam => cam.id === cameraId);
+            if (!camera) {
+                throw new Error(`找不到 Camera: ${cameraId}`);
+            }
+
+            const rtspUrl = camera.rtsp_url;
+            console.log(`使用 RTSP URL: ${rtspUrl}`);
+
+            // 呼叫 RTSP 截圖 API
+            const response = await fetch('/api/image/capture_rtsp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    rtsp_url: rtspUrl,
+                    num_frames: 5
+                })
+            });
+
+            const rtspData = await response.json();
+            if (!rtspData.success) {
+                throw new Error(rtspData.error);
+            }
+
+            // 檢查是否有已存在的 ROI
+            console.log(`正在取得 existing ROI: itemName=${selectedButton}, itemType=${selectedItemType}`);
+            const existingROI = await getExistingROI(selectedButton, selectedItemType);
+            console.log(`取得 existing ROI 結果:`, existingROI);
+
+            return {
+                success: true,
+                image_base64: rtspData.image_base64,
+                existing_roi: existingROI
+            };
+        }
+
+        // 取得已存在的 ROI
+        async function getExistingROI(itemName, itemType) {
+            try {
+                console.log(`[getExistingROI] 開始: itemName=${itemName}, itemType=${itemType}`);
+
+                const response = await fetch('/api/buttons');
+                const data = await response.json();
+                if (!data.success) {
+                    console.log(`[getExistingROI] /api/buttons 失敗`);
+                    return null;
+                }
+
+                console.log(`[getExistingROI] 收到 ${data.buttons.length} 個項目`);
+                const item = data.buttons.find(btn => btn.name === itemName && btn.type === itemType);
+                console.log(`[getExistingROI] 找到項目:`, item);
+
+                if (!item) {
+                    console.log(`[getExistingROI] 找不到項目: ${itemName} (type: ${itemType})`);
+                    return null;
+                }
+
+                if (!item.has_roi) {
+                    console.log(`[getExistingROI] 項目沒有 ROI: ${itemName}`);
+                    return null;
+                }
+
+                // 呼叫 prepare API 以取得完整配置
+                console.log(`[getExistingROI] 呼叫 /api/calibrate/prepare`);
+                const prepareResponse = await fetch('/api/calibrate/prepare', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        button_name: itemName,
+                        item_type: itemType  // ✨ 傳遞項目類型
+                    })
+                });
+                const prepareData = await prepareResponse.json();
+                console.log(`[getExistingROI] prepare 回應:`, prepareData);
+                console.log(`[getExistingROI] existing_roi:`, prepareData.existing_roi);
+
+                return prepareData.existing_roi || null;
+            } catch (error) {
+                console.error('[getExistingROI] 錯誤:', error);
+                return null;
             }
         }
 
@@ -668,22 +992,41 @@
             img.src = 'data:image/jpeg;base64,' + base64Image;
         }
 
+        // 將顯示座標轉換為 Canvas 內部像素座標
+        function getCanvasCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+
+            // 顯示座標（CSS 空間）
+            const displayX = e.clientX - rect.left;
+            const displayY = e.clientY - rect.top;
+
+            // 計算縮放比例
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            // 轉換為 Canvas 內部像素座標
+            const canvasX = displayX * scaleX;
+            const canvasY = displayY * scaleY;
+
+            return { x: canvasX, y: canvasY };
+        }
+
         // 滑鼠事件處理
         function handleMouseDown(e) {
             if (!currentImage) return;
 
-            const rect = canvas.getBoundingClientRect();
-            startX = e.clientX - rect.left;
-            startY = e.clientY - rect.top;
+            const coords = getCanvasCoordinates(e);
+            startX = coords.x;
+            startY = coords.y;
             isDrawing = true;
         }
 
         function handleMouseMove(e) {
             if (!isDrawing) return;
 
-            const rect = canvas.getBoundingClientRect();
-            currentX = e.clientX - rect.left;
-            currentY = e.clientY - rect.top;
+            const coords = getCanvasCoordinates(e);
+            currentX = coords.x;
+            currentY = coords.y;
 
             // 重繪影像和矩形
             redrawCanvas();
@@ -694,9 +1037,9 @@
 
             isDrawing = false;
 
-            const rect = canvas.getBoundingClientRect();
-            currentX = e.clientX - rect.left;
-            currentY = e.clientY - rect.top;
+            const coords = getCanvasCoordinates(e);
+            currentX = coords.x;
+            currentY = coords.y;
 
             // 計算 ROI
             const x = Math.min(startX, currentX);
@@ -872,6 +1215,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         button_name: selectedButton,
+                        item_type: selectedItemType || 'button',  // 傳遞項目類型
                         roi: {
                             x: Math.round(roi.x),
                             y: Math.round(roi.y),
@@ -884,7 +1228,8 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    showMessage(`✅ ${selectedButton} 的 ROI 已成功儲存！`, 'success');
+                    const itemTypeLabel = selectedItemType === 'environment_light' ? '環境燈光' : '按鈕';
+                    showMessage(`✅ ${itemTypeLabel} "${selectedButton}" 的 ROI 已成功儲存！`, 'success');
                     loadButtons(); // 重新載入按鈕列表以更新狀態
                 } else {
                     showMessage('儲存失敗: ' + data.error, 'error');

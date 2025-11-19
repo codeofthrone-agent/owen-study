@@ -76,7 +76,6 @@ class HybridRobotArmClient:
                 except Exception as e:
                     print(f"⚠️  連接成功但狀態檢查失敗: {e}")
                     return True  # 仍然返回成功，讓使用者可以嘗試操作
-        
         print("❌ 連接失敗")
         return False
 
@@ -456,9 +455,9 @@ class HybridRobotArmClient:
                                 # 檢查是否有 JSON 開始標記
                                 if '{"status"' in decoded_response:
                                     # 檢查是否有完整的 image_base64 結束標記
-                                    if ('"image_base64"' in decoded_response and 
+                                    if (('"image_base64"' in decoded_response and 
                                         decoded_response.count('"') >= 6 and  # 至少應該有足夠的引號
-                                        (decoded_response.endswith('"}') or '"}' in decoded_response[-50:])):
+                                        (decoded_response.endswith('"}') or '"}' in decoded_response[-50:]))):
                                         
                                         print(f"✓ 偵測到完整響應: {len(response):,} bytes")
                                         break
@@ -621,334 +620,325 @@ class HybridRobotArmClient:
 class WebButtonROICalibrator:
     """網頁版按鈕 ROI 校準工具"""
 
-    def __init__(self, config_path: str, client: HybridRobotArmClient):
+    def __init__(self, config_path: str, client: 'HybridRobotArmClient'):
+        """初始化校準工具
+
+        Args:
+            config_path: YAML 配置檔案路徑
+            client: HybridRobotArmClient 實例
+        """
         self.config_path = Path(config_path)
         self.client = client
         self.config = None
         self.buttons = {}
+        self.environment_lights = {}
         self.current_image = None
         self.current_button_name = None
+        self.current_item_type = None
 
     def load_config(self) -> bool:
         try:
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 self.config = yaml.safe_load(f)
             self.buttons = self.config.get('buttons', {})
+            self.environment_lights = self.config.get('environment_lights', {})
+            print(f"✅ 載入配置成功: {len(self.buttons)} 個按鈕, {len(self.environment_lights)} 個環境燈光")
             return True
         except Exception as e:
             print(f"載入配置失敗: {e}")
             return False
 
     def save_config(self) -> bool:
-        """儲存配置（保留原始格式，只更新 vision 區塊）"""
         try:
-            # 讀取原始檔案內容
-            with open(self.config_path, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-
-            # 使用 ruamel.yaml 保留格式（如果可用），否則使用基本方法
-            try:
-                from ruamel.yaml import YAML
-                yaml_handler = YAML()
-                yaml_handler.preserve_quotes = True
-                yaml_handler.default_flow_style = None
-
-                with open(self.config_path, 'w', encoding='utf-8') as f:
-                    yaml_handler.dump(self.config, f)
-            except ImportError:
-                # ruamel.yaml 不可用，使用基本的 yaml.dump
-                # 注意：這會改變格式，但至少能儲存資料
-                with open(self.config_path, 'w', encoding='utf-8') as f:
-                    yaml.dump(self.config, f, allow_unicode=True, default_flow_style=None, sort_keys=False)
-
+            with open(self.config_path, 'w', encoding='utf-8') as f:
+                yaml.dump(self.config, f, allow_unicode=True, default_flow_style=None, sort_keys=False)
             return True
         except Exception as e:
             print(f"儲存配置失敗: {e}")
             return False
 
     def get_button_list(self) -> List[Dict]:
-        """取得所有按鈕資訊"""
-        button_list = []
+        item_list = []
         for name, config in self.buttons.items():
             has_roi = 'vision' in config and 'roi' in config.get('vision', {})
-            button_list.append({
+            item_list.append({
                 'name': name,
+                'type': 'button',
                 'description': config.get('description', 'N/A'),
-                'has_roi': has_roi
+                'has_roi': has_roi,
+                'image_source': 'socket'
             })
-        return button_list
+        for name, config in self.environment_lights.items():
+            has_roi = 'roi' in config
+            camera_id = config.get('camera_id', 'unknown')  # ✅ 修正：使用 camera_id 而非 camera_ip
+            light_type = config.get('type', 'unknown')
+            sub_count = len(config.get('lights', [])) if light_type == 'light_array' else 0
 
-    def prepare_calibration(self, button_name: str) -> Optional[Dict]:
-        """準備校準：讀取角度並截圖（改進版）"""
-        if button_name not in self.buttons:
-            return {"success": False, "error": f"按鈕 '{button_name}' 不存在"}
+            item_list.append({
+                'name': name,
+                'type': 'environment_light',
+                'description': config.get('name', 'N/A'),
+                'has_roi': has_roi,
+                'image_source': f'rtsp ({camera_id})',
+                'light_type': light_type,
+                'sub_count': sub_count
+            })
+
+        return item_list
+
+    def prepare_calibration(self, button_name: str, item_type: str = 'button') -> Optional[Dict]:
+        """準備校準：讀取角度並截圖（✨ v4.2.0 支援按鈕和環境燈光）
+
+        Args:
+            button_name: 按鈕或環境燈光名稱
+            item_type: 'button' 或 'environment_light'
+
+        Returns:
+            Dict: 包含影像、角度、現有 ROI 等資訊
+        """
+        # 根據類型取得配置
+        if item_type == 'button':
+            if button_name not in self.buttons:
+                return {"success": False, "error": f"按鈕 '{button_name}' 不存在"}
+            config = self.buttons[button_name]
+            print(f"📋 準備校準按鈕: {button_name}")
+        elif item_type == 'environment_light':
+            if button_name not in self.environment_lights:
+                return {"success": False, "error": f"環境燈光 '{button_name}' 不存在"}
+            config = self.environment_lights[button_name]
+            print(f"📋 準備校準環境燈光: {button_name}")
+        else:
+            return {"success": False, "error": f"不支援的項目類型: {item_type}"}
 
         self.current_button_name = button_name
-        button_config = self.buttons[button_name]
+        self.current_item_type = item_type
+        button_config = config
 
-        print(f"📋 準備校準按鈕: {button_name}")
-
-        # 檢查手臂電源狀態
-        try:
-            if not self.client.is_power_on():
-                return {"success": False, "error": "手臂電源未開啟，請先開啟手臂電源"}
-        except Exception as e:
-            print(f"⚠️  無法檢查電源狀態: {e}")
-
-        # 讀取當前手臂角度（允許失敗，但要記錄）
+        # 只有按鈕需要檢查手臂電源和讀取角度
         observe_angles = None
-        try:
-            observe_angles = self.client.get_angles()
-            if observe_angles:
-                print(f"✅ 當前手臂角度: {[round(a, 2) for a in observe_angles]}")
-            else:
-                print("⚠️  無法讀取當前手臂角度，將使用預設值")
-                observe_angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # 預設角度
-        except Exception as e:
-            print(f"⚠️  讀取手臂角度失敗: {str(e)}")
-            observe_angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # 預設角度
+        if item_type == 'button':
+            try:
+                if not self.client.is_power_on():
+                    return {"success": False, "error": "手臂電源未開啟，請先開啟手臂電源"}
+            except Exception as e:
+                print(f"⚠️  無法檢查電源狀態: {e}")
 
-        # 截圖（重試機制）
-        print("📷 開始截圖...")
-        image = self.client.capture_image(num_frames=5)
+            try:
+                observe_angles = self.client.get_angles()
+                if observe_angles:
+                    print(f"✅ 當前手臂角度: {[round(a, 2) for a in observe_angles]}")
+                else:
+                    observe_angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            except Exception as e:
+                print(f"⚠️  讀取手臂角度失敗: {str(e)}")
+                observe_angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+        # 根據類型截取影像
+        if item_type == 'button':
+            print("📷 使用 Socket 截取機器手臂影像...")
+            image = self.client.capture_image(num_frames=5)
+        elif item_type == 'environment_light':
+            print("📷 使用 RTSP 截取環境燈光影像...")
+            camera_ip = config.get('camera_ip')
+            if not camera_ip:
+                return {"success": False, "error": "環境燈光缺少 camera_ip 配置"}
+
+            # 從環境變數取得 RTSP 認證資訊
+            import os
+            username = os.getenv("IPCAM_USERNAME", "")
+            password = os.getenv("IPCAM_PASSWORD", "")
+
+            # 構建基礎 URL
+            if username and password:
+                base_url = f"rtsp://{username}:{password}@{camera_ip}:554"
+            else:
+                base_url = f"rtsp://{camera_ip}:554"
+
+            # 嘗試多種串流路徑
+            stream_paths = ['/live1', '/live0', '/stream1']
+            cap = None
+            successful_path = None
+
+            for stream_path in stream_paths:
+                test_url = base_url + stream_path
+                print(f"   嘗試連接: rtsp://***@{camera_ip}:554{stream_path}")
+
+                cap = cv2.VideoCapture(test_url, cv2.CAP_FFMPEG)
+                cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+                if cap.isOpened():
+                    # 測試讀取一幀
+                    ret, test_frame = cap.read()
+                    if ret and test_frame is not None:
+                        print(f"   ✅ 成功連接: {stream_path}")
+                        successful_path = stream_path
+                        break
+                    else:
+                        print(f"   ⚠️  連接成功但無法讀取幀: {stream_path}")
+                        cap.release()
+                        cap = None
+                else:
+                    print(f"   ⚠️  無法連接: {stream_path}")
+                    if cap:
+                        cap.release()
+                    cap = None
+
+            if not cap or not successful_path:
+                return {"success": False, "error": f"無法連接 RTSP（嘗試了 {', '.join(stream_paths)}）"}
+
+            print(f"   正在跳過前 5 幀...")
+            for _ in range(5):
+                cap.read()
+
+            print(f"   正在擷取 5 幀影像...")
+            frames = []
+            for i in range(5):
+                ret, frame = cap.read()
+                if ret and frame is not None:
+                    frames.append(frame)
+                    print(f"   ✅ 成功擷取第 {i+1} 幀")
+                else:
+                    print(f"   ⚠️  第 {i+1} 幀擷取失敗")
+            cap.release()
+
+            if not frames:
+                return {"success": False, "error": "無法從 RTSP 擷取任何幀"}
+
+            print(f"   正在平均 {len(frames)} 幀影像...")
+            image = np.mean(frames, axis=0).astype(np.uint8)
+            print(f"   ✅ RTSP 影像擷取完成: {image.shape}, 使用路徑: {successful_path}")
+        else:
+            return {"success": False, "error": f"不支援的項目類型: {item_type}"}
+
         if image is None:
-            return {"success": False, "error": "截圖失敗，請檢查攝影機連接和伺服器狀態"}
+            return {"success": False, "error": "截圖失敗"}
 
         self.current_image = image
 
-        # ArUco 標記檢測和位置校正
-        aruco_result = self.detect_aruco_and_adjust_position(image, button_config)
+        # ArUco 標記檢測（僅按鈕需要）
+        aruco_result = None
+        if item_type == 'button':
+            aruco_result = self.detect_aruco_and_adjust_position(image, button_config)
 
-        # 將影像轉為 Base64 以便傳送到前端
         try:
-            # 檢查影像有效性
-            if image.size == 0:
-                return {"success": False, "error": "截圖影像為空"}
-            
-            print(f"📸 影像資訊: 尺寸={image.shape}, 類型={image.dtype}, 平均亮度={np.mean(image):.1f}")
-            
-            # 如果影像太暗，警告但仍然繼續
-            if np.mean(image) < 10:
-                print("⚠️  警告：影像很暗，可能是攝影機或光線問題")
-            
-            # 嘗試不同的編碼質量
-            for quality in [85, 70, 50]:
-                try:
-                    _, buffer = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, quality])
-                    if len(buffer) > 0:
-                        image_base64 = base64.b64encode(buffer).decode('utf-8')
-                        print(f"✅ 影像編碼完成: {len(image_base64):,} bytes (質量={quality})")
-                        break
-                except Exception as e:
-                    print(f"⚠️  質量 {quality} 編碼失敗: {e}")
-                    continue
-            else:
-                return {"success": False, "error": "影像編碼失敗"}
-                
-        except Exception as e:
-            return {"success": False, "error": f"影像編碼失敗: {str(e)}"}
+            if image.size == 0: return {"success": False, "error": "截圖影像為空"}
+            if np.mean(image) < 10: print("⚠️  警告：影像很暗，可能是攝影機或光線問題")
+            _, buffer = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            image_base64 = base64.b64encode(buffer).decode('utf-8')
+        except Exception as e: return {"success": False, "error": f"影像編碼失敗: {str(e)}"}
 
-        # 檢查是否已有 ROI 配置
         existing_roi = None
-        if 'vision' in button_config and 'roi' in button_config['vision']:
-            existing_roi = button_config['vision']['roi']
-            print(f"✅ 找到已存在的 ROI: {existing_roi}")
+        if item_type == 'button':
+            if 'vision' in button_config and 'roi' in button_config['vision']:
+                existing_roi = button_config['vision']['roi']
+        elif item_type == 'environment_light':
+            if 'roi' in button_config:
+                existing_roi = button_config['roi']
+        if existing_roi: print(f"✅ 找到已存在的 ROI: {existing_roi}")
 
         return {
-            "success": True,
-            "button_name": button_name,
-            "description": button_config.get('description', 'N/A'),
-            "observe_angles": [round(a, 2) for a in observe_angles],
+            "success": True, "button_name": button_name, "description": button_config.get('description', 'N/A'),
+            "observe_angles": [round(a, 2) for a in observe_angles] if observe_angles else None,
             "image_base64": image_base64,
             "image_size": {"width": image.shape[1], "height": image.shape[0]},
             "existing_roi": existing_roi,
-            "aruco_info": aruco_result  # 新增：ArUco 檢測資訊
+            "aruco_info": aruco_result
         }
 
-    def save_roi(self, button_name: str, roi: Dict) -> Dict:
-        """儲存 ROI 資料"""
-        if button_name not in self.buttons:
-            return {"success": False, "error": f"按鈕 '{button_name}' 不存在"}
+    def save_roi(self, button_name: str, roi: Dict, item_type: str = 'button') -> Dict:
+        if item_type == 'button':
+            if button_name not in self.buttons: return {"success": False, "error": f"按鈕 '{button_name}' 不存在"}
+            config = self.buttons[button_name]
+        elif item_type == 'environment_light':
+            if button_name not in self.environment_lights: return {"success": False, "error": f"環境燈光 '{button_name}' 不存在"}
+            config = self.environment_lights[button_name]
+        else: return {"success": False, "error": f"不支援的類型: {item_type}"}
 
-        button_config = self.buttons[button_name]
+        observe_angles = None
+        if item_type == 'button':
+            observe_angles = self.client.get_angles()
+            if not observe_angles: return {"success": False, "error": "無法讀取當前手臂角度"}
 
-        # 讀取當前角度（如果之前讀取失敗）
-        observe_angles = self.client.get_angles()
-        if not observe_angles:
-            return {"success": False, "error": "無法讀取當前手臂角度"}
-
-        # 更新配置
-        if 'vision' not in button_config:
-            button_config['vision'] = {}
-
-        button_config['vision']['observe_angles'] = [round(a, 2) for a in observe_angles]
-        button_config['vision']['roi'] = {
-            'x': int(roi['x']),
-            'y': int(roi['y']),
-            'width': int(roi['width']),
-            'height': int(roi['height'])
-        }
-
-        # 儲存配置
-        if self.save_config():
-            return {
-                "success": True,
-                "message": f"按鈕 '{button_name}' 的 ROI 已儲存"
-            }
+        if item_type == 'button':
+            if 'vision' not in config: config['vision'] = {}
+            config['vision']['observe_angles'] = [round(a, 2) for a in observe_angles] if observe_angles else None
+            config['vision']['roi'] = {'x': int(roi['x']), 'y': int(roi['y']), 'width': int(roi['width']), 'height': int(roi['height'])} # Changed to int
         else:
-            return {"success": False, "error": "儲存配置失敗"}
+            config['roi'] = {'x': int(roi['x']), 'y': int(roi['y']), 'width': int(roi['width']), 'height': int(roi['height'])} # Changed to int
+            if observe_angles: config['observe_angles'] = [round(a, 2) for a in observe_angles]
+
+        if self.save_config(): return {"success": True, "message": f"{item_type.capitalize()} '{button_name}' 的 ROI 已儲存"}
+        return {"success": False, "error": "儲存配置失敗"}
 
     def detect_aruco_and_adjust_position(self, image: np.ndarray, button_config: Dict) -> Dict:
-        """檢測 ArUco 標記並嘗試調整位置
-        
-        Args:
-            image: 當前截圖
-            button_config: 按鈕配置
-            
-        Returns:
-            ArUco 檢測和校正資訊
-        """
         try:
-            # 檢測 ArUco 標記
             aruco_result = self.client.detect_aruco_markers(image)
-            
-            if not aruco_result["success"]:
-                return {
-                    "aruco_detected": False,
-                    "error": aruco_result.get("error", "ArUco 檢測失敗"),
-                    "correction_needed": False
-                }
-            
+            if not aruco_result["success"]: return {"aruco_detected": False, "error": aruco_result.get("error", "ArUco 檢測失敗"), "correction_needed": False}
             markers_count = aruco_result["markers_count"]
             print(f"🎯 檢測到 {markers_count} 個 ArUco 標記")
-            
-            # 檢查是否有參考位置
             reference_markers = None
             has_reference = False
             if 'aruco_reference' in button_config:
                 reference_markers = button_config['aruco_reference'].get('markers', [])
                 has_reference = bool(reference_markers)
-            
             correction_info = None
             correction_needed = False
             if reference_markers and aruco_result["markers"]:
-                # 計算位置校正
-                correction_info = self.client.calculate_position_correction(
-                    aruco_result["markers"], reference_markers
-                )
-                
+                correction_info = self.client.calculate_position_correction(aruco_result["markers"], reference_markers)
                 if correction_info:
                     print(f"📏 位置偏移: X={correction_info['offset_x']:.1f}, Y={correction_info['offset_y']:.1f}, 距離={correction_info['offset_distance']:.1f}")
-                    
                     correction_needed = bool(correction_info.get("needs_correction", False))
-                    if correction_needed:
-                        print("⚠️  建議進行位置校正")
-            
+                    if correction_needed: print("⚠️  建議進行位置校正")
             return {
-                "aruco_detected": True,
-                "markers_count": int(markers_count),
-                "markers": aruco_result["markers"],
-                "correction_info": correction_info,
-                "correction_needed": correction_needed,
-                "has_reference": has_reference
+                "aruco_detected": True, "markers_count": int(markers_count), "markers": aruco_result["markers"],
+                "correction_info": correction_info, "correction_needed": correction_needed, "has_reference": has_reference
             }
-            
         except Exception as e:
             print(f"⚠️  ArUco 處理失敗: {e}")
-            return {
-                "aruco_detected": False,
-                "error": str(e),
-                "correction_needed": False
-            }
+            return {"aruco_detected": False, "error": str(e), "correction_needed": False}
 
     def save_aruco_reference(self, button_name: str, aruco_markers: List[Dict]) -> Dict:
-        """儲存 ArUco 參考位置
-        
-        Args:
-            button_name: 按鈕名稱
-            aruco_markers: ArUco 標記清單
-            
-        Returns:
-            儲存結果
-        """
         print(f"🔖 嘗試儲存 ArUco 參考位置: 按鈕={button_name}, 標記數量={len(aruco_markers) if aruco_markers else 0}")
-        
-        if button_name not in self.buttons:
-            return {"success": False, "error": f"按鈕 '{button_name}' 不存在"}
-        
+        if button_name not in self.buttons: return {"success": False, "error": f"按鈕 '{button_name}' 不存在"}
         button_config = self.buttons[button_name]
-        
-        # 獲取當前角度（允許失敗）
         angles = None
         try:
             angles = self.client.get_angles()
-            if angles:
-                print(f"✅ 成功讀取手臂角度: {[round(a, 2) for a in angles]}")
-            else:
-                print("⚠️  無法讀取手臂角度，使用預設值")
-                angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        except Exception as e:
+            if angles: print(f"✅ 成功讀取手臂角度: {[round(a, 2) for a in angles]}")
+            else: angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        except Exception as e: 
             print(f"⚠️  讀取角度時發生異常: {e}，使用預設值")
             angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         
-        # 儲存 ArUco 參考資料
-        if 'aruco_reference' not in button_config:
-            button_config['aruco_reference'] = {}
+        if 'aruco_reference' not in button_config: button_config['aruco_reference'] = {}
+        button_config['aruco_reference'] = {'angles': [round(a, 2) for a in angles], 'markers': aruco_markers, 'timestamp': time.time()}
         
-        button_config['aruco_reference'] = {
-            'angles': [round(a, 2) for a in angles],
-            'markers': aruco_markers,
-            'timestamp': time.time()
-        }
-        
-        print(f"💾 準備儲存配置，標記數量: {len(aruco_markers)}")
-        
-        if self.save_config():
-            print(f"✅ ArUco 參考位置儲存成功")
-            return {
-                "success": True,
-                "message": f"按鈕 '{button_name}' 的 ArUco 參考位置已儲存"
-            }
-        else:
-            print(f"❌ 配置檔案儲存失敗")
-            return {"success": False, "error": "儲存配置失敗"}
+        if self.save_config(): return {"success": True, "message": f"按鈕 '{button_name}' 的 ArUco 參考位置已儲存"}
+        return {"success": False, "error": "儲存配置失敗"}
 
-
-# Flask 路由
 
 @app.route('/')
 def index():
-    """首頁"""
     return render_template('roi_annotator.html')
 
 @app.route('/api/buttons', methods=['GET'])
 def get_buttons():
-    """取得所有按鈕列表"""
-    if global_calibrator is None:
-        return jsonify({"success": False, "error": "校準器未初始化"})
-
+    if global_calibrator is None: return jsonify({"success": False, "error": "校準器未初始化"})
     button_list = global_calibrator.get_button_list()
     return jsonify({"success": True, "buttons": button_list})
 
 @app.route('/api/calibrate/prepare', methods=['POST'])
 def prepare_calibration():
-    """準備校準：截圖並取得影像"""
     data = request.json
     button_name = data.get('button_name')
+    item_type = data.get('item_type', 'button')  # ✨ 支援環境燈光
 
-    print(f"🎯 收到準備校準請求: {button_name}")
-
-    if not button_name:
-        print("❌ 缺少按鈕名稱")
-        return jsonify({"success": False, "error": "缺少按鈕名稱"})
-
-    if global_calibrator is None:
-        print("❌ 校準器未初始化")
-        return jsonify({"success": False, "error": "校準器未初始化"})
+    if not button_name: return jsonify({"success": False, "error": "缺少按鈕名稱"})
+    if global_calibrator is None: return jsonify({"success": False, "error": "校準器未初始化"})
 
     try:
-        result = global_calibrator.prepare_calibration(button_name)
-        print(f"✅ 校準準備結果: success={result.get('success')}")
+        result = global_calibrator.prepare_calibration(button_name, item_type)
+        print(f"✅ 校準準備結果: type={item_type}, success={result.get('success')}")
         return jsonify(result)
     except Exception as e:
         print(f"❌ 校準準備發生異常: {e}")
@@ -958,124 +948,74 @@ def prepare_calibration():
 
 @app.route('/api/calibrate/save', methods=['POST'])
 def save_roi():
-    """儲存 ROI"""
     data = request.json
     button_name = data.get('button_name')
     roi = data.get('roi')
+    item_type = data.get('item_type', 'button')
 
-    if not button_name or not roi:
-        return jsonify({"success": False, "error": "缺少必要參數"})
+    if not button_name or not roi: return jsonify({"success": False, "error": "缺少必要參數"})
+    if global_calibrator is None: return jsonify({"success": False, "error": "校準器未初始化"})
 
-    if global_calibrator is None:
-        return jsonify({"success": False, "error": "校準器未初始化"})
-
-    result = global_calibrator.save_roi(button_name, roi)
+    result = global_calibrator.save_roi(button_name, roi, item_type)
     return jsonify(result)
 
 
 @app.route('/api/arm/move', methods=['POST'])
 def move_arm():
-    """移動手臂到指定角度（改進版）"""
-    if global_client is None:
-        return jsonify({"success": False, "error": "客戶端未初始化"})
-
+    if global_client is None: return jsonify({"success": False, "error": "客戶端未初始化"})
     data = request.json
     angles_str = data.get('angles')
     speed = data.get('speed', 30)
 
-    if not angles_str:
-        return jsonify({"success": False, "error": "缺少角度參數"})
-
+    if not angles_str: return jsonify({"success": False, "error": "缺少角度參數"})
+    
     try:
-        # 將字串轉換為浮點數列表
         angles = [float(a.strip()) for a in angles_str.split(',')]
-        if len(angles) != 6:
-            return jsonify({"success": False, "error": "角度參數必須是6個數字"})
+        if len(angles) != 6: return jsonify({"success": False, "error": "角度參數必須是6個數字"})
         
-        print(f"🎯 準備移動到角度: {[round(a, 2) for a in angles]}")
-        
-    except ValueError:
-        return jsonify({"success": False, "error": "角度參數格式錯誤"})
-    except Exception as e:
-        return jsonify({"success": False, "error": f"解析角度時發生錯誤: {str(e)}"})
-
-    try:
-        # 檢查電源狀態
         try:
             power_status = global_client.is_power_on()
-            if not power_status:
-                return jsonify({"success": False, "error": "手臂電源未開啟，請先開啟電源"})
+            if not power_status: return jsonify({"success": False, "error": "手臂電源未開啟，請先開啟電源"})
             print("✅ 手臂電源已開啟")
         except Exception as e:
             print(f"⚠️  無法確認電源狀態: {e}，嘗試繼續移動...")
 
-        # 讀取移動前的角度
         try:
             before_angles = global_client.get_angles()
-            if before_angles:
-                print(f"📍 移動前角度: {[round(a, 2) for a in before_angles]}")
-        except Exception as e:
-            print(f"⚠️  無法讀取移動前角度: {e}")
+            if before_angles: print(f"📍 移動前角度: {[round(a, 2) for a in before_angles]}")
+        except Exception as e: print(f"⚠️  無法讀取移動前角度: {e}")
 
-        # 發送移動指令
         success = global_client.send_angles(angles, speed)
         if success:
             print("✅ 移動指令發送成功")
-            
-            # 等待手臂移動
             print("⏳ 等待手臂移動...")
-            time.sleep(3)  # 增加等待時間
-            
-            # 讀取移動後的角度
+            time.sleep(3)
             try:
                 current_angles = global_client.get_angles()
                 if current_angles:
                     angles_formatted = [round(a, 2) for a in current_angles]
-                    print(f"📍 移動後角度: {angles_formatted}")
-                    return jsonify({
-                        "success": True,
-                        "message": "手臂移動完成",
-                        "angles": angles_formatted
-                    })
-                else:
-                    print("⚠️  無法讀取移動後角度")
-                    return jsonify({
-                        "success": True,
-                        "message": "移動指令已發送，但無法確認最終位置",
-                        "angles": None
-                    })
-            except Exception as e:
-                print(f"⚠️  讀取移動後角度失敗: {e}")
-                return jsonify({
-                    "success": True,
-                    "message": "移動指令已發送，但角度讀取失敗",
-                    "angles": None
-                })
-        else:
-            return jsonify({"success": False, "error": "發送移動指令失敗"})
-            
-    except Exception as e:
-        print(f"❌ 移動手臂時發生錯誤: {e}")
-        return jsonify({"success": False, "error": f"移動手臂時發生錯誤: {str(e)}"})
+                    return jsonify({"success": True, "message": "手臂移動完成", "angles": angles_formatted})
+                else: return jsonify({"success": True, "message": "移動指令已發送，但無法確認最終位置", "angles": None})
+            except Exception as e: return jsonify({"success": True, "message": "移動指令已發送，但角度讀取失敗", "angles": None})
+        else: return jsonify({"success": False, "error": "發送移動指令失敗"})
+    except Exception as e: return jsonify({"success": False, "error": f"移動手臂時發生錯誤: {str(e)}"})
 
 
 @app.route('/api/status', methods=['GET'])
 def get_status():
-    """取得系統狀態"""
+    """取得機器手臂狀態（靜默模式，不輸出錯誤日誌）"""
     if global_client is None:
         return jsonify({"success": False, "error": "客戶端未初始化"})
 
+    # 靜默檢查電源狀態
     try:
         power_status = global_client.is_power_on()
-    except Exception as e:
+    except Exception:
         power_status = False
 
-    try:
-        angles = global_client.get_angles()
-        angles_formatted = [round(a, 2) for a in angles] if angles else None
-    except Exception as e:
-        # 讀取角度失敗（例如返回 -1），仍然返回成功但角度為 None
-        angles_formatted = None
+    # 完全跳過角度讀取（避免觸發 loguru 錯誤日誌）
+    # 前端的狀態列不需要即時角度資訊，只需要電源狀態
+    angles_formatted = None
 
     return jsonify({
         "success": True,
@@ -1086,124 +1026,174 @@ def get_status():
 
 @app.route('/api/aruco/save_reference', methods=['POST'])
 def save_aruco_reference():
-    """儲存 ArUco 參考位置"""
-    if global_calibrator is None:
-        return jsonify({"success": False, "error": "校準器未初始化"})
-    
+    if global_calibrator is None: return jsonify({"success": False, "error": "校準器未初始化"})
     data = request.json
     button_name = data.get('button_name')
     aruco_markers = data.get('aruco_markers')
 
-    if not button_name or not aruco_markers:
-        return jsonify({"success": False, "error": "缺少必要參數"})
-
+    if not button_name or not aruco_markers: return jsonify({"success": False, "error": "缺少必要參數"})
     try:
         result = global_calibrator.save_aruco_reference(button_name, aruco_markers)
         return jsonify(result)
-    except Exception as e:
-        print(f"❌ 儲存 ArUco 參考失敗: {e}")
-        return jsonify({"success": False, "error": f"儲存 ArUco 參考失敗: {str(e)}"})
+    except Exception as e: return jsonify({"success": False, "error": f"儲存 ArUco 參考失敗: {str(e)}"})
 
 
 @app.route('/api/aruco/detect', methods=['POST'])
 def detect_aruco():
-    """即時檢測 ArUco 標記"""
-    if global_client is None:
-        return jsonify({"success": False, "error": "客戶端未初始化"})
-    
+    if global_client is None: return jsonify({"success": False, "error": "客戶端未初始化"})
     try:
-        # 獲取當前截圖
         image = global_client.capture_image(num_frames=3)
-        if image is None:
-            return jsonify({
-                "success": False, 
-                "error": "無法獲取截圖",
-                "aruco_detected": False,
-                "markers_count": 0,
-                "correction_needed": False
-            })
-        
-        # 檢測 ArUco 標記
+        if image is None: return jsonify({"success": False, "error": "無法獲取截圖", "aruco_detected": False, "markers_count": 0, "correction_needed": False})
         aruco_result = global_client.detect_aruco_markers(image)
+        if not aruco_result["success"]: return jsonify({"success": False, "error": aruco_result.get("error", "ArUco 檢測失敗"), "aruco_detected": False, "markers_count": 0, "correction_needed": False})
         
-        if not aruco_result["success"]:
-            return jsonify({
-                "success": False,
-                "error": aruco_result.get("error", "ArUco 檢測失敗"),
-                "aruco_detected": False,
-                "markers_count": 0,
-                "correction_needed": False
-            })
-        
-        # 轉換為前端期望的格式
         response = {
-            "success": True,
-            "aruco_detected": True,
-            "markers_count": aruco_result.get("markers_count", 0),
-            "markers": aruco_result.get("markers", []),
-            "correction_needed": False,
-            "has_reference": False,
-            "correction_info": None
+            "success": True, "aruco_detected": True, "markers_count": aruco_result.get("markers_count", 0),
+            "markers": aruco_result.get("markers", []), "correction_needed": False, "has_reference": False, "correction_info": None
         }
-        
         return jsonify(response)
-        
-    except Exception as e:
-        print(f"❌ ArUco 檢測失敗: {e}")
-        return jsonify({
-            "success": False, 
-            "error": f"ArUco 檢測失敗: {str(e)}",
-            "aruco_detected": False,
-            "markers_count": 0,
-            "correction_needed": False
-        })
+    except Exception as e: return jsonify({"success": False, "error": f"ArUco 檢測失敗: {str(e)}", "aruco_detected": False, "markers_count": 0, "correction_needed": False})
 
 
 @app.route('/api/aruco/calculate_correction', methods=['POST'])
 def calculate_correction():
-    """計算位置校正"""
-    if global_client is None:
-        return jsonify({"success": False, "error": "客戶端未初始化"})
-    
+    if global_client is None: return jsonify({"success": False, "error": "客戶端未初始化"})
     data = request.json
     current_markers = data.get('current_markers')
     reference_markers = data.get('reference_markers')
 
-    if not current_markers or not reference_markers:
-        return jsonify({"success": False, "error": "缺少標記數據"})
-
+    if not current_markers or not reference_markers: return jsonify({"success": False, "error": "缺少標記數據"})
     try:
         result = global_client.calculate_position_correction(current_markers, reference_markers)
         return jsonify(result if result else {"success": False, "error": "無法計算校正"})
-    except Exception as e:
-        print(f"❌ 計算位置校正失敗: {e}")
-        return jsonify({"success": False, "error": f"計算位置校正失敗: {str(e)}"})
+    except Exception as e: return jsonify({"success": False, "error": f"計算位置校正失敗: {str(e)}"})
 
 
 @app.route('/api/image/capture', methods=['POST'])
 def capture_image():
-    """即時截圖並返回 Base64 影像"""
-    if global_client is None:
-        return jsonify({"success": False, "error": "客戶端未初始化"})
-    
+    if global_client is None: return jsonify({"success": False, "error": "客戶端未初始化"})
     try:
         image = global_client.capture_image(num_frames=3)
-        if image is None:
-            return jsonify({"success": False, "error": "截圖失敗"})
-        
-        # 編碼為 Base64
+        if image is None: return jsonify({"success": False, "error": "截圖失敗"})
         _, buffer = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 85])
         image_base64 = base64.b64encode(buffer).decode('utf-8')
-        
+        return jsonify({"success": True, "image_base64": image_base64, "image_size": {"width": image.shape[1], "height": image.shape[0]}})
+    except Exception as e: return jsonify({"success": False, "error": f"截圖失敗: {str(e)}"})
+
+
+@app.route('/api/image/capture_rtsp', methods=['POST'])
+def capture_rtsp_image():
+    """RTSP 影像擷取（支援 TCP 傳輸和多種串流路徑）"""
+    data = request.json
+    rtsp_url = data.get('rtsp_url')
+    num_frames = data.get('num_frames', 5)
+
+    if not rtsp_url:
+        return jsonify({"success": False, "error": "缺少 RTSP URL"})
+
+    try:
+        import cv2
+        import os
+
+        # 嘗試多種串流路徑
+        base_url = rtsp_url.replace('/live0', '').replace('/live1', '').replace('/stream1', '')
+        stream_paths = ['/live0', '/live1', '/stream1']
+
+        # 自動檢測當前使用的路徑
+        current_path = '/live0'  # 預設
+        for path in stream_paths:
+            if path in rtsp_url:
+                current_path = path
+                break
+
+        # 優先嘗試當前路徑，然後嘗試其他路徑
+        paths_to_try = [current_path] + [p for p in stream_paths if p != current_path]
+
+        cap = None
+        successful_url = None
+
+        for stream_path in paths_to_try:
+            test_url = base_url + stream_path
+            print(f"📡 嘗試連接 RTSP: {test_url.replace(os.getenv('IPCAM_PASSWORD', ''), '***')}")
+
+            # 使用 TCP 傳輸（避免 UDP 問題）
+            cap = cv2.VideoCapture(test_url, cv2.CAP_FFMPEG)
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+            if cap.isOpened():
+                # 測試讀取一幀
+                ret, test_frame = cap.read()
+                if ret and test_frame is not None:
+                    print(f"✅ 成功連接: {stream_path}")
+                    successful_url = test_url
+                    break
+                else:
+                    print(f"⚠️  連接成功但無法讀取幀: {stream_path}")
+                    cap.release()
+                    cap = None
+            else:
+                print(f"⚠️  無法連接: {stream_path}")
+                if cap:
+                    cap.release()
+                cap = None
+
+        if not cap or not successful_url:
+            return jsonify({"success": False, "error": f"無法連接 RTSP（嘗試了 {', '.join(paths_to_try)}）"})
+
+        # 跳過前 5 幀（穩定連接）
+        print(f"   正在跳過前 5 幀...")
+        for _ in range(5):
+            cap.read()
+
+        # 擷取多幀並平均
+        print(f"   正在擷取 {num_frames} 幀影像...")
+        frames = []
+        for i in range(num_frames):
+            ret, frame = cap.read()
+            if ret and frame is not None:
+                frames.append(frame)
+                print(f"   ✅ 成功擷取第 {i+1} 幀")
+            else:
+                print(f"   ⚠️  第 {i+1} 幀擷取失敗")
+
+        cap.release()
+
+        if not frames:
+            return jsonify({"success": False, "error": "無法擷取任何幀"})
+
+        # 平均多幀影像
+        avg_frame = np.mean(frames, axis=0).astype(np.uint8)
+        _, buffer = cv2.imencode('.jpg', avg_frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        image_base64 = base64.b64encode(buffer).decode('utf-8')
+
+        print(f"✅ RTSP 截圖成功: {avg_frame.shape[1]}x{avg_frame.shape[0]}, 使用 {len(frames)} 幀")
         return jsonify({
             "success": True,
             "image_base64": image_base64,
-            "image_size": {"width": image.shape[1], "height": image.shape[0]}
+            "image_size": {"width": avg_frame.shape[1], "height": avg_frame.shape[0]},
+            "num_frames": len(frames),
+            "stream_path": successful_url.split('/')[-1]  # 回傳成功的串流路徑
         })
-        
     except Exception as e:
-        print(f"❌ 截圖失敗: {e}")
-        return jsonify({"success": False, "error": f"截圖失敗: {str(e)}"})
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": f"RTSP 截圖失敗: {str(e)}"})
+
+
+@app.route('/api/environment_config', methods=['GET'])
+def get_environment_config():
+    try:
+        from config.robot_arm.environment_config import EnvironmentConfig
+        environment = "taipei_lab"
+        cameras = EnvironmentConfig.get_cameras(environment)
+        camera_list = []
+        for camera_config in cameras:
+            camera_list.append({
+                "id": camera_config.get("id", "unknown"), "rtsp_url": camera_config.get("rtsp_url", ""),
+                "description": camera_config.get("description", f"Camera {camera_config.get('id', 'unknown')}")
+            })
+        return jsonify({"success": True, "environment": environment, "cameras": camera_list})
+    except Exception as e: return jsonify({"success": False, "error": f"取得環境配置失敗: {str(e)}"})
 
 
 def main():
@@ -1225,7 +1215,6 @@ def main():
     print("=" * 60)
     print()
 
-    # 建立客戶端
     print(f"🔌 正在連接到機器手臂伺服器 {args.host}:{args.port}...")
     global_client = HybridRobotArmClient(args.host, args.port, timeout=args.timeout)
 
@@ -1237,7 +1226,6 @@ def main():
         else:
             print("⚠️  跳過手臂連接檢查，繼續啟動...")
 
-    # 載入配置
     print(f"📂 載入配置檔案: {args.config}")
     global_calibrator = WebButtonROICalibrator(args.config, global_client)
 
@@ -1249,7 +1237,6 @@ def main():
 
     print(f"✅ 找到 {len(global_calibrator.buttons)} 個按鈕")
     
-    # 顯示按鈕列表
     calibrated_count = 0
     for name, config in global_calibrator.buttons.items():
         has_roi = 'vision' in config and 'roi' in config.get('vision', {})
@@ -1261,7 +1248,6 @@ def main():
     print(f"📊 已校準: {calibrated_count}/{len(global_calibrator.buttons)}")
     print()
 
-    # 啟動 Web 伺服器
     print("=" * 60)
     print("🚀 Web 伺服器已啟動")
     print("=" * 60)

@@ -17,6 +17,7 @@
 17. 所有的程式碼註解和文件都應使用中文
 18. 虛擬環境 使用 uv run 指令啟動
 19. 設定計畫時，將需要人工協助及實體裝置，測試及分析的區塊分別出來
+20. 修改python 需要執行 python3 -m py_compile 進行基礎檢查
 
 
 ## Shell Tools Usage Guidelines

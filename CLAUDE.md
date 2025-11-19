@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - ROI 互動式校準工具
   - 26 個 BDD 中文關鍵字
   - 17 個完整測試案例（快速測試、功能測試、整合測試）
-- 🎯 **本機化視覺檢測系統 (✅ 已完成 - v4.0.0, 2025-11-18)**
+- 🎯 **本機化視覺檢測系統 (✅ 已完成 - v4.1.1, 2025-11-18)**
   - 影像判定從 Server 遷移至本機端
   - 3 個測試環境（Taipei LAB / Taoyuan LAB / RV Car）
   - 8 種顏色檢測（藍/白/紅/綠/黃/橙/紫/關）
@@ -25,6 +25,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - 32+ BDD 中文關鍵字（Given-When-Then）
   - 環境專屬 YAML 配置管理
   - ROI 互動式校準工具
+  - **v4.1.1 修復：共用 Socket 連接（避免重複連接衝突）**
 - 👁️ **多感官檢測系統 (✅ 已完成 - v1.0.0, 2025-11-07)**
   - IP Camera 視覺檢測（螢幕亮度變化）
   - RTSP 音訊檢測（提示音檢測）
@@ -767,8 +768,21 @@ Log    1. Open Application 使用 http://localhost:4723 和 capabilities 字典
   - RobotArmKeywords v4.0.0（32+ BDD 關鍵字）
   - 8 種顏色 + 11 級亮度檢測
   - 支援 RTSP (taipei_lab) 與 Socket (taoyuan_lab/rv_car) 影像源
+- **Socket 連接衝突修復：✅ 完成（2025-11-18, v4.1.1）**
+  - **問題：** MyCobotSocketController 與 SocketImageSource 重複連接衝突
+  - **解決：** 共用 Socket 連接機制
+  - **修改檔案：**
+    - `SocketImageSource`: 新增 `shared_socket` 參數支援
+    - `ImageSourceManager`: 傳遞共用 Socket
+    - `RobotArmKeywords`: 智能檢測並傳遞 `controller.socket`
+  - **向後兼容：** 保持獨立模式（無參數調用）
+  - **新增功能：** TCP 粘包防護（`time.sleep(0.05)`）
 
 **下一階段重點:**
+- **v4.2.0: HTTP API Server 重構**（規劃中）
+  - Socket (9000) 專注機器手臂控制
+  - HTTP API (8000) 專注影像傳輸
+  - 職責分離、並發安全、易於擴展
 - **Phase 4: 真機測試與調校**（需硬體環境）
 - 進階 TestLink 功能（測試案例同步、自動建立 Bug）
 - 多感官檢測測試案例完善
