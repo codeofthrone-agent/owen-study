@@ -19,6 +19,8 @@ import numpy as np
 import cv2
 import cv2.aruco as aruco
 import base64
+from flask import Flask, jsonify, request
+from werkzeug.serving import make_server
 try:
     import RPi.GPIO as GPIO
     GPIO_AVAILABLE = True
@@ -55,6 +57,163 @@ Enhanced features:
 """
 
 has_return = [0x01,0x02,0x03,0x04,0x09,0x12, 0x14, 0x15, 0x17,0x1B, 0x20,0x23, 0x27, 0x2A,0x2B,0x2D,0x2E, 0x3B,0x3D, 0x40,0x42,0x43,0x44,0x4A, 0x4B,0x50,0x51,0x53,0x62,0x65,0x69,0x90,0x91,0x92,0xC0, 0xC3,0x82,0x84,0x86,0x88,0x8A,0xD0,0xD1,0xD5,0xE1,0xE2,0xE3,0xE4,0xE5,0XE6, 0xB0]
+
+
+# ==================== HTTP API Server (v4.2.0) ====================
+# 職責分離架構：Socket (控制) + HTTP (影像)
+#
+# 端點:
+# - GET  /health                      - 健康檢查
+# - GET  /api/v1/capture              - 單張影像截取
+# - GET  /api/v1/capture/multiple     - 多張影像截取
+
+class HTTPAPIServer:
+    """HTTP API Server (v4.2.0) - Flask Implementation"""
+
+    def __init__(self, host, port, camera_capture, camera_lock, logger):
+        self.host = host
+        self.port = port
+        self.camera_capture = camera_capture
+        self.camera_lock = camera_lock
+        self.logger = logger
+        self.app = Flask(__name__)
+        self.server = None
+        self.server_thread = None
+        self.ctx = None
+
+        # Configure Flask logger
+        self.app.logger.handlers = self.logger.handlers
+        self.app.logger.setLevel(self.logger.level)
+
+        # Register routes
+        self.app.add_url_rule('/health', 'health', self.health, methods=['GET'])
+        self.app.add_url_rule('/api/v1/health', 'api_health', self.health, methods=['GET'])
+        self.app.add_url_rule('/api/v1/capture', 'capture', self.capture, methods=['GET'])
+        self.app.add_url_rule('/api/v1/capture/multiple', 'capture_multiple', self.capture_multiple, methods=['GET'])
+
+    def start(self):
+        """Start HTTP API Server in a separate thread"""
+        self.server_thread = threading.Thread(target=self._run, daemon=True)
+        self.server_thread.start()
+        self.logger.info(f"✅ HTTP API Server (Flask) started at http://{self.host}:{self.port}")
+        self.logger.info(f"   Endpoints:")
+        self.logger.info(f"   - GET /health")
+        self.logger.info(f"   - GET /api/v1/capture?num_frames=5&format=jpeg")
+        self.logger.info(f"   - GET /api/v1/capture/multiple?count=5&num_frames=5&format=jpeg")
+
+    def _run(self):
+        try:
+            self.server = make_server(self.host, self.port, self.app, threaded=True)
+            self.ctx = self.app.app_context()
+            self.ctx.push()
+            self.server.serve_forever()
+        except Exception as e:
+            self.logger.error(f"HTTP API Server error: {e}")
+
+    def stop(self):
+        """Stop HTTP API Server"""
+        if self.server:
+            self.server.shutdown()
+            self.server_thread.join(timeout=5)
+            self.logger.info("HTTP API Server stopped")
+
+    def health(self):
+        return jsonify({
+            "status": "healthy",
+            "version": "4.2.0",
+            "services": {
+                "vision": self.camera_capture is not None
+            }
+        })
+
+    def capture(self):
+        if not self.camera_capture:
+            return jsonify({"status": "error", "message": "Vision system not available"}), 503
+
+        try:
+            num_frames = int(request.args.get('num_frames', 5))
+            image_format = request.args.get('format', 'jpeg')
+
+            if not (1 <= num_frames <= 20):
+                return jsonify({"status": "error", "message": "num_frames must be between 1 and 20"}), 400
+            if image_format not in ['jpeg', 'png']:
+                return jsonify({"status": "error", "message": "format must be 'jpeg' or 'png'"}), 400
+
+            with self.camera_lock:
+                avg_frame = self.camera_capture.capture_multi_frame_average(
+                    num_frames=num_frames,
+                    warmup_frames=0
+                )
+
+                if avg_frame is None:
+                    return jsonify({"status": "error", "message": "Failed to capture image"}), 500
+
+                ext = '.jpg' if image_format == 'jpeg' else '.png'
+                _, buffer = cv2.imencode(ext, avg_frame)
+                image_base64 = base64.b64encode(buffer).decode('utf-8')
+
+            return jsonify({
+                "status": "success",
+                "image_base64": image_base64,
+                "metadata": {
+                    "num_frames": num_frames,
+                    "format": image_format,
+                    "shape": avg_frame.shape[:2]
+                }
+            })
+
+        except Exception as e:
+            self.logger.error(f"Capture error: {e}")
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    def capture_multiple(self):
+        if not self.camera_capture:
+            return jsonify({"status": "error", "message": "Vision system not available"}), 503
+
+        try:
+            count = int(request.args.get('count', 5))
+            num_frames = int(request.args.get('num_frames', 5))
+            image_format = request.args.get('format', 'jpeg')
+
+            if not (1 <= count <= 10):
+                return jsonify({"status": "error", "message": "count must be between 1 and 10"}), 400
+            if not (1 <= num_frames <= 20):
+                return jsonify({"status": "error", "message": "num_frames must be between 1 and 20"}), 400
+            if image_format not in ['jpeg', 'png']:
+                return jsonify({"status": "error", "message": "format must be 'jpeg' or 'png'"}), 400
+
+            images_base64 = []
+            with self.camera_lock:
+                for i in range(count):
+                    avg_frame = self.camera_capture.capture_multi_frame_average(
+                        num_frames=num_frames,
+                        warmup_frames=0
+                    )
+
+                    if avg_frame is None:
+                        return jsonify({"status": "error", "message": f"Failed to capture image {i+1}/{count}"}), 500
+
+                    ext = '.jpg' if image_format == 'jpeg' else '.png'
+                    _, buffer = cv2.imencode(ext, avg_frame)
+                    image_base64 = base64.b64encode(buffer).decode('utf-8')
+                    images_base64.append(image_base64)
+
+                    if i < count - 1:
+                        time.sleep(0.05)
+
+            return jsonify({
+                "status": "success",
+                "images": images_base64,
+                "metadata": {
+                    "count": count,
+                    "num_frames": num_frames,
+                    "format": image_format
+                }
+            })
+
+        except Exception as e:
+            self.logger.error(f"Multiple capture error: {e}")
+            return jsonify({"status": "error", "message": str(e)}), 500
 
 
 # ==================== CameraCapture 類別 ====================
@@ -285,12 +444,13 @@ class MycobotServer(object):
     def __init__(self, host, port, serial_num = "/dev/ttyAMA0", baud = 1000000,
                  reconnect_interval = 2, max_reconnect_attempts = 5,
                  read_timeout = 0.2, socket_timeout = 30.0, log_level = logging.INFO,
-                 camera_device = "/dev/video0", enable_vision = True):
+                 camera_device = "/dev/video0", enable_vision = True,
+                 enable_http = True, http_port = 8000):
         """Server class with enhanced error handling and auto-reconnection
 
         Args:
             host: server ip address.
-            port: server port.
+            port: server port (Socket protocol, default: 9000).
             serial_num: serial number of the robot.The default is /dev/ttyAMA0.
             baud: baud rate of the serial port.The default is 1000000.
             reconnect_interval: seconds between reconnection attempts.
@@ -300,6 +460,8 @@ class MycobotServer(object):
             log_level: logging level (default: logging.INFO).
             camera_device: camera device path (default: /dev/video0).
             enable_vision: enable vision detection system (default: True).
+            enable_http: enable HTTP API Server (v4.2.0, default: False).
+            http_port: HTTP API Server port (default: 8000).
 
         """
         if GPIO_AVAILABLE:
@@ -324,6 +486,12 @@ class MycobotServer(object):
         self.camera_device = camera_device
         self.enable_vision = enable_vision
         self.camera_capture = None
+        self.camera_lock = threading.Lock()  # v4.2.0: Camera 執行緒鎖（Socket + HTTP 共用）
+
+        # HTTP API Server 配置（v4.2.0）
+        self.enable_http = enable_http
+        self.http_port = http_port
+        self.http_server = None
 
         # 初始化 socket
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -355,6 +523,27 @@ class MycobotServer(object):
                 self.logger.warning(f"⚠️ 影像截取系統初始化失敗: {e}")
                 self.logger.warning("   伺服器將以無視覺模式運行")
                 self.enable_vision = False
+
+        # 初始化 HTTP API Server（v4.2.0）
+        if self.enable_http:
+            if not self.enable_vision or not self.camera_capture:
+                self.logger.warning("⚠️ HTTP API Server 需要 Vision 系統，但 Vision 系統未啟用")
+                self.logger.warning("   HTTP API Server 將不會啟動")
+                self.enable_http = False
+            else:
+                try:
+                    self.http_server = HTTPAPIServer(
+                        host=host,
+                        port=self.http_port,
+                        camera_capture=self.camera_capture,
+                        camera_lock=self.camera_lock,
+                        logger=self.logger
+                    )
+                    self.http_server.start()
+                except Exception as e:
+                    self.logger.error(f"❌ HTTP API Server 啟動失敗: {e}")
+                    self.logger.warning("   伺服器將繼續運行（僅 Socket 協定）")
+                    self.enable_http = False
 
         # 啟動連接處理
         self.connect()
@@ -986,6 +1175,14 @@ class MycobotServer(object):
         """優雅關閉伺服器"""
         self.logger.info("正在關閉伺服器...")
         self.is_running = False
+
+        # 停止 HTTP API Server（v4.2.0）
+        if self.http_server:
+            try:
+                self.http_server.stop()
+            except Exception as e:
+                self.logger.error(f"停止 HTTP API Server 時發生錯誤: {e}")
+
         self._cleanup()
 
 
@@ -1039,6 +1236,10 @@ if __name__ == "__main__":
                         help='Logging level (default: INFO)')
     parser.add_argument('--disable-vision', action='store_true',
                         help='Disable vision detection system (default: enabled)')
+    parser.add_argument('--enable-http', action='store_true',
+                        help='Enable HTTP API Server (v4.2.0, default: disabled)')
+    parser.add_argument('--http-port', type=int, default=8000,
+                        help='HTTP API Server port (default: 8000)')
 
     args = parser.parse_args()
 
@@ -1060,13 +1261,16 @@ if __name__ == "__main__":
     PORT = args.port
 
     print("=" * 50)
-    print("MyCobot Robot Arm Server - Enhanced Version")
+    print("MyCobot Robot Arm Server - Enhanced Version (v4.2.0)")
     print("=" * 50)
-    print(f"Server IP:   {HOST}")
-    print(f"Server Port: {PORT}")
-    print(f"Serial Port: {args.serial}")
-    print(f"Baud Rate:   {args.baud}")
-    print(f"Vision Enabled: {not args.disable_vision}")
+    print(f"Server IP:        {HOST}")
+    print(f"Socket Port:      {PORT}")
+    print(f"Serial Port:      {args.serial}")
+    print(f"Baud Rate:        {args.baud}")
+    print(f"Vision Enabled:   {not args.disable_vision}")
+    print(f"HTTP API Enabled: {args.enable_http}")
+    if args.enable_http:
+        print(f"HTTP API Port:    {args.http_port}")
     print("=" * 50)
     print("Press Ctrl+C to stop the server")
     print("=" * 50)
@@ -1081,7 +1285,9 @@ if __name__ == "__main__":
             read_timeout=args.read_timeout,
             socket_timeout=args.socket_timeout,
             log_level=log_level,
-            enable_vision=not args.disable_vision
+            enable_vision=not args.disable_vision,
+            enable_http=args.enable_http,
+            http_port=args.http_port
         )
     except KeyboardInterrupt:
         print("\nServer stopped by user")

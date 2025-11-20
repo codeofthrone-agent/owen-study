@@ -665,7 +665,7 @@ class RobotArmKeywords:
     # ==================== BDD When 關鍵字 - 多色彩檢測 (v4.0.0) ====================
 
     @keyword('When 用戶檢測面板按鈕 "${button_id}" 的顏色')
-    def when_user_detects_panel_button_color(self, button_id: str, save_debug_image: bool = False) -> Dict[str, Any]:
+    def when_user_detects_panel_button_color(self, button_id: str, save_debug_image: bool = False, step_prefix: str = "") -> Dict[str, Any]:
         """When: 用戶檢測面板按鈕的顏色
 
         執行動作：檢測指定面板按鈕的 LED 顏色（本機視覺檢測）
@@ -674,6 +674,8 @@ class RobotArmKeywords:
 
         Args:
             button_id: 按鈕 ID（定義在環境配置中，如 "light1", "bluetooth"）
+            save_debug_image: 是否儲存除錯影像
+            step_prefix: 步驟命名前綴 (例如: "step2_before")
 
         Returns:
             dict: 檢測結果字典，包含:
@@ -733,7 +735,8 @@ class RobotArmKeywords:
                 image_source_config=self.image_source_manager.get_current_source()["config"],
                 num_frames=5,
                 warmup_frames=20,
-                save_debug_images=save_debug_image  # 根據參數決定是否儲存除錯影像
+                save_debug_images=save_debug_image,  # 根據參數決定是否儲存除錯影像
+                step_prefix=step_prefix  # 傳遞步驟前綴
             )
 
             # 取得單一按鈕結果
@@ -782,7 +785,7 @@ class RobotArmKeywords:
         return buttons[button_id]
 
     @keyword('When 用戶檢測實體燈光亮度 "${light_id}"')
-    def when_user_detects_physical_light_brightness(self, light_id: str, save_debug_image: bool = False) -> Dict[str, Any]:
+    def when_user_detects_physical_light_brightness(self, light_id: str, save_debug_image: bool = False, step_prefix: str = "") -> Dict[str, Any]:
         """When: 用戶檢測實體燈光亮度
 
         執行動作：檢測實體燈光的亮度級別（本機視覺檢測）
@@ -791,6 +794,8 @@ class RobotArmKeywords:
 
         Args:
             light_id: 燈光 ID（定義在環境配置中，如 "ceiling_light_1", "desk_lamp"）
+            save_debug_image: 是否儲存除錯影像
+            step_prefix: 步驟命名前綴 (例如: "step3_before")
 
         Returns:
             dict: 檢測結果字典，包含:
@@ -851,25 +856,26 @@ class RobotArmKeywords:
                 image_source_config = self.image_source_manager.get_current_source()["config"]
                 logger.debug(f"使用當前影像源: {image_source_config['type']}")
 
-            result = self.local_vision.detect_physical_light_brightness(
+            detection_result, _, _ = self.local_vision.detect_physical_light_brightness(
                 roi_config=light_config["roi"],
                 image_source_config=image_source_config,
                 num_frames=5,
                 warmup_frames=20,
-                save_debug_images=save_debug_image  # 根據參數決定是否儲存除錯影像
+                save_debug_images=save_debug_image,  # 根據參數決定是否儲存除錯影像
+                step_prefix=step_prefix  # 傳遞步驟前綴
             )
 
             # 儲存結果供 Then 關鍵字驗證
-            self._last_detection_result = result
+            self._last_detection_result = detection_result
 
             logger.info(
-                f"✅ 檢測完成: 亮度={result['brightness_level']}%, "
-                f"原始值={result['brightness_value']:.1f}, "
-                f"信心度={result['confidence']:.2f}, "
-                f"狀態={result['light_state']}"
+                f"✅ 檢測完成: 亮度={detection_result['brightness_level']}%, "
+                f"原始值={detection_result['brightness_value']:.1f}, "
+                f"信心度={detection_result['confidence']:.2f}, "
+                f"狀態={detection_result['light_state']}"
             )
 
-            return result
+            return detection_result
 
         except Exception as e:
             logger.error(f"❌ 亮度檢測失敗: {e}")
@@ -1524,6 +1530,26 @@ class RobotArmKeywords:
             ValueError: 如果按鈕 ID 不存在
         """
         return self._press_button(button_id)
+
+    @keyword('When 用戶按壓第 "${button_id}" 按鈕持續 "${duration}" 秒')
+    def when_user_presses_button_with_duration(self, button_id: str, duration: str):
+        """
+        When: 用戶按壓指定按鈕並持續指定時間
+
+        執行動作：按壓指定 ID 的按鈕並保持指定時間
+
+        Args:
+            button_id: 按鈕 ID（例如 light1, light2 等）
+            duration: 按壓持續時間（秒）
+
+        Example:
+            | When | 用戶按壓第 "light2" 按鈕持續 "0.5" 秒 |
+            | When | 用戶按壓第 "power" 按鈕持續 "2.0" 秒 |
+
+        Raises:
+            ValueError: 如果按鈕 ID 不存在或時間格式錯誤
+        """
+        return self._press_button(button_id, custom_duration=float(duration))
 
     @keyword('Then 上一步操作應該成功')
     def then_last_operation_should_succeed(self) -> bool:

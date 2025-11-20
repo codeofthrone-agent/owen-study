@@ -9,7 +9,7 @@
 
 作者: Robot Automation Team
 日期: 2025-11-17
-版本: v4.0.0
+版本: v4.2.0
 """
 
 import sys
@@ -36,6 +36,7 @@ class ImageSourceManager:
     支援的影像源:
     - RTSP: 遠端 IP Camera（rtsp://...）
     - Socket: MyCobot 280 Jetson Nano USB Camera（透過 Socket 傳輸）
+    - HTTP: MyCobot 280 Jetson Nano USB Camera（透過 HTTP API 傳輸，v4.2.0 新增）
 
     Attributes:
         rtsp_source: RTSP 影像源實例（Phase 1.4 實作）
@@ -58,6 +59,12 @@ class ImageSourceManager:
         ...     "port": 9000
         ... })
         >>>
+        >>> # 設定 HTTP 影像源 (v4.2.0)
+        >>> manager.set_image_source("http", {
+        ...     "host": "10.42.0.180",
+        ...     "port": 8000
+        ... })
+        >>>
         >>> # 擷取單一影像（Phase 1.4-1.5 實作）
         >>> image = manager.capture_image()
         >>>
@@ -77,18 +84,35 @@ class ImageSourceManager:
         # Phase 1.4 完成 - RTSPImageSource
         try:
             # 嘗試絕對匯入（作為模組）
-            from libraries.robot_arm_control.image_sources import RTSPImageSource
+            from libraries.robot_arm_control.image_sources.rtsp_source import RTSPImageSource
         except ImportError:
-            # 回退到相對匯入（直接執行）
-            from image_sources import RTSPImageSource
+            try:
+                # 嘗試相對匯入
+                from .image_sources.rtsp_source import RTSPImageSource
+            except ImportError:
+                # 回退到直接匯入（當 sys.path 包含 libraries/robot_arm_control 時）
+                from image_sources.rtsp_source import RTSPImageSource
         self.rtsp_source = RTSPImageSource()
 
         # Phase 1.5 完成 - SocketImageSource（支援共用 Socket）
         try:
-            from libraries.robot_arm_control.image_sources import SocketImageSource
+            from libraries.robot_arm_control.image_sources.socket_image_source import SocketImageSource
         except ImportError:
-            from image_sources import SocketImageSource
+            try:
+                from .image_sources.socket_image_source import SocketImageSource
+            except ImportError:
+                from image_sources.socket_image_source import SocketImageSource
         self.socket_source = SocketImageSource(shared_socket=shared_socket)
+
+        # Phase 3 完成 - HTTPImageSource (v4.2.0)
+        try:
+            from libraries.robot_arm_control.image_sources.http_image_source import HTTPImageSource
+        except ImportError:
+            try:
+                from .image_sources.http_image_source import HTTPImageSource
+            except ImportError:
+                from image_sources.http_image_source import HTTPImageSource
+        self.http_source = HTTPImageSource()
 
         # 當前使用的影像源
         self.current_source: Optional[str] = None
@@ -104,6 +128,7 @@ class ImageSourceManager:
             source_config: 源配置字典
                 - RTSP: {"url": "rtsp://...", "timeout": 10}
                 - Socket: {"host": "10.42.0.180", "port": 9000}
+                - HTTP: {"host": "10.42.0.180", "port": 8000}
 
         Raises:
             ValueError: 不支援的影像源類型
@@ -125,8 +150,8 @@ class ImageSourceManager:
             ... })
         """
         # 驗證影像源類型
-        if source_type not in ["rtsp", "socket"]:
-            raise ValueError(f"不支援的影像源類型: {source_type}。支援的類型: 'rtsp', 'socket'")
+        if source_type not in ["rtsp", "socket", "http"]:
+            raise ValueError(f"不支援的影像源類型: {source_type}。支援的類型: 'rtsp', 'socket', 'http'")
 
         # 驗證配置完整性
         self._validate_source_config(source_type, source_config)
@@ -155,6 +180,10 @@ class ImageSourceManager:
         elif source_type == "socket":
             if "host" not in source_config or "port" not in source_config:
                 raise ValueError("Socket 配置必須包含 'host' 和 'port' 欄位")
+
+        elif source_type == "http":
+            if "host" not in source_config or "port" not in source_config:
+                raise ValueError("HTTP 配置必須包含 'host' 和 'port' 欄位")
 
     def get_current_source(self) -> Optional[Dict[str, Any]]:
         """取得當前影像源資訊
@@ -233,6 +262,20 @@ class ImageSourceManager:
                 retry_delay=2.0
             )
 
+        elif self.current_source == "http":
+            # Phase 3 完成 - HTTP 影像擷取
+            host = self.current_config["host"]
+            port = self.current_config["port"]
+            num_frames = self.current_config.get("num_frames", 5)
+
+            return self.http_source.request_image(
+                host=host,
+                port=port,
+                num_frames=num_frames,
+                retry_attempts=3,
+                retry_delay=1.0
+            )
+
     def capture_multiple_frames(
         self,
         num_frames: int = 5,
@@ -291,6 +334,21 @@ class ImageSourceManager:
                 num_frames_per_image=num_frames_per_image,
                 retry_attempts=3,
                 retry_delay=2.0
+            )
+
+        elif self.current_source == "http":
+            # Phase 3 完成 - HTTP 多幀擷取
+            host = self.current_config["host"]
+            port = self.current_config["port"]
+            num_frames_per_image = self.current_config.get("num_frames", 5)
+
+            return self.http_source.request_multiple_images(
+                host=host,
+                port=port,
+                num_images=num_frames,
+                num_frames_per_image=num_frames_per_image,
+                retry_attempts=3,
+                retry_delay=1.0
             )
 
 

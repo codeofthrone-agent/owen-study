@@ -7,10 +7,11 @@
 - 載入環境專屬配置
 - 支援環境專屬 HSV 調整
 - 支援多 IP Camera 配置（✨ v4.1.0 新增）
+- 支援 RTSP 認證（✨ v4.2.0 新增）
 
 作者: Robot Automation Team
-日期: 2025-11-18
-版本: v4.1.0
+日期: 2025-11-19
+版本: v4.2.0
 
 支援環境:
 - taipei_lab: 台北實驗室（多 RTSP Camera + Socket 機器手臂）
@@ -42,6 +43,12 @@ Example:
 
 import copy
 from typing import Dict, List, Any, Optional
+import os
+from dotenv import load_dotenv
+from config.ipcam_config import get_all_cameras
+
+# 載入 .env 檔案以取得 RTSP 認證資訊
+load_dotenv()
 
 
 class EnvironmentConfig:
@@ -90,46 +97,16 @@ class EnvironmentConfig:
             "name": "台北實驗室",
             "ipcam_environment": "laboratory",  # ✨ 新增：對應 ipcam_config.yaml
 
-            # ✨ 修改：支援多 Camera
-            "cameras": [
-                {
-                    "id": "level1",
-                    "ip": "192.168.165.184",
-                    "port": 554,
-                    "protocol": "rtsp",
-                    "stream_path": "/live0",
-                    "rtsp_url": "rtsp://192.168.165.184:554/live0",
-                    "description": "Level 1 監控攝影機",
-                    "purpose": "panel_detection"  # 面板檢測
-                },
-                {
-                    "id": "level2",
-                    "ip": "192.168.165.127",
-                    "port": 554,
-                    "protocol": "rtsp",
-                    "stream_path": "/live0",
-                    "rtsp_url": "rtsp://192.168.165.127:554/live0",
-                    "description": "Level 2 監控攝影機",
-                    "purpose": "light_array_detection"  # 燈光陣列檢測
-                },
-                {
-                    "id": "motor",
-                    "ip": "10.42.0.39",
-                    "port": 554,
-                    "protocol": "rtsp",
-                    "stream_path": "/live0",
-                    "rtsp_url": "rtsp://10.42.0.39:554/live0",
-                    "description": "馬達區域監控攝影機",
-                    "purpose": "motor_monitoring"  # 馬達監控
-                }
-            ],
+            # ✨ 修改：支援多 Camera (動態從 ipcam_config 載入)
+            "cameras": [],  # 移除硬編碼，改由 get_cameras 動態載入
             "default_camera": "level1",  # ✨ 新增：預設使用的 Camera
 
             # 機器手臂配置（使用 Socket 影像源）
             "image_source": "mixed",  # ✨ 修改：混合模式（RTSP + Socket）
             "robot_arm_host": "10.42.0.180",
             "robot_arm_port": 9000,
-            "robot_arm_image_source": "socket",  # 機器手臂使用 Socket
+            "robot_arm_http_port": 8000,  # ✨ 新增：HTTP API Port
+            "robot_arm_image_source": "socket",  # Temporarily switched to socket as HTTP server is unreachable
 
             "panel_types": ["3510a", "3611a", "3611c"],
             "button_config_path": "config/robot_arm/taipei_lab_buttons.yaml",
@@ -148,10 +125,11 @@ class EnvironmentConfig:
             "cameras": [],  # 空列表
             "default_camera": None,
 
-            "image_source": "socket",
+            "image_source": "http",  # ✨ 修改：使用 HTTP 影像源 (v4.2.0)
             "robot_arm_host": "192.168.1.100",
             "robot_arm_port": 9000,
-            "robot_arm_image_source": "socket",
+            "robot_arm_http_port": 8000,
+            "robot_arm_image_source": "http",
 
             "panel_types": ["3510a", "3611a"],
             "button_config_path": "config/robot_arm/taoyuan_lab_buttons.yaml",
@@ -164,10 +142,11 @@ class EnvironmentConfig:
             "cameras": [],  # TODO: 待補充 RV Car Camera 配置
             "default_camera": None,
 
-            "image_source": "socket",
+            "image_source": "http",  # ✨ 修改：使用 HTTP 影像源 (v4.2.0)
             "robot_arm_host": "10.42.0.180",
             "robot_arm_port": 9000,
-            "robot_arm_image_source": "socket",
+            "robot_arm_http_port": 8000,
+            "robot_arm_image_source": "http",
 
             "panel_types": ["3611c"],
             "button_config_path": "config/robot_arm/rv_car_buttons.yaml",
@@ -252,7 +231,7 @@ class EnvironmentConfig:
 
     @staticmethod
     def get_cameras(env_name: str) -> List[Dict[str, Any]]:
-        """取得環境的所有 Camera 配置 (✨ v4.1.0 新增)
+        """取得環境的所有 Camera 配置 (✨ v4.1.0 新增, v4.2.0 支援認證)
 
         Args:
             env_name: 環境名稱
@@ -264,7 +243,7 @@ class EnvironmentConfig:
                 - port (int): 端口
                 - protocol (str): 協議 (rtsp)
                 - stream_path (str): 串流路徑
-                - rtsp_url (str): 完整 RTSP URL
+                - rtsp_url (str): 完整 RTSP URL（✨ v4.2.0 包含認證資訊）
                 - description (str): 描述
                 - purpose (str): 用途
 
@@ -275,10 +254,57 @@ class EnvironmentConfig:
             >>> print(cameras[0]["id"])
             'level1'
             >>> print(cameras[0]["rtsp_url"])
-            'rtsp://192.168.165.184:554/live0'
+            'rtsp://thortron_qa:WHtYpiU6lh_McQf@192.168.165.184:554/live0'
         """
+        # ✨ v4.2.0: 改從 ipcam_config 動態載入
         env_config = EnvironmentConfig.get_environment(env_name)
-        return copy.deepcopy(env_config.get("cameras", []))
+        ipcam_env = env_config.get("ipcam_environment")
+        cameras = []
+
+        if ipcam_env:
+            try:
+                # 從 ipcam_config 取得配置字典
+                cam_dict = get_all_cameras(ipcam_env)
+                
+                # 轉換為列表格式並加入 id
+                for cam_id, cam_data in cam_dict.items():
+                    cam_copy = copy.deepcopy(cam_data)
+                    cam_copy["id"] = cam_id
+                    
+                    # 確保有 rtsp_url (如果 ipcam_config 沒提供，這裡構建)
+                    # ipcam_config.yaml 通常只有 ip, port, stream_path
+                    # 我們需要構建完整的 rtsp_url
+                    
+                    ip = cam_copy.get("ip")
+                    port = cam_copy.get("port", 554)
+                    stream_path = cam_copy.get("stream_path", "/live0")
+                    protocol = cam_copy.get("protocol", "rtsp")
+                    
+                    # 處理路徑開頭的斜線
+                    if stream_path and not stream_path.startswith("/"):
+                        stream_path = f"/{stream_path}"
+                        
+                    # 取得認證資訊 (優先使用 YAML 中的，否則使用環境變數)
+                    username = cam_copy.get("username") or os.getenv("IPCAM_USERNAME", "")
+                    password = cam_copy.get("password") or os.getenv("IPCAM_PASSWORD", "")
+                    
+                    if protocol == "rtsp":
+                        if username and password:
+                            cam_copy["rtsp_url"] = f"rtsp://{username}:{password}@{ip}:{port}{stream_path}"
+                        else:
+                            cam_copy["rtsp_url"] = f"rtsp://{ip}:{port}{stream_path}"
+                    
+                    cameras.append(cam_copy)
+                    
+            except ValueError:
+                # 環境不存在於 ipcam_config，保持空列表
+                pass
+        
+        # 如果 ipcam_config 沒找到，嘗試使用 env_config 中的（相容性保留，雖然我們清空了）
+        if not cameras:
+            cameras = copy.deepcopy(env_config.get("cameras", []))
+
+        return cameras
 
     @staticmethod
     def get_camera(env_name: str, camera_id: str) -> Dict[str, Any]:
@@ -349,6 +375,7 @@ class EnvironmentConfig:
             dict: 影像源配置字典，格式依影像源類型而定：
                 - RTSP: {"type": "rtsp", "url": "rtsp://...", "timeout": 10}
                 - Socket: {"type": "socket", "host": "...", "port": 9000, "num_frames": 5}
+                - HTTP: {"type": "http", "host": "...", "port": 8000, "num_frames": 5}
 
         Raises:
             ValueError: 未知環境名稱或 Camera 不存在
@@ -393,15 +420,25 @@ class EnvironmentConfig:
         # 未指定 Camera ID 的情況
         image_source = env_config.get("image_source")
 
-        # 混合模式：預設使用 Socket（用於控制面板按鈕檢測）
-        # 純 Socket 模式：使用 Socket
-        if image_source in ["mixed", "socket"]:
-            return {
-                "type": "socket",
-                "host": env_config["robot_arm_host"],
-                "port": env_config["robot_arm_port"],
-                "num_frames": 5
-            }
+        # 混合模式：預設使用 Robot Arm Image Source（用於控制面板按鈕檢測）
+        # 純 Socket/HTTP 模式：使用 Robot Arm Image Source
+        if image_source in ["mixed", "socket", "http"]:
+            arm_source = env_config.get("robot_arm_image_source", "socket")
+            
+            if arm_source == "http":
+                return {
+                    "type": "http",
+                    "host": env_config["robot_arm_host"],
+                    "port": env_config.get("robot_arm_http_port", 8000),
+                    "num_frames": 5
+                }
+            else:
+                return {
+                    "type": "socket",
+                    "host": env_config["robot_arm_host"],
+                    "port": env_config["robot_arm_port"],
+                    "num_frames": 5
+                }
 
         # 純 RTSP 模式：使用預設 Camera
         camera = EnvironmentConfig.get_default_camera(env_name)
@@ -414,13 +451,22 @@ class EnvironmentConfig:
                 "description": camera.get("description", "")
             }
 
-        # 回退：使用 Socket
-        return {
-            "type": "socket",
-            "host": env_config["robot_arm_host"],
-            "port": env_config["robot_arm_port"],
-            "num_frames": 5
-        }
+        # 回退：使用 Socket (或 HTTP 如果配置了)
+        arm_source = env_config.get("robot_arm_image_source", "socket")
+        if arm_source == "http":
+            return {
+                "type": "http",
+                "host": env_config["robot_arm_host"],
+                "port": env_config.get("robot_arm_http_port", 8000),
+                "num_frames": 5
+            }
+        else:
+            return {
+                "type": "socket",
+                "host": env_config["robot_arm_host"],
+                "port": env_config["robot_arm_port"],
+                "num_frames": 5
+            }
 
 
 if __name__ == "__main__":
@@ -476,13 +522,13 @@ if __name__ == "__main__":
     if EnvironmentConfig.get_cameras("taipei_lab"):
         print("taipei_lab Camera 列表:")
         for cam in EnvironmentConfig.get_cameras("taipei_lab"):
-            print(f"  - {cam['id']}: {cam['purpose']}")
+            print(f"  - {cam['id']}: {cam.get('purpose', 'N/A')}")
 
         # 測試取得特定 Camera
         print("\n取得 level2 Camera:")
         level2 = EnvironmentConfig.get_camera("taipei_lab", "level2")
         print(f"  URL: {level2['rtsp_url']}")
-        print(f"  用途: {level2['purpose']}")
+        print(f"  用途: {level2.get('purpose', 'N/A')}")
 
         # 測試取得影像源配置（指定 Camera）
         print("\n取得 motor Camera 的影像源配置:")

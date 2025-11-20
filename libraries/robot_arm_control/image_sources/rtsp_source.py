@@ -195,11 +195,22 @@ class RTSPImageSource:
 
                 logger.debug(f"正在擷取影像 (嘗試 {attempt + 1}/{retry_attempts})")
 
-                # 跳過前幾幀以獲取最新影像
-                for _ in range(frame_skip):
-                    ret, _ = self.capture.read()
-                    if not ret:
+                # 增強版預熱：等待有效影像（最多 60 幀，約 2-3 秒）
+                # 這可以解決 "SPS 0 does not exist" 等初始化問題
+                valid_frame_found = False
+                for _ in range(60):
+                    ret, test_frame = self.capture.read()
+                    if ret and test_frame is not None and test_frame.size > 0:
+                        valid_frame_found = True
                         break
+                
+                if not valid_frame_found:
+                    raise RuntimeError("無法從串流讀取有效影像 (預熱失敗)")
+
+                # 額外的跳幀（如果需要）
+                if frame_skip > 0:
+                    for _ in range(frame_skip):
+                        self.capture.read()
 
                 # 擷取實際影像
                 ret, frame = self.capture.read()
@@ -272,13 +283,24 @@ class RTSPImageSource:
                 if not self._init_capture(url, use_tcp):
                     raise ConnectionError("無法初始化 RTSP 連線")
 
-                logger.debug(f"正在擷取 {num_frames} 幀影像 (預熱 {warmup_frames} 幀)")
+                logger.debug(f"正在擷取 {num_frames} 幀影像 (預熱至多 {warmup_frames} 幀)")
 
-                # 預熱：丟棄前 N 幀
+                # 增強版預熱：等待有效影像（最多 warmup_frames 幀）
+                # 這可以解決 "SPS 0 does not exist" 等初始化問題
+                valid_frame_found = False
                 for i in range(warmup_frames):
-                    ret, _ = self.capture.read()
-                    if not ret:
-                        raise RuntimeError(f"預熱階段讀取失敗 (第 {i+1}/{warmup_frames} 幀)")
+                    ret, test_frame = self.capture.read()
+                    if ret and test_frame is not None and test_frame.size > 0:
+                        valid_frame_found = True
+                        logger.debug(f"在第 {i+1} 幀找到有效影像")
+                        break
+                
+                if not valid_frame_found:
+                    raise RuntimeError(f"預熱階段讀取失敗: 在 {warmup_frames} 幀內未找到有效影像")
+
+                # 額外預熱：再讀取幾幀以確保穩定
+                for _ in range(5):
+                    self.capture.read()
 
                 # 擷取實際影像
                 frames = []

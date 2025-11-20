@@ -254,7 +254,8 @@ class LocalVisionAnalyzer:
         image_source_config: dict,
         num_frames: int = 5,
         warmup_frames: int = 20,
-        save_debug_images: bool = False
+        save_debug_images: bool = False,
+        step_prefix: str = ""
     ) -> dict:
         """檢測面板燈光狀態 (完整檢測流程)
 
@@ -265,6 +266,7 @@ class LocalVisionAnalyzer:
             num_frames: 多幀平均的幀數 (預設 5)
             warmup_frames: 預熱幀數 (預設 20)
             save_debug_images: 是否儲存除錯影像 (預設 False)
+            step_prefix: 步驟命名前綴 (例如: "step2_before", "step5_after")。無呼叫的話不加
 
         Returns:
             dict: 檢測結果
@@ -307,6 +309,9 @@ class LocalVisionAnalyzer:
                 warmup_frames=warmup_frames
             )
 
+            if not frames:
+                raise RuntimeError("無法擷取影像: 接收到的影像列表為空")
+
             # 3. 計算平均影像
             avg_frame = np.mean(frames, axis=0).astype(np.uint8)
 
@@ -330,9 +335,20 @@ class LocalVisionAnalyzer:
 
                     import time
                     timestamp = time.strftime("%Y%m%d-%H%M%S")
-                    debug_path = debug_dir / f"{panel_type}_{button_id}_{timestamp}.jpg"
-                    cv2.imwrite(str(debug_path), roi_image)
-                    logger.debug(f"除錯影像已儲存: {debug_path}")
+
+                    # 建立檔名前綴 (包含步驟資訊)
+                    prefix = f"{step_prefix}_" if step_prefix else ""
+
+                    # 儲存完整影像（每個按鈕只儲存一次）
+                    if button_id == list(roi_config.keys())[0]:  # 第一個按鈕時儲存完整影像
+                        full_debug_path = debug_dir / f"{prefix}{panel_type}_full_{timestamp}.jpg"
+                        cv2.imwrite(str(full_debug_path), avg_frame)
+                        logger.debug(f"完整影像已儲存: {full_debug_path}")
+
+                    # 儲存 ROI 影像
+                    roi_debug_path = debug_dir / f"{prefix}{panel_type}_{button_id}_{timestamp}_roi.jpg"
+                    cv2.imwrite(str(roi_debug_path), roi_image)
+                    logger.debug(f"ROI 影像已儲存: {roi_debug_path}")
 
                 # 組合結果
                 results[button_id] = {
@@ -356,7 +372,9 @@ class LocalVisionAnalyzer:
         roi_config: dict,
         image_source_config: dict,
         num_frames: int = 5,
-        warmup_frames: int = 20
+        warmup_frames: int = 20,
+        save_debug_images: bool = False,
+        step_prefix: str = ""
     ) -> Tuple[dict, np.ndarray, np.ndarray]:
         """檢測實體燈光亮度
 
@@ -371,6 +389,8 @@ class LocalVisionAnalyzer:
             image_source_config: 影像源配置
             num_frames: 多幀平均數量（預設 5）
             warmup_frames: 預熱幀數（預設 20）
+            save_debug_images: 是否儲存除錯影像（預設 False）
+            step_prefix: 步驟命名前綴 (例如: "step3_before", "step6_after")。無呼叫的話不加
 
         Returns:
             Tuple[dict, np.ndarray, np.ndarray]: 檢測結果、完整影像、ROI影像
@@ -410,6 +430,9 @@ class LocalVisionAnalyzer:
                 warmup_frames=warmup_frames
             )
 
+            if not frames:
+                raise RuntimeError("無法擷取影像: 接收到的影像列表為空")
+
             # 3. 計算平均影像
             avg_frame = np.mean(frames, axis=0).astype(np.uint8)
 
@@ -435,6 +458,27 @@ class LocalVisionAnalyzer:
                 confidence = max(0.0, min(1.0, confidence))
             else:
                 confidence = 0.5
+
+            # 8. 儲存除錯影像（如果需要）
+            if save_debug_images:
+                debug_dir = Path("output/debug_images")
+                debug_dir.mkdir(parents=True, exist_ok=True)
+
+                import time
+                timestamp = time.strftime("%Y%m%d-%H%M%S")
+
+                # 建立檔名前綴 (包含步驟資訊)
+                prefix = f"{step_prefix}_" if step_prefix else ""
+
+                # 儲存完整影像
+                full_debug_path = debug_dir / f"{prefix}physical_light_full_{timestamp}.jpg"
+                cv2.imwrite(str(full_debug_path), avg_frame)
+                logger.debug(f"完整影像已儲存: {full_debug_path}")
+
+                # 儲存 ROI 影像
+                roi_debug_path = debug_dir / f"{prefix}physical_light_roi_{timestamp}.jpg"
+                cv2.imwrite(str(roi_debug_path), roi_image)
+                logger.debug(f"ROI 影像已儲存: {roi_debug_path}")
 
             result = {
                 "light_state": light_state,
@@ -520,6 +564,9 @@ class LocalVisionAnalyzer:
                 warmup_frames=warmup_frames
             )
 
+            if not frames:
+                raise RuntimeError("無法擷取影像: 接收到的影像列表為空")
+
             # 3. 計算平均影像
             avg_frame = np.mean(frames, axis=0).astype(np.uint8)
 
@@ -540,9 +587,16 @@ class LocalVisionAnalyzer:
 
                 import time
                 timestamp = time.strftime("%Y%m%d-%H%M%S")
-                debug_path = debug_dir / f"{button_id}_{timestamp}.jpg"
-                cv2.imwrite(str(debug_path), roi_image)
-                logger.debug(f"除錯影像已儲存: {debug_path}")
+
+                # 儲存完整影像
+                full_debug_path = debug_dir / f"{button_id}_{timestamp}_full.jpg"
+                cv2.imwrite(str(full_debug_path), avg_frame)
+                logger.debug(f"完整影像已儲存: {full_debug_path}")
+
+                # 儲存 ROI 影像
+                roi_debug_path = debug_dir / f"{button_id}_{timestamp}_roi.jpg"
+                cv2.imwrite(str(roi_debug_path), roi_image)
+                logger.debug(f"ROI 影像已儲存: {roi_debug_path}")
 
             # 8. 組合結果
             result = {

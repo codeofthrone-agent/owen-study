@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -426,7 +427,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .message {
@@ -489,6 +492,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -581,17 +585,14 @@
                 </div>
 
                 <!-- 手臂移動控制 -->
-                <div class="move-control" style="background: #e7f3ff; border: 1px solid #2196f3; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                <div class="move-control"
+                    style="background: #e7f3ff; border: 1px solid #2196f3; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
                     <h3 style="margin: 0 0 12px 0; color: #1976d2; font-size: 1rem;">🦾 手臂移動控制</h3>
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                         <label style="color: #1976d2; font-weight: 600; white-space: nowrap;">目標角度：</label>
-                        <input 
-                            type="text" 
-                            id="anglesInput" 
-                            value="1.75, 9.93, -134.73, 34.45, 2.19, -45.08"
+                        <input type="text" id="anglesInput" value="1.75, 9.93, -134.73, 34.45, 2.19, -45.08"
                             style="flex: 1; min-width: 300px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace;"
-                            placeholder="j1, j2, j3, j4, j5, j6"
-                        >
+                            placeholder="j1, j2, j3, j4, j5, j6">
                         <button class="btn btn-primary" id="moveBtn">
                             🚀 移動
                         </button>
@@ -719,7 +720,7 @@
 
                 // 建立群組容器
                 const groupDiv = document.createElement('div');
-                groupDiv.className = 'tree-group';
+                groupDiv.className = 'tree-group collapsed';
                 groupDiv.id = `group-${groupKey}`;
 
                 // 建立群組標題
@@ -952,7 +953,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         button_name: itemName,
-                        item_type: itemType  // ✨ 傳遞項目類型
+                        item_type: itemType,  // ✨ 傳遞項目類型
+                        capture_image: false  // ✨ 不截取影像，只獲取配置
                     })
                 });
                 const prepareData = await prepareResponse.json();
@@ -1185,7 +1187,7 @@
                         container.innerHTML = '';
                         container.appendChild(placeholder);
                     }
-                    
+
                     // 更新狀態顯示
                     if (data.angles) {
                         console.log('當前手臂角度:', data.angles);
@@ -1272,11 +1274,11 @@
             if (arucoData.aruco_detected) {
                 arucoInfo.style.display = 'block';
                 arucoCount.textContent = arucoData.markers_count || 0;
-                
+
                 if (arucoData.correction_needed) {
                     arucoCorrection.textContent = '⚠️ 需要校正';
                     arucoCorrection.style.color = '#dc3545';
-                    
+
                     if (arucoData.correction_info) {
                         const offset = arucoData.correction_info;
                         arucoDetails.innerHTML = `
@@ -1295,10 +1297,10 @@
                     arucoCorrection.style.color = '#ffc107';
                     arucoDetails.textContent = '可儲存當前位置作為參考';
                 }
-                
+
                 // 顯示檢測到的標記詳細資訊
                 if (arucoData.markers && arucoData.markers.length > 0) {
-                    const markerDetails = arucoData.markers.map(marker => 
+                    const markerDetails = arucoData.markers.map(marker =>
                         `ID ${marker.id}: (${marker.center[0].toFixed(0)}, ${marker.center[1].toFixed(0)})`
                     ).join(', ');
                     arucoDetails.innerHTML += `<div style="margin-top: 8px; font-size: 0.8em;">標記: ${markerDetails}</div>`;
@@ -1330,7 +1332,7 @@
                     currentArucoData = data;
                     displayArucoInfo(data);
                     showMessage(`檢測到 ${data.markers_count || 0} 個 ArUco 標記`, 'success');
-                    
+
                     // 如果檢測到標記，啟用儲存參考位置按鈕
                     if (data.aruco_detected && data.markers_count > 0) {
                         document.getElementById('saveArucoRefBtn').disabled = false;
@@ -1398,4 +1400,5 @@
         }
     </script>
 </body>
+
 </html>

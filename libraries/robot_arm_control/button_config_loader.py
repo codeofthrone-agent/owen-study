@@ -29,7 +29,7 @@ class ButtonConfigLoader:
         if config_path is None:
             # 預設配置文件路徑
             project_root = Path(__file__).resolve().parent.parent.parent
-            config_path = project_root / "config" / "robot_arm" / "button_positions.yaml"
+            config_path = project_root / "config" / "robot_arm" / "taipei_lab_buttons.yaml"
 
         self.config_path = Path(config_path)
         self.config: Dict = {}

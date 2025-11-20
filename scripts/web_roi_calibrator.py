@@ -669,7 +669,7 @@ class WebButtonROICalibrator:
                 'image_source': 'socket'
             })
         for name, config in self.environment_lights.items():
-            has_roi = 'roi' in config
+            has_roi = 'roi' in config and config['roi']  # ✅ 修正：確保 roi 不為空
             camera_id = config.get('camera_id', 'unknown')  # ✅ 修正：使用 camera_id 而非 camera_ip
             light_type = config.get('type', 'unknown')
             sub_count = len(config.get('lights', [])) if light_type == 'light_array' else 0
@@ -686,12 +686,13 @@ class WebButtonROICalibrator:
 
         return item_list
 
-    def prepare_calibration(self, button_name: str, item_type: str = 'button') -> Optional[Dict]:
+    def prepare_calibration(self, button_name: str, item_type: str = 'button', capture_image: bool = True) -> Optional[Dict]:
         """準備校準：讀取角度並截圖（✨ v4.2.0 支援按鈕和環境燈光）
 
         Args:
             button_name: 按鈕或環境燈光名稱
             item_type: 'button' 或 'environment_light'
+            capture_image: 是否截取影像 (預設 True)
 
         Returns:
             Dict: 包含影像、角度、現有 ROI 等資訊
@@ -734,97 +735,82 @@ class WebButtonROICalibrator:
                 observe_angles = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         # 根據類型截取影像
-        if item_type == 'button':
-            print("📷 使用 Socket 截取機器手臂影像...")
-            image = self.client.capture_image(num_frames=5)
-        elif item_type == 'environment_light':
-            print("📷 使用 RTSP 截取環境燈光影像...")
-            camera_ip = config.get('camera_ip')
-            if not camera_ip:
-                return {"success": False, "error": "環境燈光缺少 camera_ip 配置"}
+        image = None # Initialize image to None
+        image_base64 = None
+        if capture_image:
+            if item_type == 'button':
+                print("📷 使用 Socket 截取機器手臂影像...")
+                image = self.client.capture_image(num_frames=5)
+                if image is not None:
+                    _, buffer = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                    image_base64 = base64.b64encode(buffer).decode('utf-8')
+            elif item_type == 'environment_light':
+                print("📷 使用 RTSP 截取環境燈光影像...")
+                camera_ip = config.get('camera_ip')
+                if not camera_ip:
+                    return {"success": False, "error": "環境燈光缺少 camera_ip 配置"}
 
-            # 從環境變數取得 RTSP 認證資訊
-            import os
-            username = os.getenv("IPCAM_USERNAME", "")
-            password = os.getenv("IPCAM_PASSWORD", "")
+                # 從環境變數取得 RTSP 認證資訊
+                import os
+                username = os.getenv("IPCAM_USERNAME", "")
+                password = os.getenv("IPCAM_PASSWORD", "")
 
-            # 構建基礎 URL
-            if username and password:
-                base_url = f"rtsp://{username}:{password}@{camera_ip}:554"
-            else:
-                base_url = f"rtsp://{camera_ip}:554"
+                # 構建基礎 URL
+                if username and password:
+                    base_url = f"rtsp://{username}:{password}@{camera_ip}:554"
+                else:
+                    base_url = f"rtsp://{camera_ip}:554"
 
-            # 嘗試多種串流路徑
-            stream_paths = ['/live1', '/live0', '/stream1']
-            cap = None
-            successful_path = None
+                # 嘗試多種串流路徑 (優先使用 live0 高畫質串流)
+                stream_paths = ['/live0', '/live1']
+                cap = None
+                successful_path = None
 
-            for stream_path in stream_paths:
-                test_url = base_url + stream_path
-                print(f"   嘗試連接: rtsp://***@{camera_ip}:554{stream_path}")
+                for stream_path in stream_paths:
+                    test_url = base_url + stream_path
+                    print(f"   嘗試連接: rtsp://***@{camera_ip}:554{stream_path}")
 
-                cap = cv2.VideoCapture(test_url, cv2.CAP_FFMPEG)
-                cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                    cap = cv2.VideoCapture(test_url, cv2.CAP_FFMPEG)
+                    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
-                if cap.isOpened():
-                    # 測試讀取一幀
-                    ret, test_frame = cap.read()
-                    if ret and test_frame is not None:
-                        print(f"   ✅ 成功連接: {stream_path}")
-                        successful_path = stream_path
-                        break
+                    if cap.isOpened():
+                        # 測試讀取幀 (嘗試多次以等待 Keyframe)
+                        print(f"   ⏳ 已連接，正在等待影像 (最多 60 幀)...")
+                        frame_read_success = False
+                        for _ in range(60):  # 嘗試讀取 60 幀 (約 2-3 秒)
+                            ret, test_frame = cap.read()
+                            if ret and test_frame is not None and test_frame.size > 0:
+                                print(f"   ✅ 成功讀取影像: {stream_path} ({test_frame.shape[1]}x{test_frame.shape[0]})")
+                                successful_path = stream_path
+                                frame_read_success = True
+                                break
+                            time.sleep(0.05)
+                        
+                        if frame_read_success:
+                            break
+                        else:
+                            print(f"   ⚠️  連接成功但無法讀取有效幀 (超時): {stream_path}")
+                            cap.release()
+                            cap = None
                     else:
-                        print(f"   ⚠️  連接成功但無法讀取幀: {stream_path}")
-                        cap.release()
+                        print(f"   ⚠️  無法連接: {stream_path}")
+                        if cap:
+                            cap.release()
                         cap = None
-                else:
-                    print(f"   ⚠️  無法連接: {stream_path}")
-                    if cap:
-                        cap.release()
-                    cap = None
-
-            if not cap or not successful_path:
-                return {"success": False, "error": f"無法連接 RTSP（嘗試了 {', '.join(stream_paths)}）"}
-
-            print(f"   正在跳過前 5 幀...")
-            for _ in range(5):
-                cap.read()
-
-            print(f"   正在擷取 5 幀影像...")
-            frames = []
-            for i in range(5):
-                ret, frame = cap.read()
-                if ret and frame is not None:
-                    frames.append(frame)
-                    print(f"   ✅ 成功擷取第 {i+1} 幀")
-                else:
-                    print(f"   ⚠️  第 {i+1} 幀擷取失敗")
-            cap.release()
-
-            if not frames:
-                return {"success": False, "error": "無法從 RTSP 擷取任何幀"}
-
-            print(f"   正在平均 {len(frames)} 幀影像...")
-            image = np.mean(frames, axis=0).astype(np.uint8)
-            print(f"   ✅ RTSP 影像擷取完成: {image.shape}, 使用路徑: {successful_path}")
-        else:
-            return {"success": False, "error": f"不支援的項目類型: {item_type}"}
-
-        if image is None:
-            return {"success": False, "error": "截圖失敗"}
 
         self.current_image = image
 
         # ArUco 標記檢測（僅按鈕需要）
         aruco_result = None
-        if item_type == 'button':
+        if item_type == 'button' and image is not None:
             aruco_result = self.detect_aruco_and_adjust_position(image, button_config)
 
         try:
-            if image.size == 0: return {"success": False, "error": "截圖影像為空"}
-            if np.mean(image) < 10: print("⚠️  警告：影像很暗，可能是攝影機或光線問題")
-            _, buffer = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 85])
-            image_base64 = base64.b64encode(buffer).decode('utf-8')
+            if image is not None:
+                if image.size == 0: return {"success": False, "error": "截圖影像為空"}
+                if np.mean(image) < 10: print("⚠️  警告：影像很暗，可能是攝影機或光線問題")
+                _, buffer = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                image_base64 = base64.b64encode(buffer).decode('utf-8')
         except Exception as e: return {"success": False, "error": f"影像編碼失敗: {str(e)}"}
 
         existing_roi = None
@@ -832,7 +818,7 @@ class WebButtonROICalibrator:
             if 'vision' in button_config and 'roi' in button_config['vision']:
                 existing_roi = button_config['vision']['roi']
         elif item_type == 'environment_light':
-            if 'roi' in button_config:
+            if 'roi' in button_config and button_config['roi']:
                 existing_roi = button_config['roi']
         if existing_roi: print(f"✅ 找到已存在的 ROI: {existing_roi}")
 
@@ -840,7 +826,7 @@ class WebButtonROICalibrator:
             "success": True, "button_name": button_name, "description": button_config.get('description', 'N/A'),
             "observe_angles": [round(a, 2) for a in observe_angles] if observe_angles else None,
             "image_base64": image_base64,
-            "image_size": {"width": image.shape[1], "height": image.shape[0]},
+            "image_size": {"width": image.shape[1], "height": image.shape[0]} if image is not None else None,
             "existing_roi": existing_roi,
             "aruco_info": aruco_result
         }
@@ -932,12 +918,13 @@ def prepare_calibration():
     data = request.json
     button_name = data.get('button_name')
     item_type = data.get('item_type', 'button')  # ✨ 支援環境燈光
+    capture_image = data.get('capture_image', True)
 
     if not button_name: return jsonify({"success": False, "error": "缺少按鈕名稱"})
     if global_calibrator is None: return jsonify({"success": False, "error": "校準器未初始化"})
 
     try:
-        result = global_calibrator.prepare_calibration(button_name, item_type)
+        result = global_calibrator.prepare_calibration(button_name, item_type, capture_image)
         print(f"✅ 校準準備結果: type={item_type}, success={result.get('success')}")
         return jsonify(result)
     except Exception as e:
@@ -1095,50 +1082,35 @@ def capture_rtsp_image():
         import cv2
         import os
 
-        # 嘗試多種串流路徑
-        base_url = rtsp_url.replace('/live0', '').replace('/live1', '').replace('/stream1', '')
-        stream_paths = ['/live0', '/live1', '/stream1']
-
-        # 自動檢測當前使用的路徑
-        current_path = '/live0'  # 預設
-        for path in stream_paths:
-            if path in rtsp_url:
-                current_path = path
-                break
-
-        # 優先嘗試當前路徑，然後嘗試其他路徑
-        paths_to_try = [current_path] + [p for p in stream_paths if p != current_path]
+        # 直接使用提供的 RTSP URL，不嘗試其他路徑以確保解析度一致
+        print(f"📡 嘗試連接 RTSP: {rtsp_url.replace(os.getenv('IPCAM_PASSWORD', ''), '***')}")
 
         cap = None
         successful_url = None
+        
+        # 嘗試連接
+        # 使用 TCP 傳輸（避免 UDP 問題）
+        cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
-        for stream_path in paths_to_try:
-            test_url = base_url + stream_path
-            print(f"📡 嘗試連接 RTSP: {test_url.replace(os.getenv('IPCAM_PASSWORD', ''), '***')}")
-
-            # 使用 TCP 傳輸（避免 UDP 問題）
-            cap = cv2.VideoCapture(test_url, cv2.CAP_FFMPEG)
-            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-
-            if cap.isOpened():
-                # 測試讀取一幀
-                ret, test_frame = cap.read()
-                if ret and test_frame is not None:
-                    print(f"✅ 成功連接: {stream_path}")
-                    successful_url = test_url
-                    break
-                else:
-                    print(f"⚠️  連接成功但無法讀取幀: {stream_path}")
-                    cap.release()
-                    cap = None
+        if cap.isOpened():
+            # 測試讀取一幀
+            ret, test_frame = cap.read()
+            if ret and test_frame is not None:
+                print(f"✅ 成功連接: {rtsp_url}")
+                successful_url = rtsp_url
             else:
-                print(f"⚠️  無法連接: {stream_path}")
-                if cap:
-                    cap.release()
+                print(f"⚠️  連接成功但無法讀取幀: {rtsp_url}")
+                cap.release()
                 cap = None
+        else:
+            print(f"⚠️  無法連接: {rtsp_url}")
+            if cap:
+                cap.release()
+            cap = None
 
         if not cap or not successful_url:
-            return jsonify({"success": False, "error": f"無法連接 RTSP（嘗試了 {', '.join(paths_to_try)}）"})
+            return jsonify({"success": False, "error": f"無法連接 RTSP: {rtsp_url}"})
 
         # 跳過前 5 幀（穩定連接）
         print(f"   正在跳過前 5 幀...")
@@ -1244,8 +1216,19 @@ def main():
             calibrated_count += 1
         status = "✅" if has_roi else "❌"
         print(f"   {status} {name}: {config.get('description', 'N/A')}")
+
+    # ✨ 新增：顯示環境燈光校準狀態
+    print(f"\n🔍 環境燈光狀態:")
+    env_calibrated_count = 0
+    for name, config in global_calibrator.environment_lights.items():
+        has_roi = 'roi' in config and config['roi']
+        if has_roi:
+            env_calibrated_count += 1
+        status = "✅" if has_roi else "❌"
+        print(f"   {status} {name}: {config.get('name', 'N/A')}")
     
-    print(f"📊 已校準: {calibrated_count}/{len(global_calibrator.buttons)}")
+    print(f"📊 按鈕已校準: {calibrated_count}/{len(global_calibrator.buttons)}")
+    print(f"📊 燈光已校準: {env_calibrated_count}/{len(global_calibrator.environment_lights)}")
     print()
 
     print("=" * 60)

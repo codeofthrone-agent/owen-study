@@ -36,6 +36,14 @@ environments:
         description: "馬達區域監控攝影機"
         # username 和 password 會自動從 .env 讀取
 
+      panel:
+        ip: "10.42.0.246"
+        port: 554
+        protocol: "rtsp"
+        stream_path: "/live0"
+        description: "馬達區域監控攝影機"
+        # username 和 password 會自動從 .env 讀取
+
   # RV 車環境
   rv_vehicle:
     description: "RV 車測試環境"
