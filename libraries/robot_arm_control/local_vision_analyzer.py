@@ -18,6 +18,7 @@ import numpy as np
 from pathlib import Path
 from typing import Optional, Tuple, Dict, List
 from loguru import logger
+from cv2 import aruco
 
 
 class LocalVisionAnalyzer:
@@ -501,11 +502,16 @@ class LocalVisionAnalyzer:
         image_source_config: dict,
         num_frames: int = 5,
         warmup_frames: int = 20,
-        save_debug_image: bool = False
+        save_debug_image: bool = False,
+        apply_aruco_offset: bool = True  # 新增參數:是否應用ArUco offset校正
     ) -> Tuple[dict, np.ndarray, np.ndarray]:
-        """檢測單一按鈕燈光狀態（便捷方法）
+        """檢測單一按鈕燈光狀態(便捷方法)
 
-        此方法是 detect_panel_light 的簡化版本，專門用於檢測單一按鈕。
+        此方法是 detect_panel_light 的簡化版本,專門用於檢測單一按鈕。
+        
+        v4.1.0 新增: Runtime動態ArUco offset校正
+        當roi_config包含'aruco_markers'參考資料且apply_aruco_offset=True時,
+        會在runtime自動檢測ArUco markers並計算位置偏移,補償機器手臂位置誤差。
 
         Args:
             button_id: 按鈕 ID (例如: 'light1', 'light2', 'bluetooth')
@@ -514,7 +520,8 @@ class LocalVisionAnalyzer:
                     'x': int,
                     'y': int,
                     'width': int,
-                    'height': int
+                    'height': int,
+                    'aruco_markers': List[Dict] (可選,用於offset校正)
                 }
             image_source_config: 影像源配置
                 {
@@ -523,9 +530,10 @@ class LocalVisionAnalyzer:
                     'host': str,  # Socket only
                     'port': int   # Socket only
                 }
-            num_frames: 多幀平均數量（預設 5）
-            warmup_frames: 預熱幀數（預設 20）
-            save_debug_image: 是否儲存除錯影像（預設 False）
+            num_frames: 多幀平均數量(預設 5)
+            warmup_frames: 預熱幀數(預設 20)
+            save_debug_image: 是否儲存除錯影像(預設 False)
+            apply_aruco_offset: 是否應用ArUco offset校正(預設 True)
 
         Returns:
             Tuple[dict, np.ndarray, np.ndarray]: 檢測結果、完整影像、ROI影像
@@ -534,7 +542,8 @@ class LocalVisionAnalyzer:
                         "color": str,  # 顏色名稱
                         "brightness_level": int,  # 0-100%
                         "confidence": float,  # 0.0-1.0
-                        "raw_brightness": float  # 0-255
+                        "raw_brightness": float,  # 0-255
+                        "aruco_offset": [float, float]  # ArUco offset (如有應用)
                     }
                 - np.ndarray: 完整影像 (BGR)
                 - np.ndarray: ROI 影像 (BGR)
@@ -551,7 +560,7 @@ class LocalVisionAnalyzer:
             >>> print(f"顏色: {result['color']}, 亮度: {result['brightness_level']}%")
         """
         if self.image_source_manager is None:
-            raise ValueError("image_source_manager 未設定，請先初始化")
+            raise ValueError("image_source_manager 未設定,請先初始化")
 
         try:
             # 1. 設定影像源
@@ -570,17 +579,34 @@ class LocalVisionAnalyzer:
             # 3. 計算平均影像
             avg_frame = np.mean(frames, axis=0).astype(np.uint8)
 
-            # 4. 提取 ROI
-            x, y, w, h = roi_config['x'], roi_config['y'], roi_config['width'], roi_config['height']
+            # 4. 動態ArUco offset計算 (新增功能)
+            offset_x, offset_y = 0.0, 0.0
+            if apply_aruco_offset and 'aruco_markers' in roi_config:
+                offset_x, offset_y = self._calculate_aruco_offset(
+                    avg_frame, 
+                    roi_config['aruco_markers']
+                )
+                if offset_x != 0.0 or offset_y != 0.0:
+                    logger.info(f"應用ArUco offset校正: ({offset_x:.1f}, {offset_y:.1f}) 像素")
+
+            # 5. 提取 ROI (應用offset)
+            x = int(roi_config['x'] + offset_x)
+            y = int(roi_config['y'] + offset_y)
+            w, h = roi_config['width'], roi_config['height']
+            
+            # 確保ROI在影像範圍內
+            x = max(0, min(x, avg_frame.shape[1] - w))
+            y = max(0, min(y, avg_frame.shape[0] - h))
+            
             roi_image = avg_frame[y:y+h, x:x+w]
 
-            # 5. 檢測色彩
+            # 6. 檢測色彩
             color, conf, hsv_mean = self._detect_color_hsv(roi_image)
 
-            # 6. 檢測亮度
+            # 7. 檢測亮度
             brightness_level, brightness_value = self._detect_brightness(roi_image)
 
-            # 7. 儲存除錯影像（如果需要）
+            # 8. 儲存除錯影像(如果需要)
             if save_debug_image:
                 debug_dir = Path("output/debug_images")
                 debug_dir.mkdir(parents=True, exist_ok=True)
@@ -598,13 +624,17 @@ class LocalVisionAnalyzer:
                 cv2.imwrite(str(roi_debug_path), roi_image)
                 logger.debug(f"ROI 影像已儲存: {roi_debug_path}")
 
-            # 8. 組合結果
+            # 9. 組合結果
             result = {
                 "color": color,
                 "brightness_level": brightness_level,
                 "confidence": conf,
                 "raw_brightness": brightness_value
             }
+            
+            # 如果有應用ArUco offset,記錄在結果中
+            if offset_x != 0.0 or offset_y != 0.0:
+                result["aruco_offset"] = [offset_x, offset_y]
 
             logger.info(f"按鈕 {button_id} 檢測完成: 顏色={color}, 亮度={brightness_level}%, 信心度={conf:.2f}")
             return result, avg_frame, roi_image
@@ -612,6 +642,144 @@ class LocalVisionAnalyzer:
         except Exception as e:
             logger.error(f"按鈕檢測失敗 ({button_id}): {e}")
             raise RuntimeError(f"檢測失敗: {e}")
+
+    def _detect_aruco_markers(self, image: np.ndarray) -> List[Dict]:
+        """檢測影像中的ArUco markers
+        
+        Args:
+            image: BGR格式的輸入影像
+            
+        Returns:
+            List[Dict]: 檢測到的markers列表,每個marker包含:
+                {
+                    'id': int,
+                    'center': [float, float],
+                    'corners': [[x, y], ...]
+                }
+        
+        Example:
+            >>> markers = analyzer._detect_aruco_markers(image)
+            >>> if markers:
+            >>>     print(f"檢測到 {len(markers)} 個ArUco markers")
+        """
+        try:
+            # 使用OpenCV 4.7+ 的ArUco API
+            aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
+            parameters = aruco.DetectorParameters()
+            detector = aruco.ArucoDetector(aruco_dict, parameters)
+            
+            # 檢測markers
+            corners, ids, _ = detector.detectMarkers(image)
+            
+            markers = []
+            if corners is not None and len(corners) > 0:
+                for i, corner in enumerate(corners):
+                    marker_id = int(ids[i][0]) if ids is not None and len(ids) > i else i
+                    
+                    # 計算中心點
+                    center = np.mean(corner[0], axis=0)
+                    
+                    marker_info = {
+                        'id': marker_id,
+                        'center': [float(center[0]), float(center[1])],
+                        'corners': corner[0].tolist()
+                    }
+                    markers.append(marker_info)
+                    
+                logger.debug(f"檢測到ArUco marker ID={marker_id}, center={marker_info['center']}")
+            else:
+                logger.debug("未檢測到任何ArUco markers")
+                
+            return markers
+            
+        except Exception as e:
+            logger.warning(f"ArUco檢測失敗: {e}")
+            return []
+
+    def _calculate_aruco_offset(
+        self, 
+        image: np.ndarray, 
+        reference_markers: List[Dict],
+        min_common_markers: int = 2
+    ) -> Tuple[float, float]:
+        """計算ArUco markers的位置偏移量
+        
+        比對當前檢測到的markers與參考markers,計算平均偏移量。
+        
+        Args:
+            image: BGR格式的輸入影像
+            reference_markers: 參考markers列表 (來自配置檔案)
+                [{'id': int, 'center': [x, y], ...}, ...]
+            min_common_markers: 最小共同markers數量 (預設: 2)
+            
+        Returns:
+            Tuple[float, float]: (offset_x, offset_y) 偏移量(像素)
+                如果無法計算offset,返回 (0.0, 0.0)
+        
+        Example:
+            >>> ref_markers = [{'id': 1, 'center': [100, 100]}, ...]
+            >>> offset_x, offset_y = analyzer._calculate_aruco_offset(image, ref_markers)
+            >>> print(f"偏移量: ({offset_x:.1f}, {offset_y:.1f})")
+        """
+        try:
+            # 1. 檢測當前影像中的markers
+            current_markers = self._detect_aruco_markers(image)
+            
+            if not current_markers:
+                logger.debug("當前影像未檢測到ArUco markers,使用原始ROI座標")
+                return 0.0, 0.0
+            
+            # 2. 建立marker ID到中心點的映射
+            current_dict = {m['id']: m['center'] for m in current_markers}
+            reference_dict = {m['id']: m['center'] for m in reference_markers}
+            
+            # 3. 找出共同的marker IDs
+            common_ids = set(current_dict.keys()) & set(reference_dict.keys())
+            
+            if len(common_ids) < min_common_markers:
+                logger.warning(
+                    f"共同markers數量不足 ({len(common_ids)}/{min_common_markers}), "
+                    f"使用原始ROI座標"
+                )
+                return 0.0, 0.0
+            
+            # 4. 計算每個共同marker的偏移量
+            offsets_x = []
+            offsets_y = []
+            
+            for marker_id in common_ids:
+                curr_center = current_dict[marker_id]
+                ref_center = reference_dict[marker_id]
+                
+                offset_x = curr_center[0] - ref_center[0]
+                offset_y = curr_center[1] - ref_center[1]
+                
+                offsets_x.append(offset_x)
+                offsets_y.append(offset_y)
+                
+                logger.debug(
+                    f"Marker {marker_id}: 當前={curr_center}, 參考={ref_center}, "
+                    f"偏移=({offset_x:.1f}, {offset_y:.1f})"
+                )
+            
+            # 5. 計算平均偏移量
+            avg_offset_x = float(np.mean(offsets_x))
+            avg_offset_y = float(np.mean(offsets_y))
+            
+            offset_distance = np.sqrt(avg_offset_x**2 + avg_offset_y**2)
+            
+            logger.info(
+                f"ArUco offset計算完成: ({avg_offset_x:.1f}, {avg_offset_y:.1f}) 像素, "
+                f"距離={offset_distance:.1f}, 共同markers={len(common_ids)}"
+            )
+            
+            return avg_offset_x, avg_offset_y
+            
+        except Exception as e:
+            logger.error(f"計算ArUco offset失敗: {e}")
+            import traceback
+            traceback.print_exc()
+            return 0.0, 0.0
 
 
 if __name__ == "__main__":

@@ -11,7 +11,6 @@ import argparse
 import os
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
-from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from PIL import Image
 import io
@@ -111,111 +110,32 @@ def generate_aruco_marker_exact(marker_id, marker_size_mm, dictionary_name, outp
         print(f"   4. 含邊框總尺寸應為 {total_size_mm}mm × {total_size_mm}mm")
 
 
-def generate_combined_pdf(marker_ids, marker_size_mm, dictionary_name, output_file, with_border=True, border_width_mm=5, page_size=A4):
-    """
-    生成包含多個ArUco標記的單一PDF文件
-    """
-    if dictionary_name not in ARUCO_DICT:
-        raise ValueError(f"未知的ArUco字典: {dictionary_name}")
-
-    aruco_dict = cv2.aruco.getPredefinedDictionary(ARUCO_DICT[dictionary_name])
-    c = canvas.Canvas(output_file, pagesize=page_size)
-    page_width, page_height = page_size
-
-    if with_border:
-        total_marker_size_mm = marker_size_mm + 2 * border_width_mm
-    else:
-        total_marker_size_mm = marker_size_mm
-    
-    total_marker_size_pt = total_marker_size_mm * mm
-
-    spacing = 10 * mm
-    cols = int((page_width - 2 * spacing) / (total_marker_size_pt + spacing))
-    if cols == 0: cols = 1
-
-    x_margin = (page_width - (cols * total_marker_size_pt + (cols - 1) * spacing)) / 2
-    y_margin = y_margin = (page_height - ( (len(marker_ids) + cols - 1) // cols * (total_marker_size_pt + spacing)))/2
-
-
-    for i, marker_id in enumerate(marker_ids):
-        pixels_per_mm = 20
-        marker_pixels = int(marker_size_mm * pixels_per_mm)
-        marker_image = cv2.aruco.generateImageMarker(aruco_dict, marker_id, marker_pixels)
-
-        if with_border:
-            border_pixels = int(border_width_mm * pixels_per_mm)
-            bordered_image = np.ones((marker_pixels + 2*border_pixels, marker_pixels + 2*border_pixels), dtype=np.uint8) * 255
-            bordered_image[border_pixels:border_pixels+marker_pixels, border_pixels:border_pixels+marker_pixels] = marker_image
-            marker_image = bordered_image
-
-        pil_image = Image.fromarray(marker_image)
-        img_buffer = io.BytesIO()
-        pil_image.save(img_buffer, format='PNG')
-        img_buffer.seek(0)
-        img_reader = ImageReader(img_buffer)
-
-        row = i // cols
-        col = i % cols
-        
-        x_pos = x_margin + col * (total_marker_size_pt + spacing)
-        y_pos = page_height - y_margin - (row + 1) * total_marker_size_pt - row * spacing
-        
-        c.drawImage(
-            img_reader,
-            x_pos, y_pos,
-            width=total_marker_size_pt,
-            height=total_marker_size_pt,
-            preserveAspectRatio=True
-        )
-        c.drawString(x_pos, y_pos - 12, f"ID: {marker_id}, Size: {marker_size_mm}mm")
-
-    c.save()
-    print(f"\n✅ 成功生成合併的ArUco標記PDF: {os.path.abspath(output_file)}")
-    print(f"   頁面上有 {len(marker_ids)} 個標記")
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="生成精確尺寸的ArUco標記PDF（用於校準測試）"
     )
-    parser.add_argument("--id", type=int, nargs='+', required=True, help="一個或多個標記ID (例如: 1 2 3 4)")
+    parser.add_argument("--id", type=int, required=True, help="標記ID")
     parser.add_argument("--size", type=float, required=True, help="標記尺寸（毫米）")
     parser.add_argument("--dict", type=str, default="DICT_4X4_100", help="ArUco字典")
-    parser.add_argument("--output", type=str, required=True, help="輸出PDF文件名。如果提供多個ID且未使用--combine，請使用 '{id}' 作為ID的佔位符。")
+    parser.add_argument("--output", type=str, required=True, help="輸出PDF文件名")
     parser.add_argument("--no-border", action="store_true", help="不添加白色邊框")
     parser.add_argument("--border-width", type=float, default=5, help="邊框寬度（毫米），預設5mm")
-    parser.add_argument("--combine", action="store_true", help="將所有ID合併到一個A4 PDF文件中")
 
     args = parser.parse_args()
 
-    if args.combine:
-        generate_combined_pdf(
-            marker_ids=args.id,
-            marker_size_mm=args.size,
-            dictionary_name=args.dict,
-            output_file=args.output,
-            with_border=not args.no_border,
-            border_width_mm=args.border_width
-        )
-    else:
-        for marker_id in args.id:
-            if len(args.id) > 1:
-                output_file = args.output.format(id=marker_id)
-            else:
-                output_file = args.output
+    # 創建輸出目錄
+    output_dir = os.path.dirname(args.output)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
 
-            output_dir = os.path.dirname(output_file)
-            if output_dir and not os.path.exists(output_dir):
-                os.makedirs(output_dir, exist_ok=True)
-
-            generate_aruco_marker_exact(
-                marker_id=marker_id,
-                marker_size_mm=args.size,
-                dictionary_name=args.dict,
-                output_file=output_file,
-                with_border=not args.no_border,
-                border_width_mm=args.border_width
-            )
+    generate_aruco_marker_exact(
+        marker_id=args.id,
+        marker_size_mm=args.size,
+        dictionary_name=args.dict,
+        output_file=args.output,
+        with_border=not args.no_border,
+        border_width_mm=args.border_width
+    )
 
 
 if __name__ == "__main__":
