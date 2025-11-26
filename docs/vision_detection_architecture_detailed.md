@@ -623,3 +623,75 @@ class SocketImageSource:
 
 **文件版本歷史**:
 - v1.0.0 (2025-11-16): 初版建立，詳細說明架構設計
+
+---
+
+## RTSP 影像分析工作流程
+
+### 總體流程概述
+
+整個流程的核心是**透過 RTSP 串流獲取即時影像，在影像中定位感興趣的區域 (ROI)，分析此區域的視覺特徵（如顏色、亮度），並將分析結果回傳給 Robot Framework 測試案例，用於斷言 (Assert) 某個物理操作是否成功。**
+
+例如，當機械手臂按下一個按鈕後，系統會啟動影像分析來確認按鈕上的指示燈是否從「熄滅」變為「亮起」。
+
+### 流程文字圖解
+
+```
+[Robot Framework]            [Python Libraries]                                [Hardware]
+-----------------            ------------------                                ----------
+
++-------------------+      +-------------------------+      +---------------------+
+| RobotArmKeywords.py | ---> | local_vision_analyzer.py| ---> | ImageSourceManager.py |
+| (高階業務邏輯)      |      | (核心影像分析)            |      | (影像來源抽象層)      |
++-------------------+      +-------------------------+      +---------------------+
+        ^                            |                                |
+        | (回傳分析結果)               | (分析顏色/亮度)                    |
+        | {color, brightness}        |                                |
+        |                            v (擷取影像)                       v (選擇RTSP來源)
+        |                      +------------------------+      +-------------------+
+        +----------------------+   _calculate_aruco_offset | ---> | rtsp_source.py    |
+                               | (Aruco動態校準ROI)       |      | (使用OpenCV擷取)    |
+                               +------------------------+      +-------------------+
+                                                                       |
+                                                                       v (讀取影像串流)
+                                                                +--------------+
+                                                                |  IP Camera   |
+                                                                +--------------+
+```
+
+### 詳細步驟分解
+
+1.  **設定載入與初始化 (Configuration & Initialization)**
+    *   **起點**：流程由 `config/robot_arm/environment_config.py` 中的 `EnvironmentConfig` 類別驅動。
+    *   **過程**：
+        *   它讀取主要的硬體設定檔 `config/ipcam_config.yaml`，獲取攝影機的 IP 位址、RTSP 串流路徑等資訊。
+        *   同時，它會從 `.env` 檔案載入敏感資訊（如攝影機的帳號密碼）。
+        *   最後，它將這些資訊組合成一個完整的 RTSP URL (例如 `rtsp://user:pass@192.168.1.100/stream1`)，並準備好影像來源的設定。
+
+2.  **影像來源管理 (Image Source Management)**
+    *   **核心元件**：`libraries/robot_arm_control/image_source_manager.py` 中的 `ImageSourceManager` 類別。
+    *   **作用**：這是一個抽象層(工廠模式)，它根據上一步的設定來決定使用哪種影像來源。在目前的情境下，它會實例化 `RTSPImageSource`。這種設計讓未來擴充其他影像來源（如 USB 攝影機）變得容易。
+
+3.  **影像串流擷取 (Stream Capture)**
+    *   **核心元件**：`libraries/robot_arm_control/image_sources/rtsp_source.py` 中的 `RTSPImageSource` 類別。
+    *   **過程**：
+        *   內部使用 `cv2.VideoCapture(RTSP_URL)` 來連接到 IP Camera 的影像串流。
+        *   為了確保影像穩定，它會智慧地**跳過初始的幾幀畫面 (warmup frames)**。
+        *   當分析器需要影像時，它會擷取多幀畫面。
+
+4.  **核心影像分析 (Core Image Analysis)**
+    *   **核心引擎**：`libraries/robot_arm_control/local_vision_analyzer.py` 中的 `LocalVisionAnalyzer` 類別。這是整個流程的大腦。
+    *   **詳細過程**：
+        *   **降噪**：它從 `ImageSourceManager` 取得多幀影像，並將它們**平均 (averaging)**，以減少單一畫面的雜訊干擾。
+        *   **動態校準 (Dynamic Calibration)**：這是此系統的一個亮點。它首先在影像中偵測 **ArUco 標記** (`_calculate_aruco_offset`)。透過 ArUco 標記的實際位置與預期位置的偏差，它可以即時計算出 ROI 的精確偏移量。這大大增強了系統對攝影機輕微移動或畫面抖動的容忍度。
+        *   **ROI 分析**：根據校準後的座標，它從降噪後的影像中切割出真正感興趣的區域 (ROI)。
+        *   **特徵提取**：
+            *   **顏色偵測 (`_detect_color_hsv`)**：將 ROI 轉換到 HSV 色彩空間，並根據預先定義的顏色範圍判斷主要顏色。
+            *   **亮度偵測 (`_detect_brightness`)**：將 ROI 轉換為灰階，並計算像素平均值來判斷亮度。
+
+5.  **結果整合與應用 (Result Integration & Application)**
+    *   **消費端**：`libraries/robot_arm_control/RobotArmKeywords.py` 中的 Robot Framework 關鍵字。
+    *   **過程**：
+        *   像 `then_panel_button_color_should_be` 這樣的關鍵字會呼叫 `LocalVisionAnalyzer` 的分析方法。
+        *   分析器回傳一個包含結果的字典，例如 `{'color': 'red', 'brightness': 210}`。
+        *   關鍵字接著使用這些結果進行斷言，例如 `Should Be Equal As Strings    ${result['color']}    red`，從而完成測試案例的驗證。
