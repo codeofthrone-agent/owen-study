@@ -59,6 +59,7 @@ report.md
 .env
 
 # Temporary files
+**/temp_audio/*.mp3
 click_angles
 temp_test.robot
 simple_test.robot

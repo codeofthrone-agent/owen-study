@@ -363,6 +363,37 @@ print(f"亮度: {brightness}, 燈光: {'開啟' if is_on else '關閉'}")
 - [快速開始](docs/ipcam_quick_start.md)
 - [API 文檔](libraries/ipcam_light_detection/README.md)
 
+### 🛠️ 視覺輔助工具
+
+本專案提供兩款強大的 Web 介面工具，協助進行 ROI 校準與即時監控：
+
+#### 1. ROI 校準工具 (Web ROI Calibrator)
+用於設定與校準影像感興趣區域 (ROI)，支援多環境切換與機器手臂動態連線。
+
+```bash
+# 啟動校準工具 (預設 Port 5000)
+uv run python scripts/web_roi_calibrator.py
+```
+
+**主要功能**:
+- ✅ **多環境支援**: 可切換「台北實驗室」、「RV 車測試環境」等不同場景
+- ✅ **動態連線**: 支援機器手臂與 IP Camera 的動態連線與斷線
+- ✅ **視覺化標註**: 透過 Web 介面直接拖拉設定 ROI 區域
+- ✅ **即時預覽**: 結合 RTSP 串流與靜態影像擷取
+
+#### 2. 多路串流監控 (Multi RTSP Viewer)
+用於同時監控多個 IP Camera 串流，支援自動佈局調整。
+
+```bash
+# 啟動監控工具 (預設 Port 5001)
+uv run python scripts/multi_rtsp_viewer.py
+```
+
+**主要功能**:
+- ✅ **環境切換**: 支援從 `EnvironmentConfig` 載入不同環境配置
+- ✅ **自動佈局**: 根據串流數量自動調整網格 (如 RV Car 的 3x2 佈局)
+- ✅ **低延遲監控**: 支援多路 RTSP 串流的即時播放與狀態監控
+
 ### 🔧 進階設置 (各子系統)
 
 #### 機器手臂設置 (MyCobot 280)

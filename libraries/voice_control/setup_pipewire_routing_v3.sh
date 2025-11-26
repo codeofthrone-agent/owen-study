@@ -104,13 +104,13 @@ echo "    ✅ 可使用全部 4 個獨立輸出"
 echo ""
 
 # 6. 連接虛擬設備到實體輸出（Direct 模式）
-echo "(i) 正在連接到 AUX 端口..."
+echo "(i) 正在連接到實體輸出端口..."
 
-# 專業輸出模式 - 使用 AUX 端口進行獨立四通道輸出
-pw-link "Scarlett_1-2:monitor_FL" "$DEVICE_NAME:playback_AUX0" && echo "    ✅ 輸出 1 已連接"
-pw-link "Scarlett_1-2:monitor_FR" "$DEVICE_NAME:playback_AUX1" && echo "    ✅ 輸出 2 已連接"
-pw-link "Scarlett_3-4:monitor_FL" "$DEVICE_NAME:playback_AUX2" && echo "    ✅ 輸出 3 已連接"
-pw-link "Scarlett_3-4:monitor_FR" "$DEVICE_NAME:playback_AUX3" && echo "    ✅ 輸出 4 已連接"
+# 專業輸出模式 - 使用 FL, FR, RL, RR 端口進行獨立四通道輸出
+pw-link "Scarlett_1-2:monitor_FL" "$DEVICE_NAME:playback_FL" && echo "    ✅ 輸出 1 (FL) 已連接"
+pw-link "Scarlett_1-2:monitor_FR" "$DEVICE_NAME:playback_FR" && echo "    ✅ 輸出 2 (FR) 已連接"
+pw-link "Scarlett_3-4:monitor_FL" "$DEVICE_NAME:playback_RL" && echo "    ✅ 輸出 3 (RL) 已連接"
+pw-link "Scarlett_3-4:monitor_FR" "$DEVICE_NAME:playback_RR" && echo "    ✅ 輸出 4 (RR) 已連接"
 
 echo " "
 

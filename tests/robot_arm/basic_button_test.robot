@@ -4,7 +4,7 @@ Documentation    MyCobot 280 機器手臂基礎按鈕測試
 ...
 ...              測試前提：
 ...              1. MyCobot 280 已開機並連接網路
-...              2. Raspberry Pi 上的 Server_280.py 正在運行
+...              2. MyCobot 280 Jetson Nano 上的 Server_280.py 正在運行
 ...              3. 配置文件中的 IP 地址正確
 ...              4. 機器手臂已校準到正確的按鈕位置
 
