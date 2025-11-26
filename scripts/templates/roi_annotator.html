@@ -511,6 +511,18 @@
                         <option value="taoyuan_lab">桃園實驗室</option>
                         <option value="rv_car">RV Car</option>
                     </select>
+                    <div style="margin-top: 10px; display: flex; gap: 8px;">
+                        <button id="btnConnect" class="btn btn-success"
+                            style="flex: 1; font-size: 0.85rem; padding: 8px; justify-content: center;"
+                            onclick="connectArm()">
+                            🔌 連線
+                        </button>
+                        <button id="btnDisconnect" class="btn btn-secondary"
+                            style="flex: 1; font-size: 0.85rem; padding: 8px; justify-content: center;"
+                            onclick="disconnectArm()" disabled>
+                            ❌ 斷線
+                        </button>
+                    </div>
                 </div>
 
                 <h2>📋 項目列表</h2>
@@ -644,8 +656,7 @@
 
         // 初始化
         document.addEventListener('DOMContentLoaded', () => {
-            loadButtons();
-            checkArmStatus();
+            initEnvironment();
 
             // Canvas 事件監聽
             canvas.addEventListener('mousedown', handleMouseDown);
@@ -661,10 +672,47 @@
             document.getElementById('saveArucoRefBtn').addEventListener('click', saveArucoReference);
         });
 
-        // 載入按鈕列表
-        async function loadButtons() {
+        // 初始化環境設定
+        async function initEnvironment() {
             try {
-                const response = await fetch('/api/buttons');
+                // 取得環境列表與當前狀態
+                const response = await fetch('/api/environments');
+                const data = await response.json();
+
+                if (data.success) {
+                    // 設定下拉選單的值
+                    const envSelect = document.getElementById('envSelect');
+                    if (data.current_environment) {
+                        envSelect.value = data.current_environment;
+                    }
+
+                    // 更新連線狀態 UI
+                    updateConnectionUI(data.is_connected, data.robot_arm_host);
+
+                    // 載入按鈕列表
+                    loadButtons(data.current_environment);
+
+                    // 啟動狀態檢查循環
+                    checkArmStatus();
+                }
+            } catch (error) {
+                showMessage('初始化失敗: ' + error.message, 'error');
+            }
+        }
+
+        // 載入按鈕列表
+        async function loadButtons(environment = null) {
+            try {
+                let url = '/api/buttons';
+                if (environment) {
+                    url += `?environment=${environment}`;
+                } else {
+                    // 如果沒有指定，使用當前選擇的
+                    const currentEnv = document.getElementById('envSelect').value;
+                    url += `?environment=${currentEnv}`;
+                }
+
+                const response = await fetch(url);
                 const data = await response.json();
 
                 if (data.success) {
@@ -684,10 +732,7 @@
 
             // 分組按鈕
             const groups = {
-                robot_arm: { title: '🤖 機器手臂', items: [], count: 0 },
-                level1: { title: '📷 Level1 Camera', items: [], count: 0 },
-                level2: { title: '📷 Level2 Camera', items: [], count: 0 },
-                motor: { title: '📷 Motor Camera', items: [], count: 0 }
+                robot_arm: { title: '🤖 機器手臂', items: [], count: 0 }
             };
 
             // 分類所有按鈕
@@ -696,20 +741,32 @@
                     groups.robot_arm.items.push(button);
                     groups.robot_arm.count += 1;
                 } else if (button.type === 'environment_light') {
-                    // 根據 image_source 判斷屬於哪個 Camera
+                    // 解析 Camera ID
+                    // image_source 格式: "rtsp (camera_id)"
+                    const match = button.image_source.match(/rtsp \((.+)\)/);
+                    let groupId = 'unknown';
+                    let groupTitle = '📷 未知來源';
+
+                    if (match) {
+                        groupId = match[1];
+                        // 根據 Camera ID 產生友善標題
+                        if (groupId === 'level1') groupTitle = '📷 Level1 Camera';
+                        else if (groupId === 'level2') groupTitle = '📷 Level2 Camera';
+                        else if (groupId === 'motor') groupTitle = '📷 Motor Camera';
+                        else if (groupId === 'rv_panel') groupTitle = '📷 RV Panel Camera';
+                        else groupTitle = `📷 Camera: ${groupId}`;
+                    }
+
+                    // 動態建立群組
+                    if (!groups[groupId]) {
+                        groups[groupId] = { title: groupTitle, items: [], count: 0 };
+                    }
+
                     const subCount = button.sub_count || 0;  // 子燈泡數量
                     const totalCount = 1 + subCount;  // 1 個陣列外框 + N 個子燈泡
 
-                    if (button.image_source.includes('level1')) {
-                        groups.level1.items.push(button);
-                        groups.level1.count += totalCount;
-                    } else if (button.image_source.includes('level2')) {
-                        groups.level2.items.push(button);
-                        groups.level2.count += totalCount;
-                    } else if (button.image_source.includes('motor')) {
-                        groups.motor.items.push(button);
-                        groups.motor.count += totalCount;
-                    }
+                    groups[groupId].items.push(button);
+                    groups[groupId].count += totalCount;
                 }
             });
 
@@ -779,8 +836,106 @@
         function switchEnvironment() {
             const env = document.getElementById('envSelect').value;
             showMessage(`切換環境到: ${env}`, 'info');
-            // TODO: 重新載入該環境的配置
-            // loadButtons(env);
+
+            // 重新載入該環境的按鈕列表
+            loadButtons(env);
+
+            // 清除當前選擇
+            selectedButton = null;
+            document.getElementById('currentButton').textContent = '未選擇';
+            clearCanvas();
+
+            // 檢查該環境的連線狀態 (透過 checkArmStatus 循環更新)
+            checkArmStatus();
+        }
+
+        // 連接機器手臂
+        async function connectArm() {
+            const env = document.getElementById('envSelect').value;
+            const btn = document.getElementById('btnConnect');
+
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading"></div> 連線中...';
+
+            try {
+                const response = await fetch('/api/robot_arm/connect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ environment: env })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    updateConnectionUI(true, data.host);
+                } else {
+                    showMessage('連線失敗: ' + data.error, 'error');
+                    updateConnectionUI(false);
+                }
+            } catch (error) {
+                showMessage('網路錯誤: ' + error.message, 'error');
+                updateConnectionUI(false);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔌 連線';
+            }
+        }
+
+        // 斷開機器手臂連線
+        async function disconnectArm() {
+            const btn = document.getElementById('btnDisconnect');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading"></div> 斷線中...';
+
+            try {
+                const response = await fetch('/api/robot_arm/disconnect', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage(data.message, 'info');
+                    updateConnectionUI(false);
+                } else {
+                    showMessage('斷線失敗: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('網路錯誤: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false; // 雖然 updateConnectionUI 會禁用它，但為了保險
+                btn.innerHTML = '❌ 斷線';
+            }
+        }
+
+        // 更新連線狀態 UI
+        function updateConnectionUI(isConnected, host = null) {
+            const btnConnect = document.getElementById('btnConnect');
+            const btnDisconnect = document.getElementById('btnDisconnect');
+            const armStatus = document.getElementById('armStatus');
+            const moveBtn = document.getElementById('moveBtn');
+            const captureBtn = document.getElementById('captureBtn'); // 僅影響 Socket 模式
+
+            if (isConnected) {
+                btnConnect.style.display = 'none';
+                btnDisconnect.style.display = 'inline-flex';
+                btnDisconnect.disabled = false;
+
+                armStatus.textContent = `✅ 已連線 (${host || 'Unknown'})`;
+                armStatus.style.color = '#28a745';
+
+                moveBtn.disabled = false;
+            } else {
+                btnConnect.style.display = 'inline-flex';
+                btnDisconnect.style.display = 'none';
+                btnConnect.disabled = false;
+
+                armStatus.textContent = '⚠️ 未連線';
+                armStatus.style.color = '#dc3545';
+
+                moveBtn.disabled = true;
+            }
         }
 
         // 選擇按鈕
@@ -878,7 +1033,8 @@
             const cameraId = cameraIdMatch[1];
 
             // 從 config 取得 RTSP URL
-            const configResponse = await fetch('/api/environment_config');
+            const env = document.getElementById('envSelect').value;
+            const configResponse = await fetch(`/api/environment_config?environment=${env}`);
             const configData = await configResponse.json();
             if (!configData.success) {
                 throw new Error('無法取得環境配置');
@@ -1247,17 +1403,15 @@
         // 檢查機器手臂狀態
         async function checkArmStatus() {
             try {
-                const response = await fetch('/api/status');
+                // 使用新的 environments API 獲取完整狀態
+                const response = await fetch('/api/environments');
                 const data = await response.json();
 
                 if (data.success) {
-                    const status = data.power_on ? '✅ 已上電' : '⚠️ 未上電';
-                    document.getElementById('armStatus').textContent = status;
-                } else {
-                    document.getElementById('armStatus').textContent = '❌ 連接失敗';
+                    updateConnectionUI(data.is_connected, data.robot_arm_host);
                 }
             } catch (error) {
-                document.getElementById('armStatus').textContent = '❌ 網路錯誤';
+                console.error('狀態檢查失敗:', error);
             }
 
             // 每 5 秒更新一次狀態

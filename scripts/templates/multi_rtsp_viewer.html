@@ -303,7 +303,23 @@
             .stream-grid.four-grid .stream-content {
                 height: 350px;
             }
-        }
+
+            /* 五格特殊布局 (3x2) */
+            @media (min-width: 1400px) {
+                .stream-grid.five-grid {
+                    grid-template-columns: repeat(3, 1fr);
+                    max-width: 1800px;
+                    margin: 2rem auto;
+                }
+
+                .stream-grid.five-grid .stream-container {
+                    min-height: 350px;
+                }
+
+                .stream-grid.five-grid .stream-content {
+                    height: 300px;
+                }
+            }
     </style>
 </head>
 
@@ -441,6 +457,16 @@
                 const streamGrid = document.getElementById('streamGrid');
                 streamGrid.innerHTML = '';
 
+                // 根據串流數量決定佈局
+                const count = Object.keys(this.streams).length;
+                streamGrid.className = 'stream-grid'; // 重置 class
+
+                if (count === 4) {
+                    streamGrid.classList.add('four-grid');
+                } else if (count === 5) {
+                    streamGrid.classList.add('five-grid');
+                }
+
                 for (const [streamId, streamInfo] of Object.entries(this.streams)) {
                     const container = this.createStreamContainer(streamId, streamInfo);
                     streamGrid.appendChild(container);
@@ -453,32 +479,32 @@
                 container.id = `stream-${streamId}`;
 
                 container.innerHTML = `
-                    <div class="stream-header">
-                        <div class="stream-title">${streamInfo.name}</div>
-                        <div class="stream-status ${this.getStatusClass(streamInfo.status)}" id="status-${streamId}">
-                            ${this.getStatusText(streamInfo.status)}
-                        </div>
-                    </div>
-                    <div class="stream-content" id="content-${streamId}">
-                        <div class="stream-placeholder">
-                            📷 點擊啟動按鈕開始串流
-                        </div>
-                    </div>
-                    <div class="stream-controls">
-                        <button class="btn btn-primary" onclick="viewer.startStream('${streamId}')">
-                            ▶️ 啟動
-                        </button>
-                        <button class="btn btn-danger" onclick="viewer.stopStream('${streamId}')">
-                            ⏹️ 停止
-                        </button>
-                        <button class="btn btn-info" onclick="viewer.refreshStream('${streamId}')">
-                            🔄 重新整理
-                        </button>
-                        <button class="btn btn-danger" onclick="viewer.removeStream('${streamId}')">
-                            🗑️ 移除
-                        </button>
-                    </div>
-                `;
+    <div class="stream-header">
+        <div class="stream-title">${streamInfo.name}</div>
+        <div class="stream-status ${this.getStatusClass(streamInfo.status)}" id="status-${streamId}">
+            ${this.getStatusText(streamInfo.status)}
+        </div>
+    </div>
+    <div class="stream-content" id="content-${streamId}">
+        <div class="stream-placeholder">
+            📷 點擊啟動按鈕開始串流
+        </div>
+    </div>
+    <div class="stream-controls">
+        <button class="btn btn-primary" onclick="viewer.startStream('${streamId}')">
+            ▶️ 啟動
+        </button>
+        <button class="btn btn-danger" onclick="viewer.stopStream('${streamId}')">
+            ⏹️ 停止
+        </button>
+        <button class="btn btn-info" onclick="viewer.refreshStream('${streamId}')">
+            🔄 重新整理
+        </button>
+        <button class="btn btn-danger" onclick="viewer.removeStream('${streamId}')">
+            🗑️ 移除
+        </button>
+    </div>
+    `;
 
                 return container;
             }
@@ -620,10 +646,8 @@
                         const contentElement = document.getElementById(`content-${streamId}`);
                         if (contentElement) {
                             contentElement.innerHTML = `
-                                <img src="data:image/jpeg;base64,${data.image_base64}" 
-                                     class="stream-image" 
-                                     alt="${streamId}">
-                            `;
+    <img src="data:image/jpeg;base64,${data.image_base64}" class="stream-image" alt="${streamId}">
+    `;
                         }
                     } else {
                         console.warn(`串流 ${streamId} 無可用影像:`, data.error);
@@ -681,9 +705,9 @@
                 const totalCount = data.total_count;
 
                 statusElement.innerHTML = `
-                    📊 總計 ${totalCount} 個串流，${runningCount} 個運行中
-                    ${runningCount > 0 ? '🟢' : '🔴'} 系統狀態: ${runningCount > 0 ? '正常' : '待機'}
-                `;
+    📊 總計 ${totalCount} 個串流，${runningCount} 個運行中
+    ${runningCount > 0 ? '🟢' : '🔴'} 系統狀態: ${runningCount > 0 ? '正常' : '待機'}
+    `;
             }
 
             updateStatusGrid(streams) {
@@ -699,12 +723,12 @@
                         : '無';
 
                     card.innerHTML = `
-                        <h4>${streamInfo.name}</h4>
-                        <p><strong>狀態:</strong> ${this.getStatusText(streamInfo.status)}</p>
-                        <p><strong>最後更新:</strong> ${lastUpdate}</p>
-                        <p><strong>更新頻率:</strong> ${streamInfo.refresh_rate}s</p>
-                        <p><strong>URL:</strong> <small>${streamInfo.original_url || streamInfo.rtsp_url}</small></p>
-                    `;
+    <h4>${streamInfo.name}</h4>
+    <p><strong>狀態:</strong> ${this.getStatusText(streamInfo.status)}</p>
+    <p><strong>最後更新:</strong> ${lastUpdate}</p>
+    <p><strong>更新頻率:</strong> ${streamInfo.refresh_rate}s</p>
+    <p><strong>URL:</strong> <small>${streamInfo.original_url || streamInfo.rtsp_url}</small></p>
+    `;
 
                     statusGrid.appendChild(card);
                 }

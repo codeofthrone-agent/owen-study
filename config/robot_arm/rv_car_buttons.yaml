@@ -389,82 +389,139 @@ observation_positions:
 # ========================================
 
 environment_lights:
+  # 區域一燈光 (cam1: 192.168.165.184)
+  area1_light_1:
+    name: "區域一 燈光 1"
+    type: "single_light"
+    environment: "rv_car"
+    camera_id: "cam1"
+    camera_purpose: "area1_light_1_detection"
+    roi: {x: 100, y: 100, width: 200, height: 150}  # 需校準
+    bright_threshold: 150
+    dark_threshold: 50
+
+  area1_light_2:
+    name: "區域一 燈光 2"
+    type: "single_light"
+    environment: "rv_car"
+    camera_id: "cam1"
+    camera_purpose: "area1_light_2_detection"
+    roi: {x: 350, y: 100, width: 200, height: 150}  # 需校準
+    bright_threshold: 150
+    dark_threshold: 50
+
+  area1_light_3:
+    name: "區域一 燈光 3"
+    type: "single_light"
+    environment: "rv_car"
+    camera_id: "cam1"
+    camera_purpose: "area1_light_3_detection"
+    roi: {x: 600, y: 100, width: 200, height: 150}  # 需校準
+    bright_threshold: 150
+    dark_threshold: 50
+
+  # 區域二燈光 (cam2: 192.168.165.127)
+  area2_light_1:
+    name: "區域二 燈光 1"
+    type: "single_light"
+    environment: "rv_car"
+    camera_id: "cam2"
+    camera_purpose: "area2_light_1_detection"
+    roi: {x: 100, y: 100, width: 200, height: 150}  # 需校準
+    bright_threshold: 150
+    dark_threshold: 50
+
+  area2_light_2:
+    name: "區域二 燈光 2"
+    type: "single_light"
+    environment: "rv_car"
+    camera_id: "cam2"
+    camera_purpose: "area2_light_2_detection"
+    roi: {x: 350, y: 100, width: 200, height: 150}  # 需校準
+    bright_threshold: 150
+    dark_threshold: 50
+
+  area2_light_3:
+    name: "區域二 燈光 3"
+    type: "single_light"
+    environment: "rv_car"
+    camera_id: "cam2"
+    camera_purpose: "area2_light_3_detection"
+    roi: {x: 600, y: 100, width: 200, height: 150}  # 需校準
+    bright_threshold: 150
+    dark_threshold: 50
+
+  # 區域三燈光 (cam3: 10.42.0.39)
+  area3_light_1:
+    name: "區域三 燈光 1"
+    type: "single_light"
+    environment: "rv_car"
+    camera_id: "cam3"
+    camera_purpose: "area3_light_1_detection"
+    roi: {x: 100, y: 100, width: 200, height: 150}  # 需校準
+    bright_threshold: 150
+    dark_threshold: 50
+
+  area3_light_2:
+    name: "區域三 燈光 2"
+    type: "single_light"
+    environment: "rv_car"
+    camera_id: "cam3"
+    camera_purpose: "area3_light_2_detection"
+    roi: {x: 350, y: 100, width: 200, height: 150}  # 需校準
+    bright_threshold: 150
+    dark_threshold: 50
+
+  area3_light_3:
+    name: "區域三 燈光 3"
+    type: "single_light"
+    environment: "rv_car"
+    camera_id: "cam3"
+    camera_purpose: "area3_light_3_detection"
+    roi: {x: 600, y: 100, width: 200, height: 150}  # 需校準
+    bright_threshold: 150
+    dark_threshold: 50
+
   # RV Car 車載燈光
   headlight_left:
     name: "左前燈"
-    type: "vehicle_light"
+    type: "single_light"
     environment: "rv_car"
-    camera_id: null  # RV Car 使用 Socket 影像源
-    image_source: "socket"  # 使用機器手臂 Socket
-    camera_ip: "10.42.0.180"
-
-    # 亮度檢測 ROI (絕對座標)
-    roi:
-      x: 120
-      y: 80
-      width: 100
-      height: 100
-
-    brightness_levels:
-      off: [0, 50]
-      on: [51, 255]
+    camera_id: "rv_panel"  # 對應 ipcam_config.yaml 的 rv_vehicle.rv_panel
+    camera_purpose: "headlight_left_detection"
+    roi: {x: 120, y: 80, width: 100, height: 100}
+    bright_threshold: 150
+    dark_threshold: 50
 
   headlight_right:
     name: "右前燈"
-    type: "vehicle_light"
+    type: "single_light"
     environment: "rv_car"
-    camera_id: null
-    image_source: "socket"
-    camera_ip: "10.42.0.180"
-
-    roi:
-      x: 520
-      y: 80
-      width: 100
-      height: 100
-
-    brightness_levels:
-      off: [0, 50]
-      on: [51, 255]
+    camera_id: "rv_panel"
+    camera_purpose: "headlight_right_detection"
+    roi: {x: 520, y: 80, width: 100, height: 100}
+    bright_threshold: 150
+    dark_threshold: 50
 
   taillight:
     name: "尾燈"
-    type: "vehicle_light"
+    type: "single_light"
     environment: "rv_car"
-    camera_id: null
-    image_source: "socket"
-    camera_ip: "10.42.0.180"
-    description: "煞車燈"
-
-    roi:
-      x: 320
-      y: 400
-      width: 80
-      height: 80
-
-    brightness_levels:
-      off: [0, 50]
-      on: [51, 255]
+    camera_id: "rv_panel"
+    camera_purpose: "taillight_detection"
+    roi: {x: 320, y: 400, width: 80, height: 80}
+    bright_threshold: 150
+    dark_threshold: 50
 
   interior_light:
     name: "車內照明"
-    type: "vehicle_light"
+    type: "single_light"
     environment: "rv_car"
-    camera_id: null
-    image_source: "socket"
-    camera_ip: "10.42.0.180"
-
-    roi:
-      x: 320
-      y: 240
-      width: 120
-      height: 120
-
-    brightness_levels:
-      off: [0, 50]
-      dim: [51, 100]
-      medium: [101, 180]
-      bright: [181, 255]
+    camera_id: "rv_panel"
+    camera_purpose: "interior_light_detection"
+    roi: {x: 320, y: 240, width: 120, height: 120}
+    bright_threshold: 150
+    dark_threshold: 50
 
 # ========================================
 # 環境專屬 HSV 調整

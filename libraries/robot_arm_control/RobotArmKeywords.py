@@ -722,10 +722,12 @@ class RobotArmKeywords:
                 logger.warning(f"移動到觀測角度失敗: {e}，繼續使用當前角度檢測")
 
         # 準備 ROI 配置（單一按鈕）
-        if "vision" in button_config and "roi" in button_config["vision"]:
-            roi_config = {button_id: button_config["vision"]["roi"]}
+        # 🔧 BUGFIX v4.2.0: 傳入完整vision配置,而不只是roi字典
+        # detect_panel_light需要aruco_markers來進行runtime offset校正
+        if "vision" in button_config:
+            roi_config = {button_id: button_config["vision"]}  # 完整vision配置
         else:
-            raise ValueError(f"按鈕 '{button_id}' 沒有配置 ROI 視覺檢測資訊")
+            raise ValueError(f"按鈕 '{button_id}' 沒有配置 vision 檢測資訊")
 
         # 本機執行視覺檢測
         try:
@@ -1309,12 +1311,16 @@ class RobotArmKeywords:
             if not button_config or 'vision' not in button_config:
                 raise ValueError(f"按鈕 '{button_id}' 未校準視覺檢測 ROI")
 
-            roi_config = button_config['vision']['roi']
+            # 🔧 BUGFIX v4.2.0: 傳入完整的vision配置,而不只是roi字典
+            # 完整vision配置包含: roi, aruco_markers, observe_angles等
+            # detect_single_button需要aruco_markers來進行runtime offset校正
+            # 之前只傳入button_config['vision']['roi']導致aruco_markers資訊遺失!
+            roi_config = button_config['vision']  # 完整vision配置
 
-            # 檢測按鈕狀態（使用 LocalVisionAnalyzer.detect_single_button）
+            # 檢測按鈕狀態(使用 LocalVisionAnalyzer.detect_single_button)
             detection_result = self.local_vision.detect_single_button(
                 button_id=button_id,
-                roi_config=roi_config,
+                roi_config=roi_config,  # 現在傳入完整vision配置,包含aruco_markers
                 image_source_config=self.image_source_config,
                 save_debug_image=save_debug_image
             )

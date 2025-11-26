@@ -256,10 +256,11 @@ class LocalVisionAnalyzer:
         num_frames: int = 5,
         warmup_frames: int = 20,
         save_debug_images: bool = False,
-        step_prefix: str = ""
+        step_prefix: str = "",
+        annotate_full_image: bool = True
     ) -> dict:
         """檢測面板燈光狀態 (完整檢測流程)
-
+        
         Args:
             panel_type: 面板類型 ('3510a', '3611a', '3611c')
             roi_config: ROI 配置 (包含各按鈕的 ROI 座標)
@@ -268,6 +269,7 @@ class LocalVisionAnalyzer:
             warmup_frames: 預熱幀數 (預設 20)
             save_debug_images: 是否儲存除錯影像 (預設 False)
             step_prefix: 步驟命名前綴 (例如: "step2_before", "step5_after")。無呼叫的話不加
+            annotate_full_image: 是否在 full image 標註所有 ROI 框（預設 True）
 
         Returns:
             dict: 檢測結果
@@ -296,6 +298,8 @@ class LocalVisionAnalyzer:
             >>> print(result['light1']['color'])
             'blue'
         """
+        logger.info(f"🎬 detect_panel_light開始: panel_type={panel_type}, roi_config_keys={list(roi_config.keys())}, num_frames={num_frames}")
+        
         if self.image_source_manager is None:
             raise ValueError("image_source_manager 未設定，請先初始化")
 
@@ -316,11 +320,54 @@ class LocalVisionAnalyzer:
             # 3. 計算平均影像
             avg_frame = np.mean(frames, axis=0).astype(np.uint8)
 
-            # 4. 對每個 ROI 進行檢測
+            # 4. 動態ArUco offset計算 (v4.2.0新增)
+            # 檢查roi_config中是否有任何按鈕包含aruco_markers參考資料
+            offset_x, offset_y = 0.0, 0.0
+            aruco_offset_applied = False
+            
+            # 從任一按鈕的配置中取得aruco_markers(通常所有按鈕共用同一組markers)
+            first_button_config = next(iter(roi_config.values()))
+            logger.info(f"🔍 detect_panel_light: roi_config keys={list(roi_config.keys())}")
+            logger.info(f"🔍 detect_panel_light: first_button_config type={type(first_button_config)}, keys={list(first_button_config.keys()) if isinstance(first_button_config, dict) else 'N/A'}")
+            logger.info(f"🔍 detect_panel_light: has aruco_markers={'aruco_markers' in first_button_config if isinstance(first_button_config, dict) else False}")
+            
+            if isinstance(first_button_config, dict) and 'aruco_markers' in first_button_config:
+                try:
+                    logger.info(f"▶️ 開始計算ArUco offset,markers數量={len(first_button_config['aruco_markers'])}")
+                    offset_x, offset_y = self._calculate_aruco_offset(
+                        avg_frame, 
+                        first_button_config['aruco_markers']
+                    )
+                    aruco_offset_applied = True
+                    logger.info(f"✅ 應用ArUco offset校正: ({offset_x:.1f}, {offset_y:.1f}) 像素")
+                except Exception as e:
+                    logger.warning(f"ArUco offset計算失敗: {e}, 使用原始ROI座標")
+                    offset_x, offset_y = 0.0, 0.0
+            else:
+                logger.info(f"⚠️ 跳過ArUco offset: first_button_config不符合條件")
+
+            # 5. 對每個 ROI 進行檢測
             results = {}
-            for button_id, roi in roi_config.items():
-                # 提取 ROI
-                x, y, w, h = roi['x'], roi['y'], roi['width'], roi['height']
+            for button_id, button_config in roi_config.items():
+                # 處理button_config結構相容性
+                # - 新格式v4.2.0+: button_config = {'roi': {...}, 'aruco_markers': [...]}
+                # - 舊格式v4.1.x: button_config = {'x': ..., 'y': ..., 'width': ..., 'height': ...}
+                if isinstance(button_config, dict) and 'roi' in button_config:
+                    # 新格式: 包含roi和aruco_markers的完整配置
+                    roi = button_config['roi']
+                else:
+                    # 舊格式: 直接是roi座標(向後相容)
+                    roi = button_config
+                
+                # 提取 ROI (應用ArUco offset)
+                x = int(roi['x'] + offset_x)
+                y = int(roi['y'] + offset_y)
+                w, h = roi['width'], roi['height']
+                
+                # 確保ROI在影像範圍內
+                x = max(0, min(x, avg_frame.shape[1] - w))
+                y = max(0, min(y, avg_frame.shape[0] - h))
+                
                 roi_image = avg_frame[y:y+h, x:x+w]
 
                 # 檢測色彩
@@ -342,8 +389,33 @@ class LocalVisionAnalyzer:
 
                     # 儲存完整影像（每個按鈕只儲存一次）
                     if button_id == list(roi_config.keys())[0]:  # 第一個按鈕時儲存完整影像
+                        image_to_save = avg_frame
+                        
+                        # 標註所有按鈕的 ROI (如果啟用)
+                        if annotate_full_image:
+                            roi_list = []
+                            for btn_id, btn_config in roi_config.items():
+                                # 處理 button_config 結構相容性
+                                if isinstance(btn_config, dict) and 'roi' in btn_config:
+                                    roi = btn_config['roi']
+                                else:
+                                    roi = btn_config
+                                
+                                # 應用 ArUco offset
+                                roi_list.append({
+                                    'name': btn_id,
+                                    'x': int(roi['x'] + offset_x),
+                                    'y': int(roi['y'] + offset_y),
+                                    'width': roi['width'],
+                                    'height': roi['height'],
+                                    'color': None  # 顏色會在檢測後才知道,這裡先設為 None
+                                })
+                            
+                            image_to_save = self._draw_roi_annotations(avg_frame, roi_list)
+                            logger.debug(f"已在 full image 標註 {len(roi_list)} 個 ROI")
+                        
                         full_debug_path = debug_dir / f"{prefix}{panel_type}_full_{timestamp}.jpg"
-                        cv2.imwrite(str(full_debug_path), avg_frame)
+                        cv2.imwrite(str(full_debug_path), image_to_save)
                         logger.debug(f"完整影像已儲存: {full_debug_path}")
 
                     # 儲存 ROI 影像
@@ -375,7 +447,8 @@ class LocalVisionAnalyzer:
         num_frames: int = 5,
         warmup_frames: int = 20,
         save_debug_images: bool = False,
-        step_prefix: str = ""
+        step_prefix: str = "",
+        annotate_full_image: bool = True
     ) -> Tuple[dict, np.ndarray, np.ndarray]:
         """檢測實體燈光亮度
 
@@ -392,6 +465,7 @@ class LocalVisionAnalyzer:
             warmup_frames: 預熱幀數（預設 20）
             save_debug_images: 是否儲存除錯影像（預設 False）
             step_prefix: 步驟命名前綴 (例如: "step3_before", "step6_after")。無呼叫的話不加
+            annotate_full_image: 是否在 full image 標註 ROI 框（預設 True）
 
         Returns:
             Tuple[dict, np.ndarray, np.ndarray]: 檢測結果、完整影像、ROI影像
@@ -471,9 +545,26 @@ class LocalVisionAnalyzer:
                 # 建立檔名前綴 (包含步驟資訊)
                 prefix = f"{step_prefix}_" if step_prefix else ""
 
-                # 儲存完整影像
+                # 準備要儲存的 full image
+                image_to_save = avg_frame
+                
+                # 標註 ROI (如果啟用)
+                if annotate_full_image:
+                    roi_list = [{
+                        'name': 'ROI',
+                        'x': x,
+                        'y': y,
+                        'width': w,
+                        'height': h,
+                        'brightness': float(brightness_value),
+                        'is_on': light_state == "on"
+                    }]
+                    image_to_save = self._draw_roi_annotations(avg_frame, roi_list)
+                    logger.debug("已在 full image 標註 ROI")
+
+                # 儲存完整影像 (含標註)
                 full_debug_path = debug_dir / f"{prefix}physical_light_full_{timestamp}.jpg"
-                cv2.imwrite(str(full_debug_path), avg_frame)
+                cv2.imwrite(str(full_debug_path), image_to_save)
                 logger.debug(f"完整影像已儲存: {full_debug_path}")
 
                 # 儲存 ROI 影像
@@ -503,7 +594,8 @@ class LocalVisionAnalyzer:
         num_frames: int = 5,
         warmup_frames: int = 20,
         save_debug_image: bool = False,
-        apply_aruco_offset: bool = True  # 新增參數:是否應用ArUco offset校正
+        apply_aruco_offset: bool = True,  # 新增參數:是否應用ArUco offset校正
+        annotate_full_image: bool = True  # 新增參數:是否在 full image 標註 ROI
     ) -> Tuple[dict, np.ndarray, np.ndarray]:
         """檢測單一按鈕燈光狀態(便捷方法)
 
@@ -515,14 +607,19 @@ class LocalVisionAnalyzer:
 
         Args:
             button_id: 按鈕 ID (例如: 'light1', 'light2', 'bluetooth')
-            roi_config: 單一按鈕的 ROI 配置
+            roi_config: 完整的vision配置字典 (包含roi和aruco_markers)
                 {
-                    'x': int,
-                    'y': int,
-                    'width': int,
-                    'height': int,
-                    'aruco_markers': List[Dict] (可選,用於offset校正)
+                    'roi': {
+                        'x': int,
+                        'y': int,
+                        'width': int,
+                        'height': int
+                    },
+                    'aruco_markers': List[Dict] (可選,用於offset校正),
+                    'observe_angles': List[float] (可選)
                 }
+                注意: 從v4.2.0開始,應傳入button_config['vision']完整配置
+                     而不只是button_config['vision']['roi']
             image_source_config: 影像源配置
                 {
                     'type': 'rtsp' | 'socket',
@@ -534,6 +631,7 @@ class LocalVisionAnalyzer:
             warmup_frames: 預熱幀數(預設 20)
             save_debug_image: 是否儲存除錯影像(預設 False)
             apply_aruco_offset: 是否應用ArUco offset校正(預設 True)
+            annotate_full_image: 是否在 full image 標註 ROI 框（預設 True）
 
         Returns:
             Tuple[dict, np.ndarray, np.ndarray]: 檢測結果、完整影像、ROI影像
@@ -581,18 +679,36 @@ class LocalVisionAnalyzer:
 
             # 4. 動態ArUco offset計算 (新增功能)
             offset_x, offset_y = 0.0, 0.0
+            has_aruco_offset = False  # 標記是否應用了ArUco offset
+            # Runtime ArUco offset 校正
             if apply_aruco_offset and 'aruco_markers' in roi_config:
-                offset_x, offset_y = self._calculate_aruco_offset(
-                    avg_frame, 
-                    roi_config['aruco_markers']
-                )
-                if offset_x != 0.0 or offset_y != 0.0:
-                    logger.info(f"應用ArUco offset校正: ({offset_x:.1f}, {offset_y:.1f}) 像素")
+                try:
+                    offset_x, offset_y = self._calculate_aruco_offset(
+                        avg_frame, 
+                        roi_config['aruco_markers']
+                    )
+                    has_aruco_offset = True
+                except Exception as e:
+                    logger.warning(f"ArUco offset計算失敗: {e}, 使用原始ROI座標")
+                    offset_x, offset_y = 0.0, 0.0
+            
+            if has_aruco_offset and (offset_x != 0.0 or offset_y != 0.0):
+                logger.info(f"應用ArUco offset校正: ({offset_x:.1f}, {offset_y:.1f}) 像素")
 
             # 5. 提取 ROI (應用offset)
-            x = int(roi_config['x'] + offset_x)
-            y = int(roi_config['y'] + offset_y)
-            w, h = roi_config['width'], roi_config['height']
+            # 處理roi_config結構相容性: 
+            # - 新格式v4.2.0+: roi_config = {'roi': {...}, 'aruco_markers': [...]}
+            # - 舊格式v4.1.x: roi_config = {'x': ..., 'y': ..., 'width': ..., 'height': ...}
+            if 'roi' in roi_config:
+                # 新格式: 完整vision配置
+                roi = roi_config['roi']
+            else:
+                # 舊格式: 直接是roi座標 (向後相容)
+                roi = roi_config
+            
+            x = int(roi['x'] + offset_x)
+            y = int(roi['y'] + offset_y)
+            w, h = roi['width'], roi['height']
             
             # 確保ROI在影像範圍內
             x = max(0, min(x, avg_frame.shape[1] - w))
@@ -614,9 +730,26 @@ class LocalVisionAnalyzer:
                 import time
                 timestamp = time.strftime("%Y%m%d-%H%M%S")
 
-                # 儲存完整影像
+                # 準備要儲存的 full image
+                image_to_save = avg_frame
+                
+                # 標註 ROI (如果啟用)
+                if annotate_full_image:
+                    roi_list = [{
+                        'name': button_id,
+                        'x': x,
+                        'y': y,
+                        'width': w,
+                        'height': h,
+                        'brightness': brightness_value,
+                        'color': color
+                    }]
+                    image_to_save = self._draw_roi_annotations(avg_frame, roi_list)
+                    logger.debug("已在 full image 標註 ROI")
+
+                # 儲存完整影像 (含標註)
                 full_debug_path = debug_dir / f"{button_id}_{timestamp}_full.jpg"
-                cv2.imwrite(str(full_debug_path), avg_frame)
+                cv2.imwrite(str(full_debug_path), image_to_save)
                 logger.debug(f"完整影像已儲存: {full_debug_path}")
 
                 # 儲存 ROI 影像
@@ -780,6 +913,108 @@ class LocalVisionAnalyzer:
             import traceback
             traceback.print_exc()
             return 0.0, 0.0
+
+    def _draw_roi_annotations(
+        self,
+        image: np.ndarray,
+        roi_list: List[Dict],
+        show_brightness: bool = True
+    ) -> np.ndarray:
+        """在影像上繪製 ROI 標註
+        
+        Args:
+            image: BGR 格式的輸入影像
+            roi_list: ROI 列表,每個項目包含:
+                {
+                    'name': str,          # ROI 名稱 (例如: "light1", "Level1 燈泡 1")
+                    'x': int,             # ROI 左上角 x 座標
+                    'y': int,             # ROI 左上角 y 座標
+                    'width': int,         # ROI 寬度
+                    'height': int,        # ROI 高度
+                    'brightness': float,  # 亮度值 (可選)
+                    'is_on': bool,        # 燈光是否開啟 (可選,用於顏色編碼)
+                    'color': str          # 顏色名稱 (可選,用於按鈕檢測)
+                }
+            show_brightness: 是否顯示亮度數值 (預設 True)
+            
+        Returns:
+            np.ndarray: 標註後的影像 (BGR)
+            
+        Example:
+            >>> roi_list = [
+            ...     {'name': 'light1', 'x': 100, 'y': 100, 'width': 50, 'height': 50, 
+            ...      'brightness': 180.5, 'is_on': True},
+            ...     {'name': 'light2', 'x': 200, 'y': 100, 'width': 50, 'height': 50, 
+            ...      'brightness': 30.2, 'is_on': False}
+            ... ]
+            >>> annotated = analyzer._draw_roi_annotations(image, roi_list)
+        """
+        # 複製影像以避免修改原始影像
+        annotated = image.copy()
+        
+        for roi_info in roi_list:
+            x = roi_info['x']
+            y = roi_info['y']
+            w = roi_info['width']
+            h = roi_info['height']
+            name = roi_info.get('name', 'Unknown')
+            
+            # 取得檢測結果
+            brightness = roi_info.get('brightness')
+            is_on = roi_info.get('is_on')
+            color_name = roi_info.get('color')
+            
+            # 根據狀態選擇顏色
+            # - 綠色 (0, 255, 0): 燈開啟 或 按鈕亮度高
+            # - 紅色 (0, 0, 255): 燈關閉 或 按鈕亮度低
+            # - 藍色 (255, 0, 0): 有顏色資訊時使用藍色框
+            # - 白色 (255, 255, 255): 預設顏色
+            if is_on is not None:
+                box_color = (0, 255, 0) if is_on else (0, 0, 255)
+            elif color_name is not None:
+                box_color = (255, 0, 0)  # 按鈕檢測用藍色
+            else:
+                box_color = (255, 255, 255)  # 預設白色
+            
+            # 繪製 ROI 矩形框 (線寬 6 - 加粗以更明顯)
+            cv2.rectangle(annotated, (x, y), (x + w, y + h), box_color, 6)
+            
+            # 繪製名稱標籤 (位置: ROI 左上角內側)
+            label_y = y + 25 if y + 25 < image.shape[0] else y - 5
+            cv2.putText(
+                annotated,
+                name,
+                (x + 8, label_y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,  # 字體大小從 0.5 增加到 0.8
+                box_color,
+                2,    # 線寬從 1 增加到 2
+                cv2.LINE_AA
+            )
+            
+            # 顯示亮度值或顏色 (如果有)
+            if show_brightness:
+                info_text = None
+                if brightness is not None:
+                    info_text = f"{brightness:.1f}"
+                elif color_name is not None:
+                    info_text = color_name
+                
+                if info_text:
+                    info_y = label_y + 25 if label_y + 25 < image.shape[0] else label_y - 20
+                    cv2.putText(
+                        annotated,
+                        info_text,
+                        (x + 8, info_y),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.6,  # 字體大小從 0.4 增加到 0.6
+                        box_color,
+                        2,    # 線寬從 1 增加到 2
+                        cv2.LINE_AA
+                    )
+        
+        logger.debug(f"已標註 {len(roi_list)} 個 ROI 區域")
+        return annotated
 
 
 if __name__ == "__main__":

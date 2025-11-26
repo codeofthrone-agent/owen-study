@@ -378,102 +378,76 @@ class RTSPStreamManager:
 # 全域串流管理器
 stream_manager = RTSPStreamManager()
 
-def load_ipcam_config() -> Dict:
-    """載入 ipcam_config.yaml 配置"""
-    try:
-        config_path = Path(__file__).parent.parent / "config" / "ipcam_config.yaml"
-        if not config_path.exists():
-            print(f"⚠️  找不到配置文件: {config_path}")
-            return {}
-            
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
-            print(f"✅ 成功載入配置文件: {config_path}")
-            return config
-    except Exception as e:
-        print(f"❌ 載入配置文件失敗: {e}")
-        return {}
+# 載入 EnvironmentConfig
+import sys
+import os
+# 將專案根目錄加入 sys.path 以便匯入 config 模組
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
-# 全域配置
-ipcam_config = {}
+try:
+    from config.robot_arm.environment_config import EnvironmentConfig
+except ImportError as e:
+    print(f"❌ 無法載入 EnvironmentConfig: {e}")
+    sys.exit(1)
 
-def load_streams_from_env(environment: str, default_interval: float = 1.0, stream_suffix: str = 'stream1'):
+def load_streams_from_env(environment: str, default_interval: float = 1.0, stream_suffix: str = None):
     """從指定環境載入串流配置"""
-    global ipcam_config
-    
-    if not ipcam_config:
-        ipcam_config = load_ipcam_config()
+    try:
+        if not EnvironmentConfig.validate_environment(environment):
+            print(f"⚠️  找不到環境配置: {environment}")
+            return False
+            
+        env_config = EnvironmentConfig.get_environment(environment)
+        cameras = EnvironmentConfig.get_cameras(environment)
         
-    envs = ipcam_config.get('environments', {})
-    if environment not in envs:
-        print(f"⚠️  找不到環境配置: {environment}")
+        print(f"🔄 切換至環境: {environment} ({env_config.get('description', '')})")
+        
+        # 停止並移除現有串流
+        stream_manager.stop_all_streams()
+        current_streams = list(stream_manager.streams.keys())
+        for stream_id in current_streams:
+            stream_manager.remove_stream(stream_id)
+            
+        # 載入新串流
+        count = 0
+        for cam in cameras:
+            cam_id = cam.get('id')
+            rtsp_url = cam.get('rtsp_url')
+            
+            # 如果用戶有指定 suffix (例如 live1)，則覆蓋預設 URL
+            if stream_suffix:
+                # 解析原始 URL
+                parsed = urlparse(rtsp_url)
+                # 替換路徑
+                new_path = f"/{stream_suffix}" if not stream_suffix.startswith('/') else stream_suffix
+                new_parsed = parsed._replace(path=new_path)
+                rtsp_url = urlunparse(new_parsed)
+                
+            stream_manager.add_stream(
+                stream_id=cam_id,
+                rtsp_url=rtsp_url,
+                name=cam.get('description', cam_id),
+                refresh_rate=default_interval,
+                auto_auth=False # EnvironmentConfig 已經處理了認證
+            )
+            count += 1
+            
+        print(f"✅ 已載入 {count} 個串流 (環境: {environment})")
+        return True
+        
+    except Exception as e:
+        print(f"❌ 載入環境串流失敗: {e}")
         return False
-        
-    env_config = envs[environment]
-    cameras = env_config.get('cameras', {})
-    
-    print(f"🔄 切換至環境: {environment} ({env_config.get('description', '')})")
-    
-    # 停止並移除現有串流
-    stream_manager.stop_all_streams()
-    current_streams = list(stream_manager.streams.keys())
-    for stream_id in current_streams:
-        stream_manager.remove_stream(stream_id)
-        
-    # 載入新串流
-    count = 0
-    for cam_id, cam_config in cameras.items():
-        # 優先使用 YAML 中的 stream_path，如果沒有則使用 stream_suffix
-        # 但如果 stream_suffix 是 live1 (用戶指定)，則覆蓋 YAML 設定
-        
-        ip = cam_config.get('ip')
-        port = cam_config.get('port', 554)
-        
-        # 決定串流路徑
-        if stream_suffix == 'stream1': # 預設值
-            path = cam_config.get('stream_path', '/stream1')
-        else:
-            # 用戶有指定 suffix (例如 live1)，則使用用戶指定的
-            path = f"/{stream_suffix}"
-            
-        # 移除開頭的 / 以避免雙重斜線 (如果 suffix 已經包含 /)
-        if path.startswith('//'):
-            path = path[1:]
-        elif not path.startswith('/'):
-            path = f"/{path}"
-            
-        rtsp_url = f"rtsp://{ip}:{port}{path}"
-        
-        # 嘗試從環境變數或 config 取得帳密
-        username = cam_config.get('username') or os.getenv('IPCAM_USERNAME')
-        password = cam_config.get('password') or os.getenv('IPCAM_PASSWORD')
-        
-        if username and password:
-            rtsp_url = build_rtsp_url(rtsp_url, username, password)
-            
-        stream_manager.add_stream(
-            stream_id=cam_id,
-            rtsp_url=rtsp_url,
-            name=cam_config.get('description', cam_id),
-            refresh_rate=default_interval,
-            auto_auth=False # 已經手動處理了
-        )
-        count += 1
-        
-    print(f"✅ 已載入 {count} 個串流 (環境: {environment})")
-    return True
 
-def load_default_config(default_interval: float = 1.0, stream_suffix: str = 'stream1'):
-    """載入預設配置 (預設使用 laboratory 環境)"""
+def load_default_config(default_interval: float = 1.0, stream_suffix: str = None):
+    """載入預設配置 (預設使用 taipei_lab 環境)"""
     # 載入環境變數
     load_env_variables()
     
-    # 載入 ipcam_config
-    global ipcam_config
-    ipcam_config = load_ipcam_config()
-    
-    # 預設載入 laboratory 環境
-    load_streams_from_env('laboratory', default_interval, stream_suffix)
+    # 預設載入 taipei_lab 環境
+    load_streams_from_env('taipei_lab', default_interval, stream_suffix)
 
 # Flask 路由
 @app.route('/')
@@ -594,31 +568,36 @@ def stop_all_streams():
 @app.route('/api/environments', methods=['GET'])
 def get_environments():
     """取得可用環境列表"""
-    global ipcam_config
-    if not ipcam_config:
-        ipcam_config = load_ipcam_config()
+    try:
+        env_list = EnvironmentConfig.list_environments()
+        result = []
         
-    envs = ipcam_config.get('environments', {})
-    result = []
-    
-    for env_id, env_data in envs.items():
-        result.append({
-            'id': env_id,
-            'description': env_data.get('description', env_id),
-            'camera_count': len(env_data.get('cameras', {}))
+        for env_id in env_list:
+            env_config = EnvironmentConfig.get_environment(env_id)
+            cameras = EnvironmentConfig.get_cameras(env_id)
+            
+            result.append({
+                'id': env_id,
+                'description': env_config.get('name', env_id),
+                'camera_count': len(cameras)
+            })
+            
+        return jsonify({
+            'success': True,
+            'environments': result
         })
-        
-    return jsonify({
-        'success': True,
-        'environments': result
-    })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
 
 @app.route('/api/environments/<env_name>/load', methods=['POST'])
 def load_environment(env_name):
     """載入指定環境"""
     data = request.json or {}
     interval = data.get('interval', 1.0)
-    suffix = data.get('suffix', 'stream1')
+    suffix = data.get('suffix')  # 可選，若無則使用預設配置
     
     success = load_streams_from_env(env_name, interval, suffix)
     

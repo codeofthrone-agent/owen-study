@@ -102,7 +102,7 @@ robot-test-project/
 │   │   ├── 📁 android_testing/             # Android 測試庫
 │   │   └── 📁 common/                      # 通用移動測試功能
 │   │
-│   ├── 📁 robot_arm_control/ (計劃中)       # 機器手臂控制模組 (測試工具)
+│   ├── 📁 robot_arm_control/ (開發中)       # 機器手臂控制模組，包含核心視覺分析
 │   │   ├── mycobot_controller.py           # MyCobot 280 控制器
 │   │   ├── arm_movements_library.py        # 運動學庫
 │   │   ├── 📁 calibration/                 # 校準數據
@@ -164,6 +164,12 @@ robot-test-project/
 └── 📄 README.md                            # 本檔案
 ```
 
+## 📚 主要文件
+
+- **[系統規格書](spec.md)**：專案的整體功能與非功能性需求。
+- **[視覺偵測詳細架構](docs/vision_detection_architecture_detailed.md)**：深入了解影像分析（包含 RTSP）的完整流程與設計細節。
+- **[任務清單](todo.md)**：目前的開發待辦事項。
+
 ## 安裝與環境設置
 
 ### 🖥️ 系統需求
@@ -205,23 +211,22 @@ xcode-select --install
 
 # Python 環境
 brew install python@3.11
-brew install pipenv
+
 ```
 
 #### IP Camera 燈光檢測環境 ✅ **[已完成 - 2025-11-05]**
 ```bash
 # 安裝依賴套件
-pipenv install opencv-python numpy loguru pyyaml
+uv pip install opencv-python numpy loguru pyyaml
 
 # 配置認證資訊
 cp .env.example .env
 # 編輯 .env 設定 IPCAM_USERNAME 和 IPCAM_PASSWORD
 
 # 測試連線
-pipenv run python3 scripts/quick_ipcam_test.py
+uv run python3 scripts/quick_ipcam_test.py
 
-# 執行測試
-pipenv run robot --include smoke tests/ipcam_testing/
+uv run robot --include smoke tests/ipcam_testing/
 ```
 
 #### iOS 真機測試環境 ✅ **[已完成 - 2025-06-27]**
@@ -257,9 +262,8 @@ brew install android-platform-tools
 
 2. **安裝 Python 相依套件**
    ```bash
-   # 使用 pipenv (推薦)
-   pipenv install
-   pipenv shell
+   # 使用 uv (推薦)
+   uv pip install -r requirements.txt   
    
    # 或使用 pip
    pip install -r requirements.txt
@@ -297,10 +301,10 @@ brew install android-platform-tools
 5. **設定 SwitchBot 智慧插座** (如需電源管理功能)
    ```bash
    # 取得設備 ID
-   pipenv run python libraries/switchbot_smartplug_control/get_device_id.py
+   uv run python libraries/switchbot_smartplug_control/get_device_id.py
    
    # 測試插座控制
-   pipenv run python libraries/switchbot_smartplug_control/plug_control.py status
+   uv run python libraries/switchbot_smartplug_control/plug_control.py status
    ```
 
 ## 🚀 快速開始 - IP Camera 燈光檢測
@@ -309,8 +313,8 @@ brew install android-platform-tools
 
 1. **安裝依賴**:
    ```bash
-   pipenv shell
-   pipenv install opencv-python numpy loguru pyyaml
+   
+   uv pip install opencv-python numpy loguru pyyaml
    ```
 
 2. **配置認證**:
@@ -323,12 +327,12 @@ brew install android-platform-tools
 3. **驗證配置**:
    ```bash
    export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-   pipenv run python3 scripts/test_ipcam_config.py
+   uv run python3 scripts/test_ipcam_config.py
    ```
 
 4. **執行測試**:
    ```bash
-   pipenv run robot --include smoke tests/ipcam_testing/
+   uv run robot --include smoke tests/ipcam_testing/
    ```
 
 ### Python 使用範例

@@ -36,12 +36,16 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from libraries.robot_arm_control.mycobot_socket_controller import MyCobotSocketController
+from config.robot_arm.environment_config import EnvironmentConfig
 
 app = Flask(__name__)
 
-# 全域變數
-global_client = None
-global_calibrator = None
+# 全域變數 - 多環境支援
+global_configs = {}  # 儲存所有環境配置 {env_name: config_data}
+global_calibrators = {}  # 儲存所有環境的校準器 {env_name: WebButtonROICalibrator}
+current_environment = None  # 當前選擇的環境
+global_client = None  # 機器手臂客戶端(按需建立)
+is_connected = False  # 連線狀態
 
 
 class HybridRobotArmClient:
@@ -620,12 +624,12 @@ class HybridRobotArmClient:
 class WebButtonROICalibrator:
     """網頁版按鈕 ROI 校準工具"""
 
-    def __init__(self, config_path: str, client: 'HybridRobotArmClient'):
+    def __init__(self, config_path: str, client: Optional['HybridRobotArmClient'] = None):
         """初始化校準工具
 
         Args:
             config_path: YAML 配置檔案路徑
-            client: HybridRobotArmClient 實例
+            client: HybridRobotArmClient 實例(可選,支援延遲初始化)
         """
         self.config_path = Path(config_path)
         self.client = client
@@ -635,6 +639,10 @@ class WebButtonROICalibrator:
         self.current_image = None
         self.current_button_name = None
         self.current_item_type = None
+
+    def set_client(self, client: 'HybridRobotArmClient'):
+        """設定機器手臂客戶端(用於延遲初始化)"""
+        self.client = client
 
     def load_config(self) -> bool:
         try:
@@ -746,31 +754,46 @@ class WebButtonROICalibrator:
                     image_base64 = base64.b64encode(buffer).decode('utf-8')
             elif item_type == 'environment_light':
                 print("📷 使用 RTSP 截取環境燈光影像...")
-                camera_ip = config.get('camera_ip')
-                if not camera_ip:
-                    return {"success": False, "error": "環境燈光缺少 camera_ip 配置"}
-
-                # 從環境變數取得 RTSP 認證資訊
-                import os
-                username = os.getenv("IPCAM_USERNAME", "")
-                password = os.getenv("IPCAM_PASSWORD", "")
-
-                # 構建基礎 URL
-                if username and password:
-                    base_url = f"rtsp://{username}:{password}@{camera_ip}:554"
+            elif item_type == 'environment_light':
+                print("📷 使用 RTSP 截取環境燈光影像...")
+                
+                # ✨ v4.2.0: 使用 EnvironmentConfig 取得 Camera 資訊 (包含認證)
+                env_name = self.config.get('environment', {}).get('name', 'taipei_lab')
+                camera_id = config.get('camera_id')
+                
+                if not camera_id:
+                    # 相容性 fallback: 如果沒有 camera_id 但有 camera_ip (舊設定)
+                    camera_ip = config.get('camera_ip')
+                    if camera_ip:
+                        print(f"⚠️  警告: 使用舊版 camera_ip 設定: {camera_ip}")
+                        # 簡單構建 URL (不含認證，除非環境變數有)
+                        import os
+                        username = os.getenv("IPCAM_USERNAME", "")
+                        password = os.getenv("IPCAM_PASSWORD", "")
+                        if username and password:
+                            test_url = f"rtsp://{username}:{password}@{camera_ip}:554/live0"
+                        else:
+                            test_url = f"rtsp://{camera_ip}:554/live0"
+                        stream_paths = [test_url] # 模擬列表
+                    else:
+                        return {"success": False, "error": "環境燈光缺少 camera_id 配置"}
                 else:
-                    base_url = f"rtsp://{camera_ip}:554"
+                    try:
+                        cam_config = EnvironmentConfig.get_camera(env_name, camera_id)
+                        # EnvironmentConfig 已經處理好認證和 URL
+                        test_url = cam_config['rtsp_url']
+                        print(f"   取得 Camera URL: {test_url}")
+                        stream_paths = [test_url]
+                    except ValueError as e:
+                        return {"success": False, "error": str(e)}
 
-                # 嘗試多種串流路徑 (優先使用 live0 高畫質串流)
-                stream_paths = ['/live0', '/live1']
                 cap = None
                 successful_path = None
 
-                for stream_path in stream_paths:
-                    test_url = base_url + stream_path
-                    print(f"   嘗試連接: rtsp://***@{camera_ip}:554{stream_path}")
+                for rtsp_url in stream_paths:
+                    print(f"   嘗試連接: {rtsp_url.replace(os.getenv('IPCAM_PASSWORD', ''), '******') if os.getenv('IPCAM_PASSWORD') else rtsp_url}")
 
-                    cap = cv2.VideoCapture(test_url, cv2.CAP_FFMPEG)
+                    cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
                     cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
                     if cap.isOpened():
@@ -780,8 +803,8 @@ class WebButtonROICalibrator:
                         for _ in range(60):  # 嘗試讀取 60 幀 (約 2-3 秒)
                             ret, test_frame = cap.read()
                             if ret and test_frame is not None and test_frame.size > 0:
-                                print(f"   ✅ 成功讀取影像: {stream_path} ({test_frame.shape[1]}x{test_frame.shape[0]})")
-                                successful_path = stream_path
+                                print(f"   ✅ 成功讀取影像: ({test_frame.shape[1]}x{test_frame.shape[0]})")
+                                successful_path = rtsp_url
                                 frame_read_success = True
                                 break
                             time.sleep(0.05)
@@ -789,11 +812,11 @@ class WebButtonROICalibrator:
                         if frame_read_success:
                             break
                         else:
-                            print(f"   ⚠️  連接成功但無法讀取有效幀 (超時): {stream_path}")
+                            print(f"   ⚠️  連接成功但無法讀取有效幀 (超時)")
                             cap.release()
                             cap = None
                     else:
-                        print(f"   ⚠️  無法連接: {stream_path}")
+                        print(f"   ⚠️  無法連接")
                         if cap:
                             cap.release()
                         cap = None
@@ -907,11 +930,56 @@ class WebButtonROICalibrator:
 def index():
     return render_template('roi_annotator.html')
 
+@app.route('/api/environments', methods=['GET'])
+def get_environments():
+    """取得所有可用環境列表"""
+    global global_configs, global_calibrators, current_environment, is_connected, global_client
+    
+    try:
+        environments = []
+        for env_name, config in global_configs.items():
+            connection_config = config.get('connection', {}).get('socket', {})
+            calibrator = global_calibrators.get(env_name)
+            
+            environments.append({
+                'name': env_name,
+                'display_name': config.get('environment', {}).get('display_name', env_name),
+                'robot_arm_host': connection_config.get('host', 'N/A'),
+                'robot_arm_port': connection_config.get('port', 9000),
+                'total_buttons': len(calibrator.buttons) if calibrator else 0,
+                'total_lights': len(calibrator.environment_lights) if calibrator else 0
+            })
+        
+        return jsonify({
+            'success': True,
+            'environments': environments,
+            'current_environment': current_environment,
+            'is_connected': is_connected,
+            'connection_info': {
+                'host': global_client.controller.host if global_client else None,
+                'port': global_client.controller.port if global_client else None
+            } if is_connected else None
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'取得環境列表失敗: {str(e)}'})
+
 @app.route('/api/buttons', methods=['GET'])
 def get_buttons():
-    if global_calibrator is None: return jsonify({"success": False, "error": "校準器未初始化"})
-    button_list = global_calibrator.get_button_list()
-    return jsonify({"success": True, "buttons": button_list})
+    """取得按鈕列表(支援環境參數)"""
+    global global_calibrators, current_environment
+    
+    # 從 URL 參數讀取環境,或使用當前環境
+    env_name = request.args.get('environment', current_environment)
+    
+    if not env_name:
+        return jsonify({'success': False, 'error': '未指定環境'})
+    
+    calibrator = global_calibrators.get(env_name)
+    if calibrator is None:
+        return jsonify({'success': False, 'error': f'環境 {env_name} 不存在'})
+    
+    button_list = calibrator.get_button_list()
+    return jsonify({'success': True, 'buttons': button_list, 'environment': env_name})
 
 @app.route('/api/calibrate/prepare', methods=['POST'])
 def prepare_calibration():
@@ -946,6 +1014,104 @@ def save_roi():
     result = global_calibrator.save_roi(button_name, roi, item_type)
     return jsonify(result)
 
+
+@app.route('/api/robot_arm/connect', methods=['POST'])
+def connect_robot_arm():
+    """連接機器手臂"""
+    global global_client, is_connected, current_environment, global_calibrators, global_configs
+    
+    try:
+        data = request.json
+        env_name = data.get('environment')
+        
+        if not env_name:
+            return jsonify({'success': False, 'error': '未指定環境'})
+        
+        if env_name not in global_configs:
+            return jsonify({'success': False, 'error': f'環境 {env_name} 不存在'})
+        
+        # 如果已連線,先斷開
+        if is_connected and global_client:
+            global_client.disconnect()
+            is_connected = False
+        
+        # 從配置讀取機器手臂連線資訊
+        config = global_configs[env_name]
+        connection_config = config.get('connection', {}).get('socket', {})
+        host = connection_config.get('host')
+        port = connection_config.get('port', 9000)
+        
+        if not host:
+            return jsonify({'success': False, 'error': f'環境 {env_name} 缺少機器手臂連線配置'})
+        
+        print(f"🔌 正在連接到 {env_name} 機器手臂: {host}:{port}...")
+        
+        # 建立新的客戶端
+        global_client = HybridRobotArmClient(host, port, timeout=30.0)
+        
+        if not global_client.connect():
+            global_client = None
+            return jsonify({
+                'success': False,
+                'error': f'無法連接到機器手臂 {host}:{port}',
+                'host': host,
+                'port': port
+            })
+        
+        # 設定當前環境
+        current_environment = env_name
+        is_connected = True
+        
+        # 將客戶端注入到對應的校準器
+        calibrator = global_calibrators.get(env_name)
+        if calibrator:
+            calibrator.set_client(global_client)
+        
+        # 讀取當前角度
+        angles = None
+        try:
+            angles = global_client.get_angles()
+        except Exception as e:
+            print(f"⚠️  角度讀取失敗: {e}")
+        
+        env_display_name = config.get('environment', {}).get('display_name', env_name)
+        
+        return jsonify({
+            'success': True,
+            'message': f'已連接到 {env_display_name} 機器手臂',
+            'environment': env_name,
+            'host': host,
+            'port': port,
+            'angles': [round(a, 2) for a in angles] if angles else None
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': f'連線失敗: {str(e)}'})
+
+@app.route('/api/robot_arm/disconnect', methods=['POST'])
+def disconnect_robot_arm():
+    """斷開機器手臂連線"""
+    global global_client, is_connected, current_environment
+    
+    try:
+        if not is_connected or not global_client:
+            return jsonify({'success': False, 'error': '目前未連線'})
+        
+        print("⚡ 斷開機器手臂連線...")
+        global_client.disconnect()
+        global_client = None
+        is_connected = False
+        
+        # 保留當前環境選擇,但移除客戶端
+        for calibrator in global_calibrators.values():
+            calibrator.set_client(None)
+        
+        return jsonify({'success': True, 'message': '已斷開機器手臂連線'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'斷線失敗: {str(e)}'})
 
 @app.route('/api/arm/move', methods=['POST'])
 def move_arm():
@@ -1156,7 +1322,8 @@ def capture_rtsp_image():
 def get_environment_config():
     try:
         from config.robot_arm.environment_config import EnvironmentConfig
-        environment = "taipei_lab"
+        # 優先從 URL 參數讀取環境，否則使用當前全域環境
+        environment = request.args.get('environment', current_environment)
         cameras = EnvironmentConfig.get_cameras(environment)
         camera_list = []
         for camera_config in cameras:
@@ -1169,66 +1336,87 @@ def get_environment_config():
 
 
 def main():
-    global global_client, global_calibrator
+    global global_client, global_configs, global_calibrators, current_environment, is_connected
 
-    parser = argparse.ArgumentParser(description='網頁版 ROI 校準工具')
-    parser.add_argument('--host', type=str, default='10.42.0.180', help='機器手臂伺服器 IP')
-    parser.add_argument('--port', type=int, default=9000, help='機器手臂伺服器端口')
+    parser = argparse.ArgumentParser(description='網頁版 ROI 校準工具 - 多環境支援')
     parser.add_argument('--web-port', type=int, default=5000, help='Web 伺服器端口')
-    parser.add_argument('--config', type=str, default='config/robot_arm/button_positions.yaml',
-                        help='按鈕配置檔案路徑')
-    parser.add_argument('--timeout', type=float, default=30.0, help='Socket 超時時間（秒）')
-    parser.add_argument('--skip-arm-check', action='store_true', help='跳過手臂狀態檢查')
+    parser.add_argument('--environment', type=str, choices=['taipei_lab', 'rv_car', 'taoyuan_lab'],
+                        help='預設環境(可選,啟動時不自動連線)')
+    parser.add_argument('--skip-arm-check', action='store_true', 
+                        help='保留參數以向後相容,多環境模式下無效')
 
     args = parser.parse_args()
 
     print("=" * 60)
-    print("🌐 網頁版 ROI 校準工具 (改進版)")
+    print("🌐 網頁版 ROI 校準工具 (多環境版)")
     print("=" * 60)
     print()
 
-    print(f"🔌 正在連接到機器手臂伺服器 {args.host}:{args.port}...")
-    global_client = HybridRobotArmClient(args.host, args.port, timeout=args.timeout)
+    # 定義環境配置檔案
+    config_files = {
+        'taipei_lab': 'config/robot_arm/taipei_lab_buttons.yaml',
+        'rv_car': 'config/robot_arm/rv_car_buttons.yaml',
+        'taoyuan_lab': 'config/robot_arm/taoyuan_lab_buttons.yaml'
+    }
 
-    if not global_client.connect():
-        if not args.skip_arm_check:
-            print("❌ 連接失敗，請確認伺服器已啟動。")
-            print("   如要跳過手臂檢查，使用 --skip-arm-check 參數")
-            return 1
-        else:
-            print("⚠️  跳過手臂連接檢查，繼續啟動...")
+    # 載入所有環境配置
+    print("📂 載入環境配置...")
+    loaded_count = 0
+    for env_name, config_path in config_files.items():
+        try:
+            config_full_path = project_root / config_path
+            print(f"   載入 {env_name}: {config_path}")
+            
+            with open(config_full_path, 'r', encoding='utf-8') as f:
+                config_data = yaml.safe_load(f)
+            
+            global_configs[env_name] = config_data
+            
+            # 建立校準器(不注入客戶端)
+            calibrator = WebButtonROICalibrator(str(config_full_path), client=None)
+            if calibrator.load_config():
+                global_calibrators[env_name] = calibrator
+                loaded_count += 1
+                
+                env_display = config_data.get('environment', {}).get('display_name', env_name)
+                button_count = len(calibrator.buttons)
+                light_count = len(calibrator.environment_lights)
+                print(f"   ✅ {env_display}: {button_count} 個按鈕, {light_count} 個燈光")
+            else:
+                print(f"   ⚠️  {env_name} 配置載入失敗")
+                
+        except FileNotFoundError:
+            print(f"   ⚠️  找不到配置檔案: {config_path}")
+        except Exception as e:
+            print(f"   ❌ {env_name} 載入錯誤: {e}")
 
-    print(f"📂 載入配置檔案: {args.config}")
-    global_calibrator = WebButtonROICalibrator(args.config, global_client)
-
-    if not global_calibrator.load_config():
-        print("❌ 載入配置失敗")
-        if global_client:
-            global_client.disconnect()
+    if loaded_count == 0:
+        print("\n❌ 沒有成功載入任何環境配置")
         return 1
 
-    print(f"✅ 找到 {len(global_calibrator.buttons)} 個按鈕")
+    print(f"\n✅ 成功載入 {loaded_count} 個環境配置")
     
-    calibrated_count = 0
-    for name, config in global_calibrator.buttons.items():
-        has_roi = 'vision' in config and 'roi' in config.get('vision', {})
-        if has_roi:
-            calibrated_count += 1
-        status = "✅" if has_roi else "❌"
-        print(f"   {status} {name}: {config.get('description', 'N/A')}")
-
-    # ✨ 新增：顯示環境燈光校準狀態
-    print(f"\n🔍 環境燈光狀態:")
-    env_calibrated_count = 0
-    for name, config in global_calibrator.environment_lights.items():
-        has_roi = 'roi' in config and config['roi']
-        if has_roi:
-            env_calibrated_count += 1
-        status = "✅" if has_roi else "❌"
-        print(f"   {status} {name}: {config.get('name', 'N/A')}")
+    # 設定預設環境(不連線)
+    if args.environment and args.environment in global_configs:
+        current_environment = args.environment
+        print(f"🎯 預設環境: {global_configs[current_environment].get('environment', {}).get('display_name', current_environment)}")
+    else:
+        # 預設選擇第一個成功載入的環境
+        current_environment = list(global_calibrators.keys())[0]
+        print(f"🎯 預設環境: {global_configs[current_environment].get('environment', {}).get('display_name', current_environment)} (可透過前端切換)")
     
-    print(f"📊 按鈕已校準: {calibrated_count}/{len(global_calibrator.buttons)}")
-    print(f"📊 燈光已校準: {env_calibrated_count}/{len(global_calibrator.environment_lights)}")
+    print()
+    
+    # 顯示所有環境的連線資訊
+    print("🔌 機器手臂連線資訊:")
+    for env_name, config in global_configs.items():
+        connection_config = config.get('connection', {}).get('socket', {})
+        host = connection_config.get('host', 'N/A')
+        port = connection_config.get('port', 9000)
+        env_display = config.get('environment', {}).get('display_name', env_name)
+        print(f"   {env_display}: {host}:{port}")
+    print()
+    print("💡 提示: 機器手臂將在前端選擇環境後按需連線")
     print()
 
     print("=" * 60)

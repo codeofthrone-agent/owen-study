@@ -62,7 +62,25 @@ class RTSPImageSource:
         self.rtsp_url: Optional[str] = None
         self.last_frame: Optional[np.ndarray] = None
 
-        logger.info("RTSPImageSource 初始化完成")
+        # 設定環境變數以抑制FFmpeg警告訊息
+        os.environ['AV_LOG_FORCE_NOCOLOR'] = '1'  # 禁用顏色輸出
+        os.environ['OPENCV_LOG_LEVEL'] = 'ERROR'  # 只顯示錯誤
+        
+        # 設定OpenCV日誌級別 (需要OpenCV 4.x+)
+        # 某些OpenCV版本可能沒有LOG_LEVEL_ERROR常數,使用try-except處理
+        # 這會抑制 "SPS 0 does not exist" 和 "PPS id out of range" 等重複警告
+        try:
+            if hasattr(cv2, 'setLogLevel') and hasattr(cv2, 'LOG_LEVEL_ERROR'):
+                cv2.setLogLevel(cv2.LOG_LEVEL_ERROR)
+            elif hasattr(cv2, 'setLogLevel'):
+                # 舊版OpenCV使用數字: 0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR, 4=FATAL
+                cv2.setLogLevel(3)  # ERROR level
+            else:
+                logger.debug("當前OpenCV版本不支持 setLogLevel 方法。")
+        except Exception as e:
+            logger.debug(f"無法設定OpenCV日誌級別: {e}")
+
+        logger.info("RTSPImageSource 初始化完成 (FFmpeg日誌已過濾)")
 
     def __del__(self):
         """清理資源"""
@@ -127,20 +145,23 @@ class RTSPImageSource:
             logger.debug(f"初始化 VideoCapture: {self._get_safe_url(url)}")
 
             # 設定 FFmpeg 選項以支援 HEVC/H.265 和 TCP 傳輸
+            # 增加 loglevel 選項以抑制重複的HEVC解碼警告訊息
             if use_tcp:
                 os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = (
                     'rtsp_transport;tcp|'
                     'analyzeduration;20000000|'
-                    'probesize;20000000'
+                    'probesize;20000000|'
+                    'loglevel;quiet'  # 抑制FFmpeg日誌輸出
                 )
-                logger.debug("已設定 FFmpeg 選項: TCP 傳輸 + HEVC 支援")
+                logger.debug("已設定 FFmpeg 選項: TCP 傳輸 + HEVC 支援 + 日誌過濾")
             else:
                 os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = (
                     'rtsp_transport;udp|'
                     'analyzeduration;20000000|'
-                    'probesize;20000000'
+                    'probesize;20000000|'
+                    'loglevel;quiet'  # 抑制FFmpeg日誌輸出
                 )
-                logger.debug("已設定 FFmpeg 選項: UDP 傳輸 + HEVC 支援")
+                logger.debug("已設定 FFmpeg 選項: UDP 傳輸 + HEVC 支援 + 日誌過濾")
 
             # 建立 VideoCapture
             self.capture = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
