@@ -174,6 +174,9 @@ create_pro_audio_profile() {
     local config_path="/etc/alsa-card-profile/mixer/paths/99-focusrite-scarlett-pro.conf"
     log_info "將使用 sudo 創建設定檔: $config_path"
 
+    # 確保目錄存在
+    sudo mkdir -p "$(dirname "$config_path")"
+
     # 使用 sudo tee 寫入檔案
     get_pro_audio_config | sudo tee "$config_path" > /dev/null
 
@@ -211,32 +214,28 @@ cleanup_routes() {
 # --- 音訊測試 ---
 run_test() {
     set +e
-    log_info "即將開始自動音訊測試..."
-    echo "您將會依序從不同的輸出通道聽到測試音。"
-    sleep 2
+    log_info "即將開始自動音訊測試 (使用 ultimate_play.py)..."
+    echo "將依序測試聲道 1, 2, 3 (各播放 1 秒)..."
+    sleep 1
 
-    local sinks=("Scarlett_1-2" "Scarlett_3-4")
-    local freqs=(440 660)
-    local outputs=("1 & 2" "3 & 4")
+    local test_file="file_example_WAV_2MG.wav"
+    if [ ! -f "$test_file" ]; then
+        log_warn "找不到測試音訊檔 '$test_file'，跳過測試。"
+        return 0
+    fi
 
-    for i in ${!sinks[@]}; do
-        local sink_name=${sinks[$i]}
-        if ! pactl list sinks short | grep -q "$sink_name"; then
-            log_error "虛擬裝置 '$sink_name' 不存在，無法進行測試。"
-            log_info "請先執行一次完整的設定 (不加任何參數)。"
-            return 1
-        fi
-
-        log_info "正在測試輸出 ${outputs[$i]} (使用裝置: $sink_name, 頻率: ${freqs[$i]} Hz)..."
-        speaker-test -t sine -f ${freqs[$i]} -c 1 -s 1 -D "$sink_name" &> /dev/null
+    for channel in 1 2 3; do
+        log_info "正在測試聲道 $channel..."
+        uv run python3 ultimate_play.py "$test_file" "$channel" 1
         if [ $? -ne 0 ]; then
-            log_error "在 '$sink_name' 上播放測試音失敗。"
+            log_error "聲道 $channel 測試失敗。"
         else
-            log_success "輸出 ${outputs[$i]} 測試音已發送。"
+            log_success "聲道 $channel 測試完成。"
         fi
-        sleep 1.5
+        sleep 0.5
     done
-    log_success "音訊測試完成。"
+    
+    log_success "音訊測試流程結束。"
     set -e
 }
 
@@ -254,11 +253,14 @@ main_setup() {
         exit 1
     fi
     log_success "找到音訊卡: $CARD_NAME"
+    
+    # 嘗試關閉 MSD 模式 (Mass Storage Device mode)
+    amixer -c "$CARD_NAME" cset numid=6 0 &> /dev/null || true
     echo ""
 
     log_action "2. 檢查並設定 Pro Audio 模式..."
     local profiles
-    profiles=$(pactl list cards | grep -A 10 "Name: $CARD_NAME" | grep "pro-audio" || true)
+    profiles=$(pactl list cards | grep -A 100 "Name: $CARD_NAME" | grep "pro-audio" || true)
     
     if [ -z "$profiles" ]; then
         # 如果設定檔不存在，執行創建流程
@@ -286,6 +288,7 @@ main_setup() {
     log_info "將創建: ${virtual_sinks[*]}"
     for sink in "${virtual_sinks[@]}"; do
         pactl load-module module-null-sink sink_name="$sink" sink_properties=device.description="$sink"
+        pactl set-sink-volume "$sink" 100%
     done
     log_success "成功創建 ${#virtual_sinks[@]} 個虛擬裝置。"
     sleep 2 # 等待裝置完全建立
@@ -300,6 +303,17 @@ main_setup() {
     fi
     log_success "找到實體輸出設備: $DEVICE_NAME"
     echo ""
+
+    # 等待實體端口就緒
+    log_info "等待實體端口就緒..."
+    for i in {1..10}; do
+        if pw-link -i | grep -q "$DEVICE_NAME:playback_FL"; then
+            log_success "實體端口已就緒。"
+            break
+        fi
+        sleep 1
+    done
+    sleep 2
 
     log_action "5. 連接虛擬裝置至實體輸出..."
     local links=(

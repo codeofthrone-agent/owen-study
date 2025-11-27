@@ -181,8 +181,8 @@ def play_audio_to_channel(audio_file: str, target_channel: int, duration: int = 
 
 def main():
     """命令行入口函数"""
-    if len(sys.argv) != 3:
-        print("使用方法: python3 ultimate_play.py <音频文件路径> <目标逻辑声道 (1-4)>")
+    if len(sys.argv) < 3 or len(sys.argv) > 4:
+        print("使用方法: python3 ultimate_play.py <音频文件路径> <目标逻辑声道 (1-4)> [播放时长(秒)]")
         sys.exit(1)
 
     audio_file = sys.argv[1]
@@ -192,8 +192,16 @@ def main():
         print("错误: 目标逻辑声道必须是数字。")
         sys.exit(1)
 
+    duration = 5
+    if len(sys.argv) == 4:
+        try:
+            duration = int(sys.argv[3])
+        except ValueError:
+            print("错误: 播放时长必须是数字。")
+            sys.exit(1)
+
     player = AudioPlayer(audio_file, target_channel)
-    success = player.run()
+    success = player.run(duration)
 
     sys.exit(0 if success else 1)
 
