@@ -38,6 +38,35 @@ sys.path.insert(0, str(project_root))
 from libraries.robot_arm_control.mycobot_socket_controller import MyCobotSocketController
 from config.robot_arm.environment_config import EnvironmentConfig
 
+# 嘗試載入 python-dotenv
+try:
+    from dotenv import load_dotenv
+    DOTENV_AVAILABLE = True
+except ImportError:
+    DOTENV_AVAILABLE = False
+    print("⚠️  python-dotenv 未安裝，無法讀取 .env 文件")
+    print("   可使用: pip install python-dotenv 來安裝")
+
+def load_env_variables():
+    """載入環境變數"""
+    if DOTENV_AVAILABLE:
+        # 嘗試從多個位置載入 .env 文件
+        project_root = Path(__file__).parent.parent
+        env_paths = [
+            project_root / ".env",
+            Path.cwd() / ".env",
+            Path(".env")
+        ]
+        
+        for env_path in env_paths:
+            if env_path.exists():
+                load_dotenv(env_path)
+                print(f"✅ 載入環境變數: {env_path}")
+                return True
+        
+        print("⚠️  未找到 .env 文件")
+    return False
+
 app = Flask(__name__)
 
 # 全域變數 - 多環境支援
@@ -668,7 +697,8 @@ class WebButtonROICalibrator:
     def get_button_list(self) -> List[Dict]:
         item_list = []
         for name, config in self.buttons.items():
-            has_roi = 'vision' in config and 'roi' in config.get('vision', {})
+            vision_config = config.get('vision')
+            has_roi = vision_config is not None and 'roi' in vision_config
             item_list.append({
                 'name': name,
                 'type': 'button',
@@ -790,17 +820,20 @@ class WebButtonROICalibrator:
                 cap = None
                 successful_path = None
 
+                # 強制使用 UDP 傳輸 (嘗試解決 461 錯誤，因為 TCP 失敗)
+                os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;udp"
+
                 for rtsp_url in stream_paths:
                     print(f"   嘗試連接: {rtsp_url.replace(os.getenv('IPCAM_PASSWORD', ''), '******') if os.getenv('IPCAM_PASSWORD') else rtsp_url}")
 
-                    cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+                    cap = cv2.VideoCapture(rtsp_url)
                     cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
                     if cap.isOpened():
                         # 測試讀取幀 (嘗試多次以等待 Keyframe)
-                        print(f"   ⏳ 已連接，正在等待影像 (最多 60 幀)...")
+                        print(f"   ⏳ 已連接，正在等待影像 (最多 200 幀)...")
                         frame_read_success = False
-                        for _ in range(60):  # 嘗試讀取 60 幀 (約 2-3 秒)
+                        for _ in range(200):  # 嘗試讀取 200 幀 (約 10 秒)
                             ret, test_frame = cap.read()
                             if ret and test_frame is not None and test_frame.size > 0:
                                 print(f"   ✅ 成功讀取影像: ({test_frame.shape[1]}x{test_frame.shape[0]})")
@@ -820,6 +853,14 @@ class WebButtonROICalibrator:
                         if cap:
                             cap.release()
                         cap = None
+                    
+                    if frame_read_success:
+                        image = test_frame
+                        break
+                    
+                    # 如果失敗，等待後重試
+                    print(f"   ⏳ 等待 1 秒後重試...")
+                    time.sleep(1.0)
 
         self.current_image = image
 
@@ -838,8 +879,9 @@ class WebButtonROICalibrator:
 
         existing_roi = None
         if item_type == 'button':
-            if 'vision' in button_config and 'roi' in button_config['vision']:
-                existing_roi = button_config['vision']['roi']
+            vision_config = button_config.get('vision')
+            if vision_config and 'roi' in vision_config:
+                existing_roi = vision_config['roi']
         elif item_type == 'environment_light':
             if 'roi' in button_config and button_config['roi']:
                 existing_roi = button_config['roi']
@@ -983,16 +1025,23 @@ def get_buttons():
 
 @app.route('/api/calibrate/prepare', methods=['POST'])
 def prepare_calibration():
+    global global_calibrators, current_environment
     data = request.json
     button_name = data.get('button_name')
     item_type = data.get('item_type', 'button')  # ✨ 支援環境燈光
     capture_image = data.get('capture_image', True)
+    env_name = data.get('environment')
 
     if not button_name: return jsonify({"success": False, "error": "缺少按鈕名稱"})
-    if global_calibrator is None: return jsonify({"success": False, "error": "校準器未初始化"})
+    
+    # 優先使用請求中的環境參數，否則使用當前環境
+    target_env = env_name if env_name else current_environment
+    calibrator = global_calibrators.get(target_env)
+    
+    if calibrator is None: return jsonify({"success": False, "error": f"環境 {target_env} 校準器未初始化"})
 
     try:
-        result = global_calibrator.prepare_calibration(button_name, item_type, capture_image)
+        result = calibrator.prepare_calibration(button_name, item_type, capture_image)
         print(f"✅ 校準準備結果: type={item_type}, success={result.get('success')}")
         return jsonify(result)
     except Exception as e:
@@ -1003,15 +1052,22 @@ def prepare_calibration():
 
 @app.route('/api/calibrate/save', methods=['POST'])
 def save_roi():
+    global global_calibrators, current_environment
     data = request.json
     button_name = data.get('button_name')
     roi = data.get('roi')
     item_type = data.get('item_type', 'button')
+    env_name = data.get('environment')
 
     if not button_name or not roi: return jsonify({"success": False, "error": "缺少必要參數"})
-    if global_calibrator is None: return jsonify({"success": False, "error": "校準器未初始化"})
+    
+    # 優先使用請求中的環境參數，否則使用當前環境
+    target_env = env_name if env_name else current_environment
+    calibrator = global_calibrators.get(target_env)
+    
+    if calibrator is None: return jsonify({"success": False, "error": f"環境 {target_env} 校準器未初始化"})
 
-    result = global_calibrator.save_roi(button_name, roi, item_type)
+    result = calibrator.save_roi(button_name, roi, item_type)
     return jsonify(result)
 
 
@@ -1179,14 +1235,22 @@ def get_status():
 
 @app.route('/api/aruco/save_reference', methods=['POST'])
 def save_aruco_reference():
-    if global_calibrator is None: return jsonify({"success": False, "error": "校準器未初始化"})
+    global global_calibrators, current_environment
     data = request.json
+    env_name = data.get('environment')
+    
+    # 優先使用請求中的環境參數，否則使用當前環境
+    target_env = env_name if env_name else current_environment
+    calibrator = global_calibrators.get(target_env)
+    
+    if calibrator is None: return jsonify({"success": False, "error": f"環境 {target_env} 校準器未初始化"})
+    
     button_name = data.get('button_name')
     aruco_markers = data.get('aruco_markers')
 
     if not button_name or not aruco_markers: return jsonify({"success": False, "error": "缺少必要參數"})
     try:
-        result = global_calibrator.save_aruco_reference(button_name, aruco_markers)
+        result = calibrator.save_aruco_reference(button_name, aruco_markers)
         return jsonify(result)
     except Exception as e: return jsonify({"success": False, "error": f"儲存 ArUco 參考失敗: {str(e)}"})
 
@@ -1256,7 +1320,7 @@ def capture_rtsp_image():
         
         # 嘗試連接
         # 使用 TCP 傳輸（避免 UDP 問題）
-        cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+        cap = cv2.VideoCapture(rtsp_url)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
         if cap.isOpened():
@@ -1351,6 +1415,9 @@ def main():
     print("🌐 網頁版 ROI 校準工具 (多環境版)")
     print("=" * 60)
     print()
+
+    # 載入環境變數
+    load_env_variables()
 
     # 定義環境配置檔案
     config_files = {

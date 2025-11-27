@@ -304,11 +304,38 @@ main_setup() {
     log_success "找到實體輸出設備: $DEVICE_NAME"
     echo ""
 
-    # 等待實體端口就緒
+    # 動態偵測實體端口名稱 (處理 .2 後綴及 FL/AUX 變異)
+    local port_map_1="playback_FL"
+    local port_map_2="playback_FR"
+    local port_map_3="playback_RL"
+    local port_map_4="playback_RR"
+    
+    # 重新抓取精確的設備名稱 (可能帶有 .2, .3 等後綴)
+    # 使用 pw-link -i 列出所有輸入端口，並過濾出屬於我們卡片的端口
+    local current_device_node=$(pw-link -i | grep "$DEVICE_NAME" | head -n 1 | cut -d: -f1)
+    
+    if [ -z "$current_device_node" ]; then
+        log_warn "無法精確對應設備節點，將嘗試使用原始名稱: $DEVICE_NAME"
+        current_device_node="$DEVICE_NAME"
+    else
+        log_info "偵測到當前設備節點: $current_device_node"
+    fi
+
     log_info "等待實體端口就緒..."
     for i in {1..10}; do
-        if pw-link -i | grep -q "$DEVICE_NAME:playback_FL"; then
-            log_success "實體端口已就緒。"
+        if pw-link -i | grep -q "$current_device_node:playback_FL"; then
+            log_success "偵測到端口命名格式: FL/FR"
+            port_map_1="playback_FL"
+            port_map_2="playback_FR"
+            port_map_3="playback_RL"
+            port_map_4="playback_RR"
+            break
+        elif pw-link -i | grep -q "$current_device_node:playback_AUX0"; then
+            log_success "偵測到端口命名格式: AUX"
+            port_map_1="playback_AUX0"
+            port_map_2="playback_AUX1"
+            port_map_3="playback_AUX2"
+            port_map_4="playback_AUX3"
             break
         fi
         sleep 1
@@ -317,10 +344,10 @@ main_setup() {
 
     log_action "5. 連接虛擬裝置至實體輸出..."
     local links=(
-        "Scarlett_1-2:monitor_FL=$DEVICE_NAME:playback_FL"
-        "Scarlett_1-2:monitor_FR=$DEVICE_NAME:playback_FR"
-        "Scarlett_3-4:monitor_FL=$DEVICE_NAME:playback_RL"
-        "Scarlett_3-4:monitor_FR=$DEVICE_NAME:playback_RR"
+        "Scarlett_1-2:monitor_FL=$current_device_node:$port_map_1"
+        "Scarlett_1-2:monitor_FR=$current_device_node:$port_map_2"
+        "Scarlett_3-4:monitor_FL=$current_device_node:$port_map_3"
+        "Scarlett_3-4:monitor_FR=$current_device_node:$port_map_4"
     )
     for link in "${links[@]}"; do
         src="${link%=*}"

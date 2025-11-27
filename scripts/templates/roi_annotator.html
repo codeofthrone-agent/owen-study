@@ -991,7 +991,8 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             button_name: selectedButton,
-                            item_type: selectedItemType  // ✨ 傳遞項目類型
+                            item_type: selectedItemType,  // ✨ 傳遞項目類型
+                            environment: document.getElementById('envSelect').value // ✨ 傳遞環境
                         })
                     });
                     data = await response.json();
@@ -1081,7 +1082,8 @@
             try {
                 console.log(`[getExistingROI] 開始: itemName=${itemName}, itemType=${itemType}`);
 
-                const response = await fetch('/api/buttons');
+                const env = document.getElementById('envSelect').value;
+                const response = await fetch(`/api/buttons?environment=${env}`);
                 const data = await response.json();
                 if (!data.success) {
                     console.log(`[getExistingROI] /api/buttons 失敗`);
@@ -1110,7 +1112,8 @@
                     body: JSON.stringify({
                         button_name: itemName,
                         item_type: itemType,  // ✨ 傳遞項目類型
-                        capture_image: false  // ✨ 不截取影像，只獲取配置
+                        capture_image: false,  // ✨ 不截取影像，只獲取配置
+                        environment: document.getElementById('envSelect').value // ✨ 傳遞環境
                     })
                 });
                 const prepareData = await prepareResponse.json();
@@ -1374,6 +1377,7 @@
                     body: JSON.stringify({
                         button_name: selectedButton,
                         item_type: selectedItemType || 'button',  // 傳遞項目類型
+                        environment: document.getElementById('envSelect').value, // ✨ 傳遞環境
                         roi: {
                             x: Math.round(roi.x),
                             y: Math.round(roi.y),
@@ -1523,7 +1527,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         button_name: selectedButton,
-                        aruco_markers: currentArucoData.markers
+                        aruco_markers: currentArucoData.markers,
+                        environment: document.getElementById('envSelect').value // ✨ 傳遞環境
                     })
                 });
 

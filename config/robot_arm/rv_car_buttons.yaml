@@ -1,44 +1,15 @@
-# RV Car 按鈕配置 (RV Car Button Configuration)
-# 版本: v4.1.0
-# 日期: 2025-11-18
-# 環境: rv_car (RV Car 測試環境)
-# 面板類型: 3611a/3611c (RV 控制面板)
-# 從 button_positions.yaml 遷移
-
-# 環境資訊
-environment:
-  name: "rv_car"
-  display_name: "RV Car 測試環境"
-  panel_type: "3611c"
-  description: "RV Car 控制面板，包含 7 個控制按鈕和 16 個觀測點"
-
-# 機器手臂連接配置
+environment: {name: rv_car, display_name: RV Car 測試環境, panel_type: 3611c, description: RV
+    Car 控制面板，包含 7 個控制按鈕和 16 個觀測點}
 connection:
-  socket:
-    host: "10.42.0.180"
-    port: 9000
-  serial:
-    port: "/dev/ttyTHS1"
-    baudrate: 1000000
-
-# 預設參數
-defaults:
-  speed: 100
-  press_duration: 1.0
-  lift_duration: 0.1
-  count: 1
-
-# 按鈕配置
+  socket: {host: 10.42.0.180, port: 9000}
+  serial: {port: /dev/ttyTHS1, baudrate: 1000000}
+defaults: {speed: 100, press_duration: 1.0, lift_duration: 0.1, count: 1}
 buttons:
-  # ========================================
-  # RV 控制按鈕 (RV Control Buttons)
-  # ========================================
-
   hvac:
-    name: "HVAC 按鈕"
-    description: "空調控制"
-    type: "rv_control"
-    panel_section: "3611c"
+    name: HVAC 按鈕
+    description: 空調控制
+    type: rv_control
+    panel_section: 3611c
     down_angles: [-7.1, -68.8, -61.6, 23.9, 0, 0]
     up_angles: [-6.8, -52.5, -61.3, 23.3, 0, 0]
     speed: 100
@@ -47,148 +18,106 @@ buttons:
     press_duration: 1.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 125
-        y: 74
-        width: 74
-        height: 71
-
+      roi: {x: 125, y: 74, width: 74, height: 71}
   water_pump:
-    name: "Water Pump 按鈕"
-    description: "水泵控制"
-    type: "rv_control"
-    panel_section: "3611c"
+    name: Water Pump 按鈕
+    description: 水泵控制
+    type: rv_control
+    panel_section: 3611c
     down_angles: [-8.5, -58, -80, 20, 0, 0]
     up_angles: [-8.5, -25, -80, 20, 0, 0]
     speed: 100
-    count: 4  # 特殊: 按壓 4 次
+    count: 4
     lift_duration: 0.1
     press_duration: 1.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 338
-        y: 85
-        width: 65
-        height: 61
-
+      roi: {x: 338, y: 85, width: 65, height: 61}
   water_heater:
-    name: "Water Heater 按鈕"
-    description: "熱水器控制"
-    type: "rv_control"
-    panel_section: "3611c"
+    name: Water Heater 按鈕
+    description: 熱水器控制
+    type: rv_control
+    panel_section: 3611c
     down_angles: [-8.2, -62, -72.2, 20, 0, 0]
     up_angles: [-8.2, -25, -72.2, 20, 0, 0]
     speed: 100
-    count: 4  # 特殊: 按壓 4 次
+    count: 4
     lift_duration: 0.1
     press_duration: 1.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 272
-        y: 79
-        width: 66
-        height: 67
-
+      roi: {x: 272, y: 79, width: 66, height: 67}
   gas:
-    name: "Gas 按鈕"
-    description: "瓦斯控制"
-    type: "rv_control"
-    panel_section: "3611c"
+    name: Gas 按鈕
+    description: 瓦斯控制
+    type: rv_control
+    panel_section: 3611c
     down_angles: [-2.7, -60, -75.5, 17, 0, 0]
     up_angles: [-2.7, -30, -75.5, 17, 0, 0]
     speed: 100
-    count: 4  # 特殊: 按壓 4 次
+    count: 4
     lift_duration: 0.1
     press_duration: 1.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 273
-        y: 147
-        width: 66
-        height: 64
-
+      roi: {x: 273, y: 147, width: 66, height: 64}
   extend:
-    name: "Extend 按鈕"
-    description: "伸展控制"
-    type: "rv_control"
-    panel_section: "3611c"
+    name: Extend 按鈕
+    description: 伸展控制
+    type: rv_control
+    panel_section: 3611c
     down_angles: [-1.7, -69, -62, 19, 0, 0]
     up_angles: [-1.8, -30, -61, 20, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.1
-    press_duration: 7.0  # 特殊: 7 秒長按
+    press_duration: 7.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 103
-        y: 145
-        width: 100
-        height: 66
-
+      roi: {x: 103, y: 145, width: 100, height: 66}
   retract:
-    name: "Retract 按鈕"
-    description: "縮回控制"
-    type: "rv_control"
-    panel_section: "3611c"
+    name: Retract 按鈕
+    description: 縮回控制
+    type: rv_control
+    panel_section: 3611c
     down_angles: [3.1, -68, -67, 22, 0, 0]
     up_angles: [3.1, -35, -67, 22, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.1
-    press_duration: 7.0  # 特殊: 7 秒長按
+    press_duration: 7.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 107
-        y: 212
-        width: 96
-        height: 65
-
+      roi: {x: 107, y: 212, width: 96, height: 65}
   tanker_heater:
-    name: "Tanker Heater 按鈕"
-    description: "水箱加熱器"
-    type: "rv_control"
-    panel_section: "3611c"
+    name: Tanker Heater 按鈕
+    description: 水箱加熱器
+    type: rv_control
+    panel_section: 3611c
     down_angles: [-3, -58, -83, 20, 0, 0]
     up_angles: [-3, -25, -83, 20, 0, 0]
     speed: 100
-    count: 4  # 特殊: 按壓 4 次
+    count: 4
     lift_duration: 0.1
     press_duration: 1.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 339
-        y: 147
-        width: 65
-        height: 65
-
-# ========================================
-# 觀測點 (Observation Positions)
-# 用於視覺檢測，不用於按壓
-# ========================================
-
-observation_positions:
+      roi: {x: 339, y: 147, width: 65, height: 65}
   camera_observe:
-    name: "相機觀測點"
-    description: "相機觀測位置"
-    type: "observe_position"
+    name: 相機觀測點
+    description: 相機觀測位置
+    type: observe_position
     down_angles: [1, 11, -134, 35, 1, -45]
     up_angles: [1, 11, -134, 35, 1, -45]
     speed: 50
     count: 1
     lift_duration: 0.1
-    press_duration: 0.0  # 不按壓
-    vision: null  # 無 ROI（純觀測角度）
-
+    press_duration: 0.0
+    vision: null
   fridge_observe:
-    name: "冰箱 按鈕"
-    description: "冰箱控制"
-    type: "observe_position"
+    name: 冰箱 按鈕
+    description: 冰箱控制
+    type: observe_position
     down_angles: [1, 11, -134, 35, 1, -45]
     up_angles: [1, 11, -134, 35, 1, -45]
     speed: 50
@@ -197,16 +126,11 @@ observation_positions:
     press_duration: 0.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 402
-        y: 82
-        width: 68
-        height: 67
-
+      roi: {x: 402, y: 82, width: 68, height: 67}
   mic_observe:
-    name: "麥克風觀測點"
-    description: "麥克風觀測位置"
-    type: "observe_position"
+    name: 麥克風觀測點
+    description: 麥克風觀測位置
+    type: observe_position
     down_angles: [1, 11, -134, 35, 1, -45]
     up_angles: [1, 11, -134, 35, 1, -45]
     speed: 50
@@ -215,16 +139,11 @@ observation_positions:
     press_duration: 0.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 497
-        y: 157
-        width: 27
-        height: 67
-
+      roi: {x: 497, y: 157, width: 27, height: 67}
   wifi_observe:
-    name: "WiFi 觀測點"
-    description: "WiFi 觀測位置"
-    type: "observe_position"
+    name: WiFi 觀測點
+    description: WiFi 觀測位置
+    type: observe_position
     down_angles: [1, 11, -134, 35, 1, -45]
     up_angles: [1, 11, -134, 35, 1, -45]
     speed: 50
@@ -233,16 +152,11 @@ observation_positions:
     press_duration: 0.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 497
-        y: 262
-        width: 33
-        height: 69
-
+      roi: {x: 497, y: 262, width: 33, height: 69}
   awning1_observe:
-    name: "遮陽棚 1 觀測點"
-    description: "遮陽棚 1 觀測位置"
-    type: "observe_position"
+    name: 遮陽棚 1 觀測點
+    description: 遮陽棚 1 觀測位置
+    type: observe_position
     down_angles: [1, 11, -134, 35, 1, -45]
     up_angles: [1, 11, -134, 35, 1, -45]
     speed: 50
@@ -251,16 +165,11 @@ observation_positions:
     press_duration: 0.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 181
-        y: 285
-        width: 21
-        height: 48
-
+      roi: {x: 181, y: 285, width: 21, height: 48}
   awning2_observe:
-    name: "遮陽棚 2 觀測點"
-    description: "遮陽棚 2 觀測位置"
-    type: "observe_position"
+    name: 遮陽棚 2 觀測點
+    description: 遮陽棚 2 觀測位置
+    type: observe_position
     down_angles: [1, 11, -134, 35, 1, -45]
     up_angles: [1, 11, -134, 35, 1, -45]
     speed: 50
@@ -269,16 +178,11 @@ observation_positions:
     press_duration: 0.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 163
-        y: 284
-        width: 20
-        height: 49
-
+      roi: {x: 163, y: 284, width: 20, height: 49}
   slide1_observe:
-    name: "滑軌 1 觀測點"
-    description: "滑軌 1 觀測位置"
-    type: "observe_position"
+    name: 滑軌 1 觀測點
+    description: 滑軌 1 觀測位置
+    type: observe_position
     down_angles: [1, 11, -134, 35, 1, -45]
     up_angles: [1, 11, -134, 35, 1, -45]
     speed: 50
@@ -287,16 +191,11 @@ observation_positions:
     press_duration: 0.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 147
-        y: 287
-        width: 18
-        height: 45
-
+      roi: {x: 147, y: 287, width: 18, height: 45}
   slide2_observe:
-    name: "滑軌 2 觀測點"
-    description: "滑軌 2 觀測位置"
-    type: "observe_position"
+    name: 滑軌 2 觀測點
+    description: 滑軌 2 觀測位置
+    type: observe_position
     down_angles: [1, 11, -134, 35, 1, -45]
     up_angles: [1, 11, -134, 35, 1, -45]
     speed: 50
@@ -305,16 +204,11 @@ observation_positions:
     press_duration: 0.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 129
-        y: 286
-        width: 18
-        height: 48
-
+      roi: {x: 129, y: 286, width: 18, height: 48}
   slide3_observe:
-    name: "滑軌 3 觀測點"
-    description: "滑軌 3 觀測位置"
-    type: "observe_position"
+    name: 滑軌 3 觀測點
+    description: 滑軌 3 觀測位置
+    type: observe_position
     down_angles: [1, 11, -134, 35, 1, -45]
     up_angles: [1, 11, -134, 35, 1, -45]
     speed: 50
@@ -323,16 +217,11 @@ observation_positions:
     press_duration: 0.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 110
-        y: 287
-        width: 19
-        height: 44
-
+      roi: {x: 110, y: 287, width: 19, height: 44}
   slide4_observe:
-    name: "滑軌 4 觀測點"
-    description: "滑軌 4 觀測位置"
-    type: "observe_position"
+    name: 滑軌 4 觀測點
+    description: 滑軌 4 觀測位置
+    type: observe_position
     down_angles: [1, 11, -134, 35, 1, -45]
     up_angles: [1, 11, -134, 35, 1, -45]
     speed: 50
@@ -341,16 +230,11 @@ observation_positions:
     press_duration: 0.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 91
-        y: 287
-        width: 21
-        height: 48
-
+      roi: {x: 91, y: 287, width: 21, height: 48}
   slide5_observe:
-    name: "滑軌 5 觀測點"
-    description: "滑軌 5 觀測位置"
-    type: "observe_position"
+    name: 滑軌 5 觀測點
+    description: 滑軌 5 觀測位置
+    type: observe_position
     down_angles: [1, 11, -134, 35, 1, -45]
     up_angles: [1, 11, -134, 35, 1, -45]
     speed: 50
@@ -359,16 +243,11 @@ observation_positions:
     press_duration: 0.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 72
-        y: 287
-        width: 20
-        height: 47
-
+      roi: {x: 72, y: 287, width: 20, height: 47}
   lockout_observe:
-    name: "鎖定觀測點"
-    description: "鎖定觀測位置"
-    type: "observe_position"
+    name: 鎖定觀測點
+    description: 鎖定觀測位置
+    type: observe_position
     down_angles: [1, 11, -134, 35, 1, -45]
     up_angles: [1, 11, -134, 35, 1, -45]
     speed: 50
@@ -377,179 +256,136 @@ observation_positions:
     press_duration: 0.0
     vision:
       observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi:
-        x: 50
-        y: 284
-        width: 23
-        height: 55
-
-# ========================================
-# 物理環境燈光配置 (Physical Environment Lights)
-# RV Car 專用燈光檢測
-# ========================================
-
+      roi: {x: 50, y: 284, width: 23, height: 55}
 environment_lights:
-  # 區域一燈光 (cam1: 192.168.165.184)
   area1_light_1:
-    name: "區域一 燈光 1"
-    type: "single_light"
-    environment: "rv_car"
-    camera_id: "cam1"
-    camera_purpose: "area1_light_1_detection"
-    roi: {x: 100, y: 100, width: 200, height: 150}  # 需校準
+    name: 區域一 燈光 1
+    type: single_light
+    environment: rv_car
+    camera_id: cam1
+    camera_purpose: area1_light_1_detection
+    roi: {x: 1143, y: 762, width: 203, height: 147}
     bright_threshold: 150
     dark_threshold: 50
-
   area1_light_2:
-    name: "區域一 燈光 2"
-    type: "single_light"
-    environment: "rv_car"
-    camera_id: "cam1"
-    camera_purpose: "area1_light_2_detection"
-    roi: {x: 350, y: 100, width: 200, height: 150}  # 需校準
+    name: 區域一 燈光 2
+    type: single_light
+    environment: rv_car
+    camera_id: cam1
+    camera_purpose: area1_light_2_detection
+    roi: {x: 541, y: 508, width: 210, height: 178}
     bright_threshold: 150
     dark_threshold: 50
-
   area1_light_3:
-    name: "區域一 燈光 3"
-    type: "single_light"
-    environment: "rv_car"
-    camera_id: "cam1"
-    camera_purpose: "area1_light_3_detection"
-    roi: {x: 600, y: 100, width: 200, height: 150}  # 需校準
+    name: 區域一 燈光 3
+    type: single_light
+    environment: rv_car
+    camera_id: cam1
+    camera_purpose: area1_light_3_detection
+    roi: {x: 533, y: 500, width: 222, height: 186}
     bright_threshold: 150
     dark_threshold: 50
-
-  # 區域二燈光 (cam2: 192.168.165.127)
   area2_light_1:
-    name: "區域二 燈光 1"
-    type: "single_light"
-    environment: "rv_car"
-    camera_id: "cam2"
-    camera_purpose: "area2_light_1_detection"
-    roi: {x: 100, y: 100, width: 200, height: 150}  # 需校準
+    name: 區域二 燈光 1
+    type: single_light
+    environment: rv_car
+    camera_id: cam2
+    camera_purpose: area2_light_1_detection
+    roi: {x: 723, y: 1073, width: 186, height: 133}
     bright_threshold: 150
     dark_threshold: 50
-
   area2_light_2:
-    name: "區域二 燈光 2"
-    type: "single_light"
-    environment: "rv_car"
-    camera_id: "cam2"
-    camera_purpose: "area2_light_2_detection"
-    roi: {x: 350, y: 100, width: 200, height: 150}  # 需校準
+    name: 區域二 燈光 2
+    type: single_light
+    environment: rv_car
+    camera_id: cam2
+    camera_purpose: area2_light_2_detection
+    roi: {x: 1712, y: 484, width: 331, height: 230}
     bright_threshold: 150
     dark_threshold: 50
-
   area2_light_3:
-    name: "區域二 燈光 3"
-    type: "single_light"
-    environment: "rv_car"
-    camera_id: "cam2"
-    camera_purpose: "area2_light_3_detection"
-    roi: {x: 600, y: 100, width: 200, height: 150}  # 需校準
+    name: 區域二 燈光 3
+    type: single_light
+    environment: rv_car
+    camera_id: cam2
+    camera_purpose: area2_light_3_detection
+    roi: {x: 235, y: 1432, width: 137, height: 85}
     bright_threshold: 150
     dark_threshold: 50
-
-  # 區域三燈光 (cam3: 10.42.0.39)
   area3_light_1:
-    name: "區域三 燈光 1"
-    type: "single_light"
-    environment: "rv_car"
-    camera_id: "cam3"
-    camera_purpose: "area3_light_1_detection"
-    roi: {x: 100, y: 100, width: 200, height: 150}  # 需校準
+    name: 區域三 燈光 1
+    type: single_light
+    environment: rv_car
+    camera_id: cam3
+    camera_purpose: area3_light_1_detection
+    roi: {x: 100, y: 100, width: 200, height: 150}
     bright_threshold: 150
     dark_threshold: 50
-
   area3_light_2:
-    name: "區域三 燈光 2"
-    type: "single_light"
-    environment: "rv_car"
-    camera_id: "cam3"
-    camera_purpose: "area3_light_2_detection"
-    roi: {x: 350, y: 100, width: 200, height: 150}  # 需校準
+    name: 區域三 燈光 2
+    type: single_light
+    environment: rv_car
+    camera_id: cam3
+    camera_purpose: area3_light_2_detection
+    roi: {x: 350, y: 100, width: 200, height: 150}
     bright_threshold: 150
     dark_threshold: 50
-
   area3_light_3:
-    name: "區域三 燈光 3"
-    type: "single_light"
-    environment: "rv_car"
-    camera_id: "cam3"
-    camera_purpose: "area3_light_3_detection"
-    roi: {x: 600, y: 100, width: 200, height: 150}  # 需校準
+    name: 區域三 燈光 3
+    type: single_light
+    environment: rv_car
+    camera_id: cam3
+    camera_purpose: area3_light_3_detection
+    roi: {x: 600, y: 100, width: 200, height: 150}
     bright_threshold: 150
     dark_threshold: 50
-
-  # RV Car 車載燈光
   headlight_left:
-    name: "左前燈"
-    type: "single_light"
-    environment: "rv_car"
-    camera_id: "rv_panel"  # 對應 ipcam_config.yaml 的 rv_vehicle.rv_panel
-    camera_purpose: "headlight_left_detection"
+    name: 左前燈
+    type: single_light
+    environment: rv_car
+    camera_id: rv_panel
+    camera_purpose: headlight_left_detection
     roi: {x: 120, y: 80, width: 100, height: 100}
     bright_threshold: 150
     dark_threshold: 50
-
   headlight_right:
-    name: "右前燈"
-    type: "single_light"
-    environment: "rv_car"
-    camera_id: "rv_panel"
-    camera_purpose: "headlight_right_detection"
+    name: 右前燈
+    type: single_light
+    environment: rv_car
+    camera_id: rv_panel
+    camera_purpose: headlight_right_detection
     roi: {x: 520, y: 80, width: 100, height: 100}
     bright_threshold: 150
     dark_threshold: 50
-
   taillight:
-    name: "尾燈"
-    type: "single_light"
-    environment: "rv_car"
-    camera_id: "rv_panel"
-    camera_purpose: "taillight_detection"
+    name: 尾燈
+    type: single_light
+    environment: rv_car
+    camera_id: rv_panel
+    camera_purpose: taillight_detection
     roi: {x: 320, y: 400, width: 80, height: 80}
     bright_threshold: 150
     dark_threshold: 50
-
   interior_light:
-    name: "車內照明"
-    type: "single_light"
-    environment: "rv_car"
-    camera_id: "rv_panel"
-    camera_purpose: "interior_light_detection"
+    name: 車內照明
+    type: single_light
+    environment: rv_car
+    camera_id: rv_panel
+    camera_purpose: interior_light_detection
     roi: {x: 320, y: 240, width: 120, height: 120}
     bright_threshold: 150
     dark_threshold: 50
-
-# ========================================
-# 環境專屬 HSV 調整
-# ========================================
-hsv_adjustments: {}  # RV Car 使用預設 HSV 範圍
-
-# ========================================
-# 配置元數據
-# ========================================
+hsv_adjustments: {}
 metadata:
-  version: "4.1.0"
-  created_date: "2025-11-18"
-  last_updated: "2025-11-18"
-  migrated_from: "config/robot_arm/button_positions.yaml"
-  total_buttons: 7
-  total_observation_positions: 16
-  total_environment_lights: 4
-  button_breakdown:
-    rv_control: 7
-    observe_position: 16
-  environment_light_breakdown:
-    vehicle_light: 4  # 車載燈光
-  notes:
-    - "按鈕檢測使用機器手臂 Socket 影像源"
-    - "環境燈光檢測也使用 Socket 影像源 (RV Car 無固定 IP Camera)"
-    - "所有 RV 控制按鈕使用標準觀測角度 [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]"
-    - "觀測點使用較慢速度 50 (vs 標準 100)"
-    - "特殊按壓行為: water_pump/water_heater/gas/tanker_heater = 4 次按壓"
-    - "特殊按壓行為: extend/retract = 7 秒長按"
-    - "觀測點 press_duration=0.0 表示不執行按壓動作"
-    - "車載燈光使用絕對座標 ROI，需根據實際 Camera 解析度調整"
+  version: 4.2.0
+  created_date: '2025-11-18'
+  last_updated: '2025-11-27'
+  migrated_from: config/robot_arm/button_positions.yaml
+  total_buttons: 23
+  total_environment_lights: 13
+  button_breakdown: {rv_control: 7, observe_position: 16}
+  environment_light_breakdown: {vehicle_light: 4, area_light: 9}
+  notes: [按鈕檢測使用機器手臂 Socket 影像源, 環境燈光檢測使用固定 IP Camera, '所有 RV 控制按鈕使用標準觀測角度 [1.75,
+      9.93, -134.73, 34.45, 2.19, -45.08]', 觀測點使用較慢速度 50 (vs 標準 100), '特殊按壓行為: water_pump/water_heater/gas/tanker_heater
+      = 4 次按壓', '特殊按壓行為: extend/retract = 7 秒長按', 觀測點 press_duration=0.0 表示不執行按壓動作,
+    車載燈光使用絕對座標 ROI，需根據實際 Camera 解析度調整]

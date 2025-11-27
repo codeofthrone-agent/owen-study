@@ -49,7 +49,7 @@ environments:
     description: "RV 車測試環境"
     cameras:
       cam1:
-        ip: "192.168.165.184"
+        ip: "192.168.166.160"
         port: 554
         protocol: "rtsp"
         stream_path: "/live0"  # 主串流：/live0，次串流：/live1
@@ -57,7 +57,7 @@ environments:
         # username 和 password 會自動從 .env 讀取 IPCAM_USERNAME 和 IPCAM_PASSWORD
 
       cam2:
-        ip: "192.168.165.127"
+        ip: "192.168.166.145"
         port: 554
         protocol: "rtsp"
         stream_path: "/live0"
@@ -65,7 +65,7 @@ environments:
         # username 和 password 會自動從 .env 讀取
 
       cam3:
-        ip: "10.42.0.39"
+        ip: "192.168.166.114"
         port: 554
         protocol: "rtsp"
         stream_path: "/live0"
@@ -73,7 +73,7 @@ environments:
         # username 和 password 會自動從 .env 讀取
 
       rv_panel:
-        ip: "10.42.0.246"
+        ip: "192.168.166.122"
         port: 554
         protocol: "rtsp"
         stream_path: "/live0"
