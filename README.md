@@ -512,6 +512,13 @@ robot --test "Test Individual Voice Functions" tests/physical_interaction/voice_
 
 # 產生詳細報告
 robot --outputdir results tests/physical_interaction/voice_test.robot
+
+#### 3. 語音控制測試 (Taipei Lab)
+
+```bash
+# 執行測試並自動產生時間戳記輸出目錄
+./scripts/run_voice_test_taipei.sh
+```
 ```
 
 #### 2. 系統整合測試 (計劃中)

@@ -7,10 +7,10 @@ IP Camera 配置管理模組
     from config.ipcam_config import get_camera_config, get_all_cameras, LIGHT_DETECTION_CONFIG
 
     # 取得特定環境的攝影機配置
-    lab_cameras = get_all_cameras('laboratory')
+    lab_cameras = get_all_cameras('taipei_lab')
 
     # 取得單一攝影機配置
-    level1_config = get_camera_config('laboratory', 'level1')
+    level1_config = get_camera_config('taipei_lab', 'level1')
 
     # 取得燈光檢測設定
     threshold = LIGHT_DETECTION_CONFIG['brightness_threshold']['bright']
@@ -97,13 +97,13 @@ ENVIRONMENTS = _CONFIG.get('environments', {})
 LIGHT_DETECTION_CONFIG = _CONFIG.get('light_detection', {})
 
 
-def get_all_cameras(environment: str = 'laboratory') -> Dict[str, Dict[str, Any]]:
+def get_all_cameras(environment: str = 'taipei_lab') -> Dict[str, Dict[str, Any]]:
     """
     取得指定環境的所有攝影機配置
 
     Args:
-        environment (str): 環境名稱，預設為 'laboratory'
-                          可選值: 'laboratory', 'rv_vehicle'
+        environment (str): 環境名稱，預設為 'taipei_lab'
+                          可選值: 'taipei_lab', 'rv_car'
 
     Returns:
         Dict[str, Dict[str, Any]]: 該環境所有攝影機的配置字典
@@ -112,7 +112,7 @@ def get_all_cameras(environment: str = 'laboratory') -> Dict[str, Dict[str, Any]
         ValueError: 環境不存在
 
     使用範例:
-        >>> cameras = get_all_cameras('laboratory')
+        >>> cameras = get_all_cameras('taipei_lab')
         >>> print(cameras['level1']['ip'])
         '192.168.165.184'
     """
@@ -128,7 +128,7 @@ def get_camera_config(environment: str, camera_name: str) -> Dict[str, Any]:
     取得特定攝影機的配置
 
     Args:
-        environment (str): 環境名稱 (如: 'laboratory', 'rv_vehicle')
+        environment (str): 環境名稱 (如: 'taipei_lab', 'rv_car')
         camera_name (str): 攝影機名稱 (如: 'level1', 'level2', 'motor')
 
     Returns:
@@ -143,7 +143,7 @@ def get_camera_config(environment: str, camera_name: str) -> Dict[str, Any]:
         ValueError: 環境或攝影機不存在
 
     使用範例:
-        >>> config = get_camera_config('laboratory', 'level1')
+        >>> config = get_camera_config('taipei_lab', 'level1')
         >>> print(f"攝影機 URL: {config['protocol']}://{config['ip']}:{config['port']}")
         '攝影機 URL: rtsp://192.168.165.184:554'
     """
@@ -181,12 +181,12 @@ def get_camera_url(environment: str, camera_name: str, path: str = "") -> str:
 
     使用範例:
         >>> # HTTP 範例
-        >>> url = get_camera_url('laboratory', 'level1', '/snapshot')
+        >>> url = get_camera_url('taipei_lab', 'level1', '/snapshot')
         >>> print(url)
         'http://192.168.165.184:80/snapshot'
 
         >>> # RTSP 範例
-        >>> url = get_camera_url('laboratory', 'level1')
+        >>> url = get_camera_url('taipei_lab', 'level1')
         >>> print(url)
         'rtsp://username:password@192.168.165.184:554/live0'
     """
@@ -269,7 +269,7 @@ def list_available_environments() -> list:
     使用範例:
         >>> envs = list_available_environments()
         >>> print(envs)
-        ['laboratory', 'rv_vehicle']
+        ['taipei_lab', 'rv_car']
     """
     return list(ENVIRONMENTS.keys())
 
@@ -285,7 +285,7 @@ def list_available_cameras(environment: str) -> list:
         list: 攝影機名稱列表
 
     使用範例:
-        >>> cameras = list_available_cameras('laboratory')
+        >>> cameras = list_available_cameras('taipei_lab')
         >>> print(cameras)
         ['level1', 'level2', 'motor']
     """
@@ -295,10 +295,10 @@ def list_available_cameras(environment: str) -> list:
 
 # 便利常數：實驗室環境的攝影機配置
 try:
-    LABORATORY_CAMERAS = get_all_cameras('laboratory')
-    LEVEL1_CONFIG = get_camera_config('laboratory', 'level1')
-    LEVEL2_CONFIG = get_camera_config('laboratory', 'level2')
-    MOTOR_CONFIG = get_camera_config('laboratory', 'motor')
+    LABORATORY_CAMERAS = get_all_cameras('taipei_lab')
+    LEVEL1_CONFIG = get_camera_config('taipei_lab', 'level1')
+    LEVEL2_CONFIG = get_camera_config('taipei_lab', 'level2')
+    MOTOR_CONFIG = get_camera_config('taipei_lab', 'motor')
 except ValueError:
     logger.warning("實驗室環境配置不完整，使用預設空配置")
     LABORATORY_CAMERAS = {}
@@ -325,8 +325,8 @@ if __name__ == "__main__":
     print("\n實驗室環境配置:")
     try:
         for camera_name in ['level1', 'level2', 'motor']:
-            config = get_camera_config('laboratory', camera_name)
-            url = get_camera_url('laboratory', camera_name, '/snapshot')
+            config = get_camera_config('taipei_lab', camera_name)
+            url = get_camera_url('taipei_lab', camera_name, '/snapshot')
             print(f"\n  {camera_name}:")
             print(f"    IP: {config['ip']}")
             print(f"    描述: {config.get('description', 'N/A')}")

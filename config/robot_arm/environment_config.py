@@ -76,7 +76,7 @@ class EnvironmentConfig:
     # 環境名稱映射（對應 ipcam_config.yaml）
     ENVIRONMENT_MAPPING: Dict[str, Dict[str, str]] = {
         "taipei_lab": {
-            "ipcam_env": "laboratory",
+            "ipcam_env": "taipei_lab",
             "display_name": "台北實驗室",
             "location": "Taipei Laboratory"
         },
@@ -86,7 +86,7 @@ class EnvironmentConfig:
             "location": "Taoyuan Laboratory"
         },
         "rv_car": {
-            "ipcam_env": "rv_vehicle",
+            "ipcam_env": "rv_car",
             "display_name": "RV Car 測試環境",
             "location": "RV Vehicle"
         }
@@ -95,7 +95,7 @@ class EnvironmentConfig:
     ENVIRONMENTS: Dict[str, Dict[str, Any]] = {
         "taipei_lab": {
             "name": "台北實驗室",
-            "ipcam_environment": "laboratory",  # ✨ 新增：對應 ipcam_config.yaml
+            "ipcam_environment": "taipei_lab",  # ✨ 新增：對應 ipcam_config.yaml
 
             # ✨ 修改：支援多 Camera (動態從 ipcam_config 載入)
             "cameras": [],  # 移除硬編碼，改由 get_cameras 動態載入
@@ -138,7 +138,7 @@ class EnvironmentConfig:
         },
         "rv_car": {
             "name": "RV Car 測試環境",
-            "ipcam_environment": "rv_vehicle",
+            "ipcam_environment": "rv_car",
             "cameras": [],  # TODO: 待補充 RV Car Camera 配置
             "default_camera": None,
 

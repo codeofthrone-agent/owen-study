@@ -40,8 +40,9 @@ Suite Teardown    測試套件清理
 
 測試套件清理
     [Documentation]    清理測試套件使用的資源
-    Log    ✓ 測試套件清理完成
     When 使用者停止 UART 背景監控
+    Log    ✓ 測試套件清理完成
+
    
 
 *** Test Cases ***
@@ -63,8 +64,8 @@ S01 : Light 1 - 客廳開(Ch1) -> 廚房關(Ch3)
 
     ${command_end}=    Get Current Date    result_format=%Y%m%d_%H%M%S.%f
     Log    喚醒命令完成時間: ${command_end}    console=True
-    And When 儲存完整影像包含標註    light_one    output/${prefix}_${timestamp}_light_one_before_on_full.jpg
-    And When 儲存 ROI 影像        light_one    output/${prefix}_${timestamp}_light_one_before_on_roi.jpg
+    And When 儲存完整影像包含標註    light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_before_on_full.jpg
+    And When 儲存 ROI 影像        light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_before_on_roi.jpg
     ${brightness_before}=    When 取得環境燈光亮度    light_one
     When 使用者播放文字 "Turn on light one" 到聲道 "1"
     Then 語音應該成功播放到指定聲道
@@ -72,8 +73,8 @@ S01 : Light 1 - 客廳開(Ch1) -> 廚房關(Ch3)
     Log    語音命令完成時間: ${command_end}    console=True
     Then 應該在 "3" 秒內收到包含以下檔案的語音回應 "cmd_002.mp3"
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_one    output/${prefix}_${timestamp}_light_one_after_on_full.jpg
-    And When 儲存 ROI 影像        light_one    output/${prefix}_${timestamp}_light_one_after_on_roi.jpg
+    And When 儲存完整影像包含標註    light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_after_on_full.jpg
+    And When 儲存 ROI 影像        light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_after_on_roi.jpg
     ${brightness_after}=    When 取得環境燈光亮度    light_one
     And Then 驗證亮度變化    ${brightness_before}    ${brightness_after}    增加    10
     
@@ -85,8 +86,8 @@ S01 : Light 1 - 客廳開(Ch1) -> 廚房關(Ch3)
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
     When 使用者播放文字 "hey power pro" 到聲道 "3"
     Then 應該在 "3" 秒內收到包含以下檔案的語音回應 "kws_answer.mp3"
-    And When 儲存完整影像包含標註    light_one    output/${prefix}_${timestamp}_light_one_before_off_full.jpg
-    And When 儲存 ROI 影像        light_one    output/${prefix}_${timestamp}_light_one_before_off_roi.jpg
+    And When 儲存完整影像包含標註    light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_before_off_full.jpg
+    And When 儲存 ROI 影像        light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_before_off_roi.jpg
     ${brightness_before}=    When 取得環境燈光亮度    light_one
     When 使用者播放文字 "Turn off light one" 到聲道 "3"
     Then 語音應該成功播放到指定聲道
@@ -94,8 +95,8 @@ S01 : Light 1 - 客廳開(Ch1) -> 廚房關(Ch3)
     Log    語音命令完成時間: ${command_end}    console=True
     Then 應該在 "3" 秒內收到包含以下檔案的語音回應 "cmd_003.mp3"
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_one    output/${prefix}_${timestamp}_light_one_after_off_full.jpg
-    And When 儲存 ROI 影像        light_one    output/${prefix}_${timestamp}_light_one_after_off_roi.jpg
+    And When 儲存完整影像包含標註    light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_after_off_full.jpg
+    And When 儲存 ROI 影像        light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_after_off_roi.jpg
     ${brightness_after}=    When 取得環境燈光亮度    light_one
     And Then 驗證亮度變化    ${brightness_before}    ${brightness_after}    減少    10
     # And Then 驗證環境燈光狀態    light_one    off
@@ -110,8 +111,8 @@ s02 : Light 1 - 廚房開(Ch3) -> 客廳關(Ch1)
     ${prefix}=    Fetch From Left    ${TEST NAME}    ${SPACE}:${SPACE}
     When 使用者播放文字 "hey power pro" 到聲道 "3"
     Sleep    2
-    And When 儲存完整影像包含標註    light_one    output/${prefix}_${timestamp}_light_one_before_on_ch3_full.jpg
-    And When 儲存 ROI 影像        light_one    output/${prefix}_${timestamp}_light_one_before_on_ch3_roi.jpg
+    And When 儲存完整影像包含標註    light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_before_on_ch3_full.jpg
+    And When 儲存 ROI 影像        light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_before_on_ch3_roi.jpg
     # ${brightness_before}=    When 取得環境燈光亮度    light_one
     When 使用者播放文字 "Turn on light one" 到聲道 "3"
     Then 語音應該成功播放到指定聲道
@@ -119,8 +120,8 @@ s02 : Light 1 - 廚房開(Ch3) -> 客廳關(Ch1)
     Log    語音命令完成時間: ${command_end}    console=True
     Sleep    3
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_one    output/${prefix}_${timestamp}_light_one_after_on_ch3_full.jpg
-    And When 儲存 ROI 影像        light_one    output/${prefix}_${timestamp}_light_one_after_on_ch3_roi.jpg
+    And When 儲存完整影像包含標註    light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_after_on_ch3_full.jpg
+    And When 儲存 ROI 影像        light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_after_on_ch3_roi.jpg
     # ${brightness_after}=    When 取得環境燈光亮度    light_one
     # And Then 驗證亮度變化    ${brightness_before}    ${brightness_after}    increase    10
     And Then 驗證環境燈光狀態    light_one    on
@@ -134,8 +135,8 @@ s02 : Light 1 - 廚房開(Ch3) -> 客廳關(Ch1)
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
     When 使用者播放文字 "hey power pro" 到聲道 "1"
     Sleep    2
-    And When 儲存完整影像包含標註    light_one    output/${prefix}_${timestamp}_light_one_before_off_ch1_full.jpg
-    And When 儲存 ROI 影像        light_one    output/${prefix}_${timestamp}_light_one_before_off_ch1_roi.jpg
+    And When 儲存完整影像包含標註    light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_before_off_ch1_full.jpg
+    And When 儲存 ROI 影像        light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_before_off_ch1_roi.jpg
     ${brightness_before}=    When 取得環境燈光亮度    light_one
     When 使用者播放文字 "Turn off light one" 到聲道 "1"
     Then 語音應該成功播放到指定聲道
@@ -143,8 +144,8 @@ s02 : Light 1 - 廚房開(Ch3) -> 客廳關(Ch1)
     Log    語音命令完成時間: ${command_end}    console=True
     Sleep    3
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_one    output/${prefix}_${timestamp}_light_one_after_off_ch1_full.jpg
-    And When 儲存 ROI 影像        light_one    output/${prefix}_${timestamp}_light_one_after_off_ch1_roi.jpg
+    And When 儲存完整影像包含標註    light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_after_off_ch1_full.jpg
+    And When 儲存 ROI 影像        light_one    ${OUTPUT DIR}/${prefix}_${timestamp}_light_one_after_off_ch1_roi.jpg
     ${brightness_after}=    When 取得環境燈光亮度    light_one
     And Then 驗證亮度變化    ${brightness_before}    ${brightness_after}    減少    10
     # And Then 驗證環境燈光狀態    light_one    off
@@ -162,16 +163,16 @@ s03 : Light 2 - 客廳開(Ch1) -> 廚房關(Ch3)
     ${prefix}=    Fetch From Left    ${TEST NAME}    ${SPACE}:${SPACE}
     When 使用者播放文字 "hey power pro" 到聲道 "1"
     Sleep    2
-    And When 儲存完整影像包含標註    light_two    output/${prefix}_${timestamp}_light_two_before_on_full.jpg
-    And When 儲存 ROI 影像        light_two    output/${prefix}_${timestamp}_light_two_before_on_roi.jpg
+    And When 儲存完整影像包含標註    light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_before_on_full.jpg
+    And When 儲存 ROI 影像        light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_before_on_roi.jpg
     When 使用者播放文字 "Turn on light two" 到聲道 "1"
     Then 語音應該成功播放到指定聲道
     ${command_end}=    Get Current Date    result_format=%Y%m%d_%H%M%S.%f
     Log    語音命令完成時間: ${command_end}    console=True
     Sleep    3
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_two    output/${prefix}_${timestamp}_light_two_after_on_full.jpg
-    And When 儲存 ROI 影像        light_two    output/${prefix}_${timestamp}_light_two_after_on_roi.jpg
+    And When 儲存完整影像包含標註    light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_after_on_full.jpg
+    And When 儲存 ROI 影像        light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_after_on_roi.jpg
     And Then 驗證環境燈光狀態    light_two    on
     # And Then 驗證面板燈光狀態    light_two    on
     Sleep    2
@@ -179,8 +180,8 @@ s03 : Light 2 - 客廳開(Ch1) -> 廚房關(Ch3)
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
     When 使用者播放文字 "hey power pro" 到聲道 "3"
     Sleep    2
-    And When 儲存完整影像包含標註    light_two    output/${prefix}_${timestamp}_light_two_before_off_full.jpg
-    And When 儲存 ROI 影像        light_two    output/${prefix}_${timestamp}_light_two_before_off_roi.jpg
+    And When 儲存完整影像包含標註    light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_before_off_full.jpg
+    And When 儲存 ROI 影像        light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_before_off_roi.jpg
     ${brightness_before}=    When 取得環境燈光亮度    light_two
     When 使用者播放文字 "Turn off light two" 到聲道 "3"
     Then 語音應該成功播放到指定聲道
@@ -188,8 +189,8 @@ s03 : Light 2 - 客廳開(Ch1) -> 廚房關(Ch3)
     Log    語音命令完成時間: ${command_end}    console=True
     Sleep    3
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_two    output/${prefix}_${timestamp}_light_two_after_off_full.jpg
-    And When 儲存 ROI 影像        light_two    output/${prefix}_${timestamp}_light_two_after_off_roi.jpg
+    And When 儲存完整影像包含標註    light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_after_off_full.jpg
+    And When 儲存 ROI 影像        light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_after_off_roi.jpg
     ${brightness_after}=    When 取得環境燈光亮度    light_two
     And Then 驗證亮度變化    ${brightness_before}    ${brightness_after}    減少    10
     # And Then 驗證環境燈光狀態    light_two    off
@@ -203,16 +204,16 @@ s04 : Light 2 - 廚房開(Ch3) -> 客廳關(Ch1)
     ${prefix}=    Fetch From Left    ${TEST NAME}    ${SPACE}:${SPACE}
     When 使用者播放文字 "hey power pro" 到聲道 "3"
     Sleep    2
-    And When 儲存完整影像包含標註    light_two    output/${prefix}_${timestamp}_light_two_before_on_ch3_full.jpg
-    And When 儲存 ROI 影像        light_two    output/${prefix}_${timestamp}_light_two_before_on_ch3_roi.jpg
+    And When 儲存完整影像包含標註    light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_before_on_ch3_full.jpg
+    And When 儲存 ROI 影像        light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_before_on_ch3_roi.jpg
     When 使用者播放文字 "Turn on light two" 到聲道 "3"
     Then 語音應該成功播放到指定聲道
     ${command_end}=    Get Current Date    result_format=%Y%m%d_%H%M%S.%f
     Log    語音命令完成時間: ${command_end}    console=True
     Sleep    3
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_two    output/${prefix}_${timestamp}_light_two_after_on_ch3_full.jpg
-    And When 儲存 ROI 影像        light_two    output/${prefix}_${timestamp}_light_two_after_on_ch3_roi.jpg
+    And When 儲存完整影像包含標註    light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_after_on_ch3_full.jpg
+    And When 儲存 ROI 影像        light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_after_on_ch3_roi.jpg
     And Then 驗證環境燈光狀態    light_two    on
     # And Then 驗證面板燈光狀態    light_two    on
     Sleep    2
@@ -220,8 +221,8 @@ s04 : Light 2 - 廚房開(Ch3) -> 客廳關(Ch1)
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
     When 使用者播放文字 "hey power pro" 到聲道 "1"
     Sleep    2
-    And When 儲存完整影像包含標註    light_two    output/${prefix}_${timestamp}_light_two_before_off_ch1_full.jpg
-    And When 儲存 ROI 影像        light_two    output/${prefix}_${timestamp}_light_two_before_off_ch1_roi.jpg
+    And When 儲存完整影像包含標註    light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_before_off_ch1_full.jpg
+    And When 儲存 ROI 影像        light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_before_off_ch1_roi.jpg
     ${brightness_before}=    When 取得環境燈光亮度    light_two
     When 使用者播放文字 "Turn off light two" 到聲道 "1"
     Then 語音應該成功播放到指定聲道
@@ -229,8 +230,8 @@ s04 : Light 2 - 廚房開(Ch3) -> 客廳關(Ch1)
     Log    語音命令完成時間: ${command_end}    console=True
     Sleep    3
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_two    output/${prefix}_${timestamp}_light_two_after_off_ch1_full.jpg
-    And When 儲存 ROI 影像        light_two    output/${prefix}_${timestamp}_light_two_after_off_ch1_roi.jpg
+    And When 儲存完整影像包含標註    light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_after_off_ch1_full.jpg
+    And When 儲存 ROI 影像        light_two    ${OUTPUT DIR}/${prefix}_${timestamp}_light_two_after_off_ch1_roi.jpg
     ${brightness_after}=    When 取得環境燈光亮度    light_two
     And Then 驗證亮度變化    ${brightness_before}    ${brightness_after}    減少    10
     # And Then 驗證環境燈光狀態    light_two    off
@@ -248,16 +249,16 @@ s05 : Light 3 - 客廳開(Ch1) -> 廚房關(Ch3)
     ${prefix}=    Fetch From Left    ${TEST NAME}    ${SPACE}:${SPACE}
     When 使用者播放文字 "hey power pro" 到聲道 "1"
     Sleep    2
-    And When 儲存完整影像包含標註    light_three    output/${prefix}_${timestamp}_light_three_before_on_full.jpg
-    And When 儲存 ROI 影像        light_three    output/${prefix}_${timestamp}_light_three_before_on_roi.jpg
+    And When 儲存完整影像包含標註    light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_before_on_full.jpg
+    And When 儲存 ROI 影像        light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_before_on_roi.jpg
     When 使用者播放文字 "Turn on light three" 到聲道 "1"
     Then 語音應該成功播放到指定聲道
     ${command_end}=    Get Current Date    result_format=%Y%m%d_%H%M%S.%f
     Log    語音命令完成時間: ${command_end}    console=True
     Sleep    3
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_three    output/${prefix}_${timestamp}_light_three_after_on_full.jpg
-    And When 儲存 ROI 影像        light_three    output/${prefix}_${timestamp}_light_three_after_on_roi.jpg
+    And When 儲存完整影像包含標註    light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_after_on_full.jpg
+    And When 儲存 ROI 影像        light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_after_on_roi.jpg
     And Then 驗證環境燈光狀態    light_three    on
     # And Then 驗證面板燈光狀態    light_three    on
     Sleep    2
@@ -265,8 +266,8 @@ s05 : Light 3 - 客廳開(Ch1) -> 廚房關(Ch3)
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
     When 使用者播放文字 "hey power pro" 到聲道 "3"
     Sleep    2
-    And When 儲存完整影像包含標註    light_three    output/${prefix}_${timestamp}_light_three_before_off_full.jpg
-    And When 儲存 ROI 影像        light_three    output/${prefix}_${timestamp}_light_three_before_off_roi.jpg
+    And When 儲存完整影像包含標註    light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_before_off_full.jpg
+    And When 儲存 ROI 影像        light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_before_off_roi.jpg
     ${brightness_before}=    When 取得環境燈光亮度    light_three
     When 使用者播放文字 "Turn off light three" 到聲道 "3"
     Then 語音應該成功播放到指定聲道
@@ -274,8 +275,8 @@ s05 : Light 3 - 客廳開(Ch1) -> 廚房關(Ch3)
     Log    語音命令完成時間: ${command_end}    console=True
     Sleep    3
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_three    output/${prefix}_${timestamp}_light_three_after_off_full.jpg
-    And When 儲存 ROI 影像        light_three    output/${prefix}_${timestamp}_light_three_after_off_roi.jpg
+    And When 儲存完整影像包含標註    light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_after_off_full.jpg
+    And When 儲存 ROI 影像        light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_after_off_roi.jpg
     ${brightness_after}=    When 取得環境燈光亮度    light_three
     And Then 驗證亮度變化    ${brightness_before}    ${brightness_after}    減少    10
     # And Then 驗證環境燈光狀態    light_three    off
@@ -289,16 +290,16 @@ s06 : Light 3 - 廚房開(Ch3) -> 客廳關(Ch1)
     ${prefix}=    Fetch From Left    ${TEST NAME}    ${SPACE}:${SPACE}
     When 使用者播放文字 "hey power pro" 到聲道 "3"
     Sleep    2
-    And When 儲存完整影像包含標註    light_three    output/${prefix}_${timestamp}_light_three_before_on_ch3_full.jpg
-    And When 儲存 ROI 影像        light_three    output/${prefix}_${timestamp}_light_three_before_on_ch3_roi.jpg
+    And When 儲存完整影像包含標註    light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_before_on_ch3_full.jpg
+    And When 儲存 ROI 影像        light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_before_on_ch3_roi.jpg
     When 使用者播放文字 "Turn on light three" 到聲道 "3"
     Then 語音應該成功播放到指定聲道
     ${command_end}=    Get Current Date    result_format=%Y%m%d_%H%M%S.%f
     Log    語音命令完成時間: ${command_end}    console=True
     Sleep    3
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_three    output/${prefix}_${timestamp}_light_three_after_on_ch3_full.jpg
-    And When 儲存 ROI 影像        light_three    output/${prefix}_${timestamp}_light_three_after_on_ch3_roi.jpg
+    And When 儲存完整影像包含標註    light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_after_on_ch3_full.jpg
+    And When 儲存 ROI 影像        light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_after_on_ch3_roi.jpg
     And Then 驗證環境燈光狀態    light_three    on
     # And Then 驗證面板燈光狀態    light_three    on
     Sleep    2
@@ -306,8 +307,8 @@ s06 : Light 3 - 廚房開(Ch3) -> 客廳關(Ch1)
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
     When 使用者播放文字 "hey power pro" 到聲道 "1"
     Sleep    2
-    And When 儲存完整影像包含標註    light_three    output/${prefix}_${timestamp}_light_three_before_off_ch1_full.jpg
-    And When 儲存 ROI 影像        light_three    output/${prefix}_${timestamp}_light_three_before_off_ch1_roi.jpg
+    And When 儲存完整影像包含標註    light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_before_off_ch1_full.jpg
+    And When 儲存 ROI 影像        light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_before_off_ch1_roi.jpg
     ${brightness_before}=    When 取得環境燈光亮度    light_three
     When 使用者播放文字 "Turn off light three" 到聲道 "1"
     Then 語音應該成功播放到指定聲道
@@ -315,8 +316,8 @@ s06 : Light 3 - 廚房開(Ch3) -> 客廳關(Ch1)
     Log    語音命令完成時間: ${command_end}    console=True
     Sleep    3
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_three    output/${prefix}_${timestamp}_light_three_after_off_ch1_full.jpg
-    And When 儲存 ROI 影像        light_three    output/${prefix}_${timestamp}_light_three_after_off_ch1_roi.jpg
+    And When 儲存完整影像包含標註    light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_after_off_ch1_full.jpg
+    And When 儲存 ROI 影像        light_three    ${OUTPUT DIR}/${prefix}_${timestamp}_light_three_after_off_ch1_roi.jpg
     ${brightness_after}=    When 取得環境燈光亮度    light_three
     And Then 驗證亮度變化    ${brightness_before}    ${brightness_after}    減少    10
     # And Then 驗證環境燈光狀態    light_three    off
@@ -334,16 +335,16 @@ s07 : Light 4 - 客廳開(Ch1) -> 廚房關(Ch3)
     ${prefix}=    Fetch From Left    ${TEST NAME}    ${SPACE}:${SPACE}
     When 使用者播放文字 "hey power pro" 到聲道 "1"
     Sleep    2
-    And When 儲存完整影像包含標註    light_four    output/${prefix}_${timestamp}_light_four_before_on_full.jpg
-    And When 儲存 ROI 影像        light_four    output/${prefix}_${timestamp}_light_four_before_on_roi.jpg
+    And When 儲存完整影像包含標註    light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_before_on_full.jpg
+    And When 儲存 ROI 影像        light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_before_on_roi.jpg
     When 使用者播放文字 "Turn on light four" 到聲道 "1"
     Then 語音應該成功播放到指定聲道
     ${command_end}=    Get Current Date    result_format=%Y%m%d_%H%M%S.%f
     Log    語音命令完成時間: ${command_end}    console=True
     Sleep    3
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_four    output/${prefix}_${timestamp}_light_four_after_on_full.jpg
-    And When 儲存 ROI 影像        light_four    output/${prefix}_${timestamp}_light_four_after_on_roi.jpg
+    And When 儲存完整影像包含標註    light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_after_on_full.jpg
+    And When 儲存 ROI 影像        light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_after_on_roi.jpg
     And Then 驗證環境燈光狀態    light_four    on
     # And Then 驗證面板燈光狀態    light_four    on
     Sleep    2
@@ -351,8 +352,8 @@ s07 : Light 4 - 客廳開(Ch1) -> 廚房關(Ch3)
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
     When 使用者播放文字 "hey power pro" 到聲道 "3"
     Sleep    2
-    And When 儲存完整影像包含標註    light_four    output/${prefix}_${timestamp}_light_four_before_off_full.jpg
-    And When 儲存 ROI 影像        light_four    output/${prefix}_${timestamp}_light_four_before_off_roi.jpg
+    And When 儲存完整影像包含標註    light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_before_off_full.jpg
+    And When 儲存 ROI 影像        light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_before_off_roi.jpg
     ${brightness_before}=    When 取得環境燈光亮度    light_four
     When 使用者播放文字 "Turn off light four" 到聲道 "3"
     Then 語音應該成功播放到指定聲道
@@ -360,8 +361,8 @@ s07 : Light 4 - 客廳開(Ch1) -> 廚房關(Ch3)
     Log    語音命令完成時間: ${command_end}    console=True
     Sleep    3
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_four    output/${prefix}_${timestamp}_light_four_after_off_full.jpg
-    And When 儲存 ROI 影像        light_four    output/${prefix}_${timestamp}_light_four_after_off_roi.jpg
+    And When 儲存完整影像包含標註    light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_after_off_full.jpg
+    And When 儲存 ROI 影像        light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_after_off_roi.jpg
     ${brightness_after}=    When 取得環境燈光亮度    light_four
     And Then 驗證亮度變化    ${brightness_before}    ${brightness_after}    減少    10
     # And Then 驗證環境燈光狀態    light_four    off
@@ -375,16 +376,16 @@ s08 : Light 4 - 廚房開(Ch3) -> 客廳關(Ch1)
     ${prefix}=    Fetch From Left    ${TEST NAME}    ${SPACE}:${SPACE}
     When 使用者播放文字 "hey power pro" 到聲道 "3"
     Sleep    2
-    And When 儲存完整影像包含標註    light_four    output/${prefix}_${timestamp}_light_four_before_on_ch3_full.jpg
-    And When 儲存 ROI 影像        light_four    output/${prefix}_${timestamp}_light_four_before_on_ch3_roi.jpg
+    And When 儲存完整影像包含標註    light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_before_on_ch3_full.jpg
+    And When 儲存 ROI 影像        light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_before_on_ch3_roi.jpg
     When 使用者播放文字 "Turn on light four" 到聲道 "3"
     Then 語音應該成功播放到指定聲道
     ${command_end}=    Get Current Date    result_format=%Y%m%d_%H%M%S.%f
     Log    語音命令完成時間: ${command_end}    console=True
     Sleep    3
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_four    output/${prefix}_${timestamp}_light_four_after_on_ch3_full.jpg
-    And When 儲存 ROI 影像        light_four    output/${prefix}_${timestamp}_light_four_after_on_ch3_roi.jpg
+    And When 儲存完整影像包含標註    light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_after_on_ch3_full.jpg
+    And When 儲存 ROI 影像        light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_after_on_ch3_roi.jpg
     And Then 驗證環境燈光狀態    light_four    on
     # And Then 驗證面板燈光狀態    light_four    on
     Sleep    2
@@ -392,8 +393,8 @@ s08 : Light 4 - 廚房開(Ch3) -> 客廳關(Ch1)
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
     When 使用者播放文字 "hey power pro" 到聲道 "1"
     Sleep    2
-    And When 儲存完整影像包含標註    light_four    output/${prefix}_${timestamp}_light_four_before_off_ch1_full.jpg
-    And When 儲存 ROI 影像        light_four    output/${prefix}_${timestamp}_light_four_before_off_ch1_roi.jpg
+    And When 儲存完整影像包含標註    light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_before_off_ch1_full.jpg
+    And When 儲存 ROI 影像        light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_before_off_ch1_roi.jpg
     ${brightness_before}=    When 取得環境燈光亮度    light_four
     When 使用者播放文字 "Turn off light four" 到聲道 "1"
     Then 語音應該成功播放到指定聲道
@@ -401,8 +402,8 @@ s08 : Light 4 - 廚房開(Ch3) -> 客廳關(Ch1)
     Log    語音命令完成時間: ${command_end}    console=True
     Sleep    3
     ${timestamp}=    Get Current Date    result_format=%Y%m%d_%H%M%S
-    And When 儲存完整影像包含標註    light_four    output/${prefix}_${timestamp}_light_four_after_off_ch1_full.jpg
-    And When 儲存 ROI 影像        light_four    output/${prefix}_${timestamp}_light_four_after_off_ch1_roi.jpg
+    And When 儲存完整影像包含標註    light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_after_off_ch1_full.jpg
+    And When 儲存 ROI 影像        light_four    ${OUTPUT DIR}/${prefix}_${timestamp}_light_four_after_off_ch1_roi.jpg
     ${brightness_after}=    When 取得環境燈光亮度    light_four
     And Then 驗證亮度變化    ${brightness_before}    ${brightness_after}    減少    10
     # And Then 驗證環境燈光狀態    light_four    off
