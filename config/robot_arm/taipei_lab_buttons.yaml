@@ -255,7 +255,7 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1478, y: 1295, width: 258, height: 121}
-    bright_threshold: 150
+    bright_threshold: 100
     dark_threshold: 50
   level1_light_2:
     name: Level1 燈泡 2
@@ -264,7 +264,7 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1215, y: 1307, width: 254, height: 113}
-    bright_threshold: 150
+    bright_threshold: 100
     dark_threshold: 50
   level1_light_3:
     name: Level1 燈泡 3
@@ -273,7 +273,7 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 888, y: 1319, width: 315, height: 141}
-    bright_threshold: 150
+    bright_threshold: 100
     dark_threshold: 50
   level1_light_4:
     name: Level1 燈泡 4
@@ -282,7 +282,7 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1498, y: 1098, width: 270, height: 141}
-    bright_threshold: 150
+    bright_threshold: 100
     dark_threshold: 50
   level1_light_5:
     name: Level1 燈泡 5
@@ -291,7 +291,7 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1167, y: 1126, width: 295, height: 125}
-    bright_threshold: 150
+    bright_threshold: 100
     dark_threshold: 50
   level1_light_6:
     name: Level1 燈泡 6
@@ -300,7 +300,7 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 820, y: 1142, width: 355, height: 141}
-    bright_threshold: 150
+    bright_threshold: 100
     dark_threshold: 50
   level1_light_7:
     name: Level1 燈泡 7
@@ -309,7 +309,7 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1498, y: 843, width: 307, height: 190}
-    bright_threshold: 150
+    bright_threshold: 100
     dark_threshold: 50
   level1_light_8:
     name: Level1 燈泡 8
@@ -318,7 +318,7 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1151, y: 880, width: 323, height: 157}
-    bright_threshold: 150
+    bright_threshold: 100
     dark_threshold: 50
   level1_light_9:
     name: Level1 燈泡 9
@@ -327,7 +327,7 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 771, y: 880, width: 347, height: 165}
-    bright_threshold: 150
+    bright_threshold: 100
     dark_threshold: 50
   level1_light_10:
     name: Level1 燈泡 10
@@ -336,7 +336,7 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1494, y: 512, width: 347, height: 214}
-    bright_threshold: 150
+    bright_threshold: 100
     dark_threshold: 50
   level1_light_11:
     name: Level1 燈泡 11
@@ -345,7 +345,7 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1066, y: 553, width: 408, height: 202}
-    bright_threshold: 150
+    bright_threshold: 100
     dark_threshold: 50
   level1_light_12:
     name: Level1 燈泡 12
@@ -354,7 +354,7 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 691, y: 593, width: 355, height: 210}
-    bright_threshold: 150
+    bright_threshold: 100
     dark_threshold: 50
   level2_light_1:
     name: Level2 燈泡 1
@@ -546,3 +546,17 @@ metadata:
       2.19, -45.08]', light1 和 light2 包含 ArUco marker 參考數據，可用於精確定位校準, '部分按鈕有特殊按壓參數（count=2,
       press_duration=0.5, lift_duration=0.5）', 物理燈光陣列使用相對座標 (0.0-1.0)，方便不同解析度的 Camera,
     'v4.2.0: 支援多 Camera 多 ROI 配置，level1 和 level2 各 12 個燈泡，motor 有 7 個區域']
+
+voice_mappings:
+  light_one:
+    environment_light: level1_light_1
+    panel_light: light1
+  light_two:
+    environment_light: level1_light_2
+    panel_light: light2
+  light_three:
+    environment_light: level1_light_3
+    panel_light: light3
+  light_four:
+    environment_light: level1_light_4
+    panel_light: light4

@@ -113,19 +113,12 @@ class SerialLogParser:
             return True
 
         try:
-            logger.info(f"嘗試連接串列埠: {self.port}")
-            self.serial_conn = serial.Serial(
-                port=self.port,
-                baudrate=self.baudrate,
-                timeout=1,  # 讀取超時 1 秒
-                bytesize=serial.EIGHTBITS,
-                parity=serial.PARITY_NONE,
-                stopbits=serial.STOPBITS_ONE
-            )
-            logger.info(f"✓ 串列埠連接成功: {self.port}")
-
-            # 自動驗證遠端配置
+            # 如果需要自動驗證，先不要開啟連接，或者先關閉連接
+            # 因為 RemoteSystemConfigValidator 會自己開啟連接
             if auto_validate:
+                if self.serial_conn and self.serial_conn.is_open:
+                    self.serial_conn.close()
+                
                 logger.info("開始驗證遠端系統配置...")
                 from libraries.multimodal_detection.RemoteSystemConfigValidator import RemoteSystemConfigValidator
 
@@ -134,7 +127,6 @@ class SerialLogParser:
 
                 if result['error_message']:
                     logger.error(f"配置驗證失敗: {result['error_message']}")
-                    self.disconnect()
                     return False
 
                 if result['needs_reboot']:
@@ -145,12 +137,30 @@ class SerialLogParser:
                     logger.warning(f"請執行: {result['reboot_command']}")
                     logger.warning("重開機後，請重新執行測試")
                     logger.warning("=" * 60)
-                    self.disconnect()
                     return False
 
                 if result['config_ok']:
                     logger.info("✓ 遠端配置正確，可以開始監控")
 
+            # 驗證完成後，(重新)開啟連接供 Parser 使用
+            if not self.serial_conn or not self.serial_conn.is_open:
+                logger.info(f"嘗試連接串列埠: {self.port}")
+                self.serial_conn = serial.Serial(
+                    port=self.port,
+                    baudrate=self.baudrate,
+                    timeout=1,  # 讀取超時 1 秒
+                    bytesize=serial.EIGHTBITS,
+                    parity=serial.PARITY_NONE,
+                    stopbits=serial.STOPBITS_ONE,
+                    xonxoff=False,
+                    rtscts=False,
+                    dsrdtr=False
+                )
+                # 嘗試清除 DTR/RTS
+                self.serial_conn.dtr = False
+                self.serial_conn.rts = False
+                logger.info(f"✓ 串列埠連接成功: {self.port}")
+            
             return True
         except Exception as e:
             logger.error(f"串列埠連接失敗: {e}")
@@ -187,6 +197,10 @@ class SerialLogParser:
         with self._lock:
             self.play_events.clear()
             self.raw_logs.clear()  # v1.3.0: 清空原始日誌
+            
+        # 清空硬體輸入緩衝區，避免讀取到之前的殘留資料 (如驗證過程的輸出)
+        if self.serial_conn:
+            self.serial_conn.reset_input_buffer()
 
         self.monitoring = True
         self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)

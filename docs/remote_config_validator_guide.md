@@ -286,16 +286,122 @@ RemoteSystemConfigValidator 會檢測以下錯誤模式（v1.1.0 新增重複執
 
 ### 正確配置
 
+#### 1. `/etc/init.d/emmc`
+
 ```bash
-/uvoice/start_uvoice.sh > /dev/ttyS0 &
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=70
+
+USE_PROCD=1
+#PROG=/bin/wifi_connect_ap_test
+#DEPEND=bluetoothd
+start_service() {
+    sleep 8
+    #/etc/thortron/start_emmc.sh
+    bt_gatt_server > /dev/S0 &
+    sleep 8
+    /uvoice/start_uvoice.sh
+}
 ```
 
-**說明：**
-- `/uvoice/start_uvoice.sh`：語音助手啟動腳本
-- `> /dev/ttyS0`：重導向輸出到 UART 串列埠
-- `&`：背景執行，不阻塞啟動
+#### 2. `/uvoice/start_uvoice.sh`
+
+```bash
+export LD_LIBRARY_PATH=/uvoice:/aws/lib
+cd /uvoice
+./uvcapture > /dev/ttyS0 &
+```
+
+**關鍵說明：**
+- **輸出重導向**：必須包含 `> /dev/ttyS0` (或 `/dev/S0`) 以確保日誌輸出到 UART。
+- **背景執行**：必須包含 `&` 以避免阻塞啟動流程。
 
 ---
+
+## 回復與完成設定 (Restoring & Completing Configuration)
+
+### 1. 回復預設設定 (Restoring)
+
+若配置混亂或無法確定狀態，可使用 `restore_remote_config.py` 將遠端設備重置為標準配置：
+
+```bash
+uv run python3 restore_remote_config.py
+```
+
+此腳本會：
+1. 連接遠端設備
+2. 檢查 `/etc/init.d/emmc` 和 `/uvoice/start_uvoice.sh`
+3. 若發現不符，自動修正為上述的「正確配置」
+4. 若有修正，會提示需要重開機
+
+### 2. 完成設定檢查清單 (Completing Setup)
+
+在執行測試前，請確認以下項目皆已完成：
+
+- [ ] **檔案內容正確**：使用 `RemoteSystemConfigValidator` 或手動檢查確認檔案內容與上述一致。
+- [ ] **服務已重啟**：若有修改配置，務必執行 `reboot` 或 `/etc/init.d/emmc restart`。
+- [ ] **進程執行中**：使用 `ps | grep uvcapture` 確認 `uvcapture` 正在執行。
+- [ ] **日誌可見**：使用 `scripts/monitor_uart_only.py` 或 `tio` 確認能看到 `uvcapture` 的輸出。
+
+---
+
+## 關鍵故障排除 (Critical Troubleshooting)
+
+### 1. 命令回顯干擾 (Command Echo Artifacts)
+
+**症狀：** `RemoteSystemConfigValidator` 讀取到的檔案內容包含 `cat` 命令本身，或者包含重複的 `__CMD_START__` 標記。
+
+**原因：** UART 通訊會回顯發送的字元。如果沒有正確過濾，回顯的命令會被誤認為是命令的輸出結果。
+
+**解決方案：** `RemoteSystemConfigValidator` 的 `execute_remote_command` 方法已實作強健的過濾機制：
+- 使用 `__CMD_START__` 和 `__CMD_END__` 標記包圍輸出。
+- 忽略所有包含命令本身的行（寬鬆匹配）。
+- 忽略重複出現的開始標記。
+
+### 2. 空白字元正規化 (Whitespace Normalization)
+
+**症狀：** 檔案內容看起來一樣，但驗證器報告「配置內容不匹配」。
+
+**原因：**
+- UART 傳輸可能會遺失或增加空白行。
+- `cat` 命令輸出可能包含額外的換行。
+- 編輯器保存時可能會有不同的縮排或行尾符號。
+
+**解決方案：** `check_file_config` 在比對前會進行正規化：
+- 移除所有行首行尾空白。
+- 移除所有空白行。
+- 僅比對有效內容行。
+
+### 3. 進程驗證 (Process Verification)
+
+**症狀：** 配置正確，但 UART 沒有日誌。
+
+**檢查步驟：**
+1. **確認進程存活**：
+   ```bash
+   ps | grep uvcapture
+   ```
+   如果沒有輸出，表示程式崩潰或未啟動。
+
+2. **確認輸出重導向**：
+   檢查 `/proc/[PID]/fd/1` (stdout) 是否指向 `/dev/ttyS0`。
+
+3. **手動執行測試**：
+   停止服務後，手動執行命令看是否有輸出：
+   ```bash
+   /etc/init.d/emmc stop
+   cd /uvoice
+   export LD_LIBRARY_PATH=/uvoice:/aws/lib
+   ./uvcapture > /dev/ttyS0
+   ```
+
+### 4. 重開機的重要性 (Reboot Importance)
+
+**注意：** 修改 `/etc/init.d/emmc` 或 `/uvoice/start_uvoice.sh` 後，**必須重開機** (reboot) 才能讓變更生效。單純重啟服務 (`/etc/init.d/emmc restart`) 有時不足以清除舊的進程或狀態（特別是當舊進程卡死時）。
+
+**驗證器行為：** `RemoteSystemConfigValidator` 在修正配置後會設定 `needs_reboot=True`，並阻止後續測試執行，直到使用者手動重開機。
 
 ## Python API
 

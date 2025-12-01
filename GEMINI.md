@@ -20,6 +20,8 @@
 20. 修改python 需要執行 python3 -m py_compile 進行基礎檢查
 21. 執行 Robot Framework 測試時，應使用 `uv run robot` 指令。
 22. `libraries/` 目錄下的每一個子目錄（代表一個獨立的函式庫）都應包含一個 `README.md` 檔案，用以說明該函式庫的用途、API 和目前開發進度。
+23. 每次修改完python程式碼後，應更新 keywords_readme.md，並檢查是否有對應的測試案例
+24. 當創建新的文件時，專案的 readme.md 應包含新文件用途及參照路徑，確保開發者能找到這份文件
 
 
 ## Shell Tools Usage Guidelines

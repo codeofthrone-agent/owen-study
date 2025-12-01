@@ -9,7 +9,7 @@
 
 environments:
   # 實驗室環境
-  laboratory:
+  taipei_lab:
     description: "實驗室測試環境"
     cameras:
       level1:
@@ -45,7 +45,7 @@ environments:
         # username 和 password 會自動從 .env 讀取
 
   # RV 車環境
-  rv_vehicle:
+  rv_car:
     description: "RV 車測試環境"
     cameras:
       cam1:

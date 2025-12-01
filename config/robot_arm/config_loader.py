@@ -397,6 +397,21 @@ class ConfigLoader:
         }
         return filtered
 
+    def get_voice_mapping(self, voice_id: str) -> Optional[Dict[str, str]]:
+        """取得語音指令對應的燈光映射配置
+
+        Args:
+            voice_id: 語音指令 ID (例如: "light_one")
+
+        Returns:
+            dict: 包含 environment_light 和 panel_light 的映射字典，若無此 ID 則返回 None
+        """
+        if self._yaml_config is None:
+            return None
+        
+        mappings = self._yaml_config.get("voice_mappings", {})
+        return mappings.get(voice_id)
+
     def reload(self) -> None:
         """重新載入配置
 

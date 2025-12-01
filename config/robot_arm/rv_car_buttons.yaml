@@ -389,3 +389,14 @@ metadata:
       9.93, -134.73, 34.45, 2.19, -45.08]', 觀測點使用較慢速度 50 (vs 標準 100), '特殊按壓行為: water_pump/water_heater/gas/tanker_heater
       = 4 次按壓', '特殊按壓行為: extend/retract = 7 秒長按', 觀測點 press_duration=0.0 表示不執行按壓動作,
     車載燈光使用絕對座標 ROI，需根據實際 Camera 解析度調整]
+
+voice_mappings:
+  light_one:
+    environment_light: area1_light_1
+    panel_light: hvac
+  light_two:
+    environment_light: area1_light_2
+    panel_light: water_pump
+  light_three:
+    environment_light: area1_light_3
+    panel_light: water_heater

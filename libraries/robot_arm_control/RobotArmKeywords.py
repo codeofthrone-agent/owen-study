@@ -1754,6 +1754,36 @@ class RobotArmKeywords:
             pass  # 如果不在 Robot Framework 環境中執行，忽略錯誤
 
 
+
+    @keyword("Then 驗證面板燈光狀態")
+    def then_verify_panel_light_status(self, voice_light_id: str, expected_state: str):
+        """
+        Then: 驗證面板燈光狀態
+        
+        Args:
+            voice_light_id: 語音指令 ID (例如: "light_one")
+            expected_state: 預期狀態 ('on' or 'off')
+        """
+        mapping = self.config_loader.get_voice_mapping(voice_light_id)
+        if not mapping:
+            raise ValueError(f"Unknown voice light ID: {voice_light_id}")
+            
+        panel_light_id = mapping.get('panel_light')
+        if not panel_light_id:
+            raise ValueError(f"No panel light mapping for {voice_light_id}")
+            
+        # Use existing keyword to detect color/status
+        # when_user_detects_panel_button_color returns a dict with 'light_state' ('on'/'off')
+        
+        result = self.when_user_detects_panel_button_color(panel_light_id)
+        actual_state = result['light_state']
+        
+        if actual_state.lower() != expected_state.lower():
+            raise AssertionError(f"Panel light {panel_light_id} state is {actual_state}, expected {expected_state}")
+            
+        logger.info(f"Verified panel light {panel_light_id} is {expected_state}")
+
+
 # 測試用例
 if __name__ == "__main__":
     print("RobotArmKeywords 關鍵字庫 v3.0.0 - BDD 風格 + 視覺檢測")

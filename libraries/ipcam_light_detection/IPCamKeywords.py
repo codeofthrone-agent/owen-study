@@ -11,15 +11,22 @@ from robot.api import logger
 # 支援兩種匯入方式：
 # 1. 作為模組匯入: Library    libraries.ipcam_light_detection.IPCamKeywords
 # 2. 作為檔案匯入: Library    ../libraries/ipcam_light_detection/IPCamKeywords.py
+current_dir = Path(__file__).parent
+
 try:
     # 方式 1: 絕對匯入（作為模組）
     from libraries.ipcam_light_detection.IPCamLightDetection import IPCamLightDetection
 except ImportError:
     # 方式 2: 將當前目錄加入 sys.path，然後直接匯入
-    current_dir = Path(__file__).parent
     if str(current_dir) not in sys.path:
         sys.path.insert(0, str(current_dir))
     from IPCamLightDetection import IPCamLightDetection
+
+# Add project root to sys.path for config import
+project_root = current_dir.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+from config.robot_arm.config_loader import ConfigLoader
 
 class IPCamKeywords:
     """
@@ -30,6 +37,7 @@ class IPCamKeywords:
 
     def __init__(self):
         self.ipcam = IPCamLightDetection()
+        self.config_loader = None
 
     @keyword("Given IP 攝影機已連接到攝影機")
     def given_the_ipcamera_is_connected_to(self, environment: str, camera_name: str):
@@ -51,6 +59,7 @@ class IPCamKeywords:
         | Given | IP 攝影機已連接到攝影機 | laboratory | level1 |
         """
         self.ipcam.連接攝影機(environment, camera_name)
+        self.config_loader = ConfigLoader(environment)
         logger.info(f"Connected to IPCamera {camera_name} in {environment}")
 
     @keyword("When 檢查當前燈光亮度")
@@ -241,7 +250,198 @@ class IPCamKeywords:
         Examples:
         | Then 亮度應該在 50 和 150 之間 |
         """
-        brightness = self.ipcam.取得當前亮度()
         if not (int(min_brightness) <= brightness <= int(max_brightness)):
             raise AssertionError(f"Brightness {brightness} is not between {min_brightness} and {max_brightness}")
         logger.info(f"Brightness {brightness} is between {min_brightness} and {max_brightness}")
+
+    def _ensure_config_loader(self):
+        if self.config_loader is None:
+            if self.ipcam.environment:
+                self.config_loader = ConfigLoader(self.ipcam.environment)
+            else:
+                 raise RuntimeError("ConfigLoader not initialized. Please connect to camera first.")
+
+    @keyword("When 儲存完整影像包含標註")
+    def when_save_full_image_with_annotation(self, voice_light_id: str, file_path: str):
+        """
+        When: 儲存完整影像包含標註
+        
+        Args:
+            voice_light_id: 語音指令 ID (例如: "light_one")
+            file_path: 儲存路徑
+        """
+        self._ensure_config_loader()
+        mapping = self.config_loader.get_voice_mapping(voice_light_id)
+        if not mapping:
+            raise ValueError(f"Unknown voice light ID: {voice_light_id}")
+            
+        env_light_id = mapping.get('environment_light')
+        if not env_light_id:
+            raise ValueError(f"No environment light mapping for {voice_light_id}")
+            
+        # Get ROI from config
+        lights = self.config_loader.get_environment_lights()
+        if env_light_id not in lights:
+             raise ValueError(f"Environment light {env_light_id} not found in config")
+             
+        # Always capture new image to ensure freshness
+        self.ipcam.capture_image()
+            
+        roi = lights[env_light_id]['roi']
+        self.ipcam.save_image_with_roi(file_path, roi)
+        logger.info(f"Saved annotated image for {voice_light_id} to {file_path}")
+
+    @keyword("When 儲存 ROI 影像")
+    def when_save_roi_image(self, voice_light_id: str, file_path: str):
+        """
+        When: 儲存 ROI 影像
+        
+        Args:
+            voice_light_id: 語音指令 ID (例如: "light_one")
+            file_path: 儲存路徑
+        """
+        self._ensure_config_loader()
+        mapping = self.config_loader.get_voice_mapping(voice_light_id)
+        if not mapping:
+            raise ValueError(f"Unknown voice light ID: {voice_light_id}")
+            
+        env_light_id = mapping.get('environment_light')
+        if not env_light_id:
+            raise ValueError(f"No environment light mapping for {voice_light_id}")
+            
+        # Get ROI from config
+        lights = self.config_loader.get_environment_lights()
+        if env_light_id not in lights:
+             raise ValueError(f"Environment light {env_light_id} not found in config")
+             
+        # Always capture new image to ensure freshness
+        self.ipcam.capture_image()
+            
+        roi = lights[env_light_id]['roi']
+        self.ipcam.save_cropped_roi(file_path, roi)
+        logger.info(f"Saved ROI image for {voice_light_id} to {file_path}")
+
+    @keyword("Then 驗證環境燈光狀態")
+    def then_verify_environment_light_status(self, voice_light_id: str, expected_state: str):
+        """
+        Then: 驗證環境燈光狀態
+        
+        Args:
+            voice_light_id: 語音指令 ID (例如: "light_one")
+            expected_state: 預期狀態 ('on' or 'off')
+        """
+        self._ensure_config_loader()
+        mapping = self.config_loader.get_voice_mapping(voice_light_id)
+        if not mapping:
+            raise ValueError(f"Unknown voice light ID: {voice_light_id}")
+            
+        env_light_id = mapping.get('environment_light')
+        if not env_light_id:
+            raise ValueError(f"No environment light mapping for {voice_light_id}")
+            
+        # Get light config
+        lights = self.config_loader.get_environment_lights()
+        if env_light_id not in lights:
+             raise ValueError(f"Environment light {env_light_id} not found in config")
+        
+        light_config = lights[env_light_id]
+        
+        bright_threshold = light_config.get('bright_threshold')
+        dark_threshold = light_config.get('dark_threshold')
+        
+        # 1. Capture image
+        image = self.ipcam.capture_image()
+        
+        # 2. Crop to ROI
+        roi = light_config['roi']
+        cropped_image = self.ipcam.crop_roi(image, roi)
+        
+        # 3. Calculate brightness of cropped image
+        brightness = self.ipcam.calculate_brightness(cropped_image, region='full')
+        
+        logger.info(f"Light {env_light_id} brightness: {brightness}")
+        
+        if expected_state.lower() == 'on':
+            if bright_threshold and brightness < bright_threshold:
+                 raise AssertionError(f"Light {env_light_id} should be ON (brightness {brightness} < {bright_threshold})")
+            elif not bright_threshold and not self.ipcam.is_light_on(brightness):
+                 raise AssertionError(f"Light {env_light_id} should be ON (brightness {brightness})")
+        elif expected_state.lower() == 'off':
+            if dark_threshold and brightness > dark_threshold:
+                 raise AssertionError(f"Light {env_light_id} should be OFF (brightness {brightness} > {dark_threshold})")
+            elif not dark_threshold and not self.ipcam.is_light_off(brightness):
+                 raise AssertionError(f"Light {env_light_id} should be OFF (brightness {brightness})")
+        else:
+            raise ValueError(f"Invalid expected state: {expected_state}")
+            
+        logger.info(f"Verified light {env_light_id} is {expected_state}")
+
+    @keyword("When 取得環境燈光亮度")
+    def when_get_environment_light_brightness(self, voice_light_id: str):
+        """
+        When: 取得環境燈光亮度
+        
+        Args:
+            voice_light_id: 語音指令 ID (例如: "light_one")
+            
+        Returns:
+            float: 亮度值
+        """
+        self._ensure_config_loader()
+        mapping = self.config_loader.get_voice_mapping(voice_light_id)
+        if not mapping:
+            raise ValueError(f"Unknown voice light ID: {voice_light_id}")
+            
+        env_light_id = mapping.get('environment_light')
+        if not env_light_id:
+            raise ValueError(f"No environment light mapping for {voice_light_id}")
+            
+        # Get light config
+        lights = self.config_loader.get_environment_lights()
+        if env_light_id not in lights:
+             raise ValueError(f"Environment light {env_light_id} not found in config")
+        
+        light_config = lights[env_light_id]
+        
+        # Capture image
+        image = self.ipcam.capture_image()
+        
+        # Crop to ROI
+        roi = light_config['roi']
+        cropped_image = self.ipcam.crop_roi(image, roi)
+        
+        # Calculate brightness
+        brightness = self.ipcam.calculate_brightness(cropped_image, region='full')
+        
+        logger.info(f"Light {env_light_id} brightness: {brightness}")
+        return brightness
+
+    @keyword("Then 驗證亮度變化")
+    def then_verify_brightness_change(self, before_brightness: float, after_brightness: float, expected_change: str, min_delta: float = 10.0):
+        """
+        Then: 驗證亮度變化
+        
+        Args:
+            before_brightness: 變化前亮度
+            after_brightness: 變化後亮度
+            expected_change: 'increase' (變亮) or 'decrease' (變暗)
+            min_delta: 最小變化幅度 (預設 10.0)
+        """
+        before_val = float(before_brightness)
+        after_val = float(after_brightness)
+        delta = after_val - before_val
+        min_delta_val = float(min_delta)
+        
+        logger.info(f"Brightness change: {before_val:.2f} -> {after_val:.2f} (Delta: {delta:.2f})")
+        
+        if expected_change.lower() in ['increase', '增加', '變亮', '+']:
+            if delta < min_delta_val:
+                raise AssertionError(f"Brightness should increase by at least {min_delta_val} (Actual delta: {delta:.2f}, {before_val:.2f} -> {after_val:.2f})")
+        elif expected_change.lower() in ['decrease', '減少', '變暗', '-']:
+            # For decrease, delta should be negative. e.g. -20.
+            # We want the decrease amount to be at least min_delta.
+            # So delta should be <= -min_delta.
+            if delta > -min_delta_val:
+                 raise AssertionError(f"Brightness should decrease by at least {min_delta_val} (Actual delta: {delta:.2f}, {before_val:.2f} -> {after_val:.2f})")
+        else:
+            raise ValueError(f"Invalid expected change: {expected_change}")

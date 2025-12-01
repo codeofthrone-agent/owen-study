@@ -63,12 +63,9 @@ class AudioPlayer:
         # 配置路由參數
         sink_name, pan_filter, physical_output = self._configure_routing(target_channel)
 
-        # 切換輸出設備
-        if not self._switch_output_device(sink_name):
-            return False
-
         # 播放音訊
-        return self._play_audio(audio_file, pan_filter, physical_output, duration)
+        # 直接指定 sink_name，不需要切換系統預設輸出
+        return self._play_audio(audio_file, pan_filter, physical_output, duration, sink_name)
 
     def _validate_inputs(self, audio_file: str, target_channel: int) -> bool:
         """驗證輸入參數"""
@@ -137,7 +134,7 @@ class AudioPlayer:
             return False
 
     def _play_audio(self, audio_file: str, pan_filter: str,
-                   physical_output: int, duration: int) -> bool:
+                   physical_output: int, duration: int, sink_name: str) -> bool:
         """
         播放音訊
 
@@ -165,12 +162,13 @@ class AudioPlayer:
             "-"
         ]
 
-        # 構建 aplay 命令
-        aplay_cmd = [
-            "aplay",
-            "-f", "S16_LE",
-            "-r", "48000",
-            "-c", "2"
+        # 構建 pacat 命令 (直接輸出到指定 sink)
+        pacat_cmd = [
+            "pacat",
+            "--format=s16le",
+            "--rate=48000",
+            "--channels=2",
+            "--device=" + sink_name
         ]
 
         try:
@@ -181,8 +179,8 @@ class AudioPlayer:
                 stderr=subprocess.DEVNULL
             )
 
-            aplay_process = subprocess.Popen(
-                aplay_cmd,
+            pacat_process = subprocess.Popen(
+                pacat_cmd,
                 stdin=ffmpeg_process.stdout,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
@@ -192,10 +190,10 @@ class AudioPlayer:
             ffmpeg_process.stdout.close()
 
             # 等待兩個進程完成
-            aplay_process.wait()
+            pacat_process.wait()
             ffmpeg_process.wait()
 
-            if aplay_process.returncode == 0 and ffmpeg_process.returncode == 0:
+            if pacat_process.returncode == 0 and ffmpeg_process.returncode == 0:
                 print("✅ 播放完畢。")
                 return True
             else:

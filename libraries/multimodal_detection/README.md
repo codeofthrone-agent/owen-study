@@ -574,3 +574,4 @@ tests/multimodal_detection/
 - [語音助理 API 文件](https://developers.google.com/assistant)
 - [UART 通信協議](https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter)
 - [Robot Framework 文件](https://robotframework.org/)
+- [遠端配置驗證指南](../../docs/remote_config_validator_guide.md)

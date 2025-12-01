@@ -55,23 +55,29 @@ class RemoteSystemConfigValidator:
     ROBOT_LIBRARY_SCOPE = 'GLOBAL'
     ROBOT_LIBRARY_VERSION = '1.1.0'  # v1.1.0: 新增重複執行錯誤檢測，改進 sed 修正策略
 
-    # 配置檔案路徑
-    EMMC_CONFIG_PATH = '/etc/init.d/emmc'
+    # 預期的配置內容定義
+    TARGET_CONFIGS = {
+        '/etc/init.d/emmc': """#!/bin/sh /etc/rc.common
 
-    # 錯誤配置模式（正規表達式）
-    WRONG_PATTERNS = [
-        # 重複執行（同一行出現兩次 start_uvoice.sh）
-        (r'/uvoice/start_uvoice\.sh.*?/uvoice/start_uvoice\.sh', 'duplicate_execution'),
-        # 輸出到 /dev/null
-        (r'/uvoice/start_uvoice\.sh\s*>\s*/dev/null', 'output_to_null'),
-        # 有 & 但沒有重導向
-        (r'/uvoice/start_uvoice\.sh\s+&(?!\s*>)', 'no_redirect'),
-        # 沒有背景執行也沒有重導向
-        (r'/uvoice/start_uvoice\.sh(?!\s*>)(?!\s+&)', 'no_background'),
-    ]
+START=99
+STOP=70
 
-    # 正確的配置
-    CORRECT_CONFIG = '/uvoice/start_uvoice.sh > /dev/ttyS0 &'
+USE_PROCD=1
+#PROG=/bin/wifi_connect_ap_test
+#DEPEND=bluetoothd
+start_service() {
+    sleep 8
+    #/etc/thortron/start_emmc.sh
+    bt_gatt_server > /dev/S0 &
+	sleep 8
+	/uvoice/start_uvoice.sh
+}
+""",
+        '/uvoice/start_uvoice.sh': """export LD_LIBRARY_PATH=/uvoice:/aws/lib
+cd /uvoice
+./uvcapture > /dev/ttyS0 &
+"""
+    }
 
     def __init__(self, port: str = '/dev/ttyUSB0', baudrate: int = 115200, command_timeout: float = 5.0):
         """
@@ -112,12 +118,88 @@ class RemoteSystemConfigValidator:
                 timeout=1,
                 bytesize=serial.EIGHTBITS,
                 parity=serial.PARITY_NONE,
-                stopbits=serial.STOPBITS_ONE
+                stopbits=serial.STOPBITS_ONE,
+                xonxoff=False,
+                rtscts=False,
+                dsrdtr=False
             )
+            
+            # 嘗試清除 DTR/RTS (有些板子會在 DTR 拉低時重置)
+            self.serial_conn.dtr = False
+            self.serial_conn.rts = False
 
-            # 清空輸入緩衝區
+            # 1. 先嘗試簡單的 Enter 檢查狀態 (使用 \r)
+            logger.info("檢查目前 Shell 狀態...")
+            self.serial_conn.write(b'\r')
+            
+            # 使用 read() 而非 in_waiting，確保能讀到資料
+            time.sleep(0.1)
+            initial_response = self.serial_conn.read(1000).decode('utf-8', errors='ignore')
+            logger.debug(f"初始回應: {repr(initial_response)}")
+            
+            # 如果已經是正常 Prompt，直接回傳成功
+            if ('#' in initial_response or '$' in initial_response) and '>' not in initial_response:
+                logger.info(f"✓ Shell 已就緒 (Prompt: {initial_response.strip()})")
+                self.serial_conn.reset_input_buffer()
+                return True
+
+            # 2. 如果不是正常狀態，才執行萬能解鎖
+            logger.warning("Shell 未就緒或處於 Stuck 狀態，執行萬能解鎖...")
+            
+            unstuck_sequences = [
+                b'\x03',       # Ctrl-C (基本中斷)
+                b"'\x03",      # 嘗試關閉單引號
+                b'"\x03',      # 嘗試關閉雙引號
+                b'}\x03',      # 嘗試關閉大括號
+                b')\x03',      # 嘗試關閉小括號
+                b']\x03',      # 嘗試關閉中括號
+                b'\\\x03',     # 嘗試關閉轉義
+                b'\nEOF\n',    # 嘗試結束 heredoc
+                b'EOF\n',      # 嘗試結束 heredoc (無前導換行)
+                b'\n\x04',     # Ctrl-D (EOF)
+            ]
+            
+            for seq in unstuck_sequences:
+                self.serial_conn.write(seq)
+                time.sleep(0.1)
+                self.serial_conn.write(b'\n')
+                time.sleep(0.1)
+            
+            # 最後再送幾次 Ctrl-C 確保乾淨
+            for _ in range(3):
+                self.serial_conn.write(b'\x03')
+                time.sleep(0.1)
+            
+            self.serial_conn.write(b'\n')
+            time.sleep(1.0)
+            
+            # 清空殘留輸出並檢查
+            if self.serial_conn.in_waiting > 0:
+                junk = self.serial_conn.read(self.serial_conn.in_waiting)
+                try:
+                    junk_str = junk.decode('utf-8', errors='ignore')
+                    logger.debug(f"清除殘留資料: {repr(junk_str)}")
+                except:
+                    logger.debug(f"清除殘留資料: {len(junk)} bytes")
+            
             self.serial_conn.reset_input_buffer()
 
+            # 檢查是否仍處於 stuck 狀態，並確認是否回到 Shell
+            self.serial_conn.write(b'\n')
+            time.sleep(0.5)
+            if self.serial_conn.in_waiting > 0:
+                response = self.serial_conn.read(self.serial_conn.in_waiting).decode('utf-8', errors='ignore')
+                logger.debug(f"重置後回應: {repr(response)}")
+                
+                if '>' in response and '#' not in response and '$' not in response:
+                    logger.error("Shell 仍處於 stuck 狀態 (>)，無法自動修復")
+                    return False
+                
+                if 'login:' in response:
+                    logger.error("Shell 已登出，處於登入提示符")
+                    # 這裡可以考慮自動登入，但目前先報錯
+                    return False
+            
             logger.info(f"✓ 串列埠連接成功: {self.port}")
             return True
 
@@ -148,11 +230,17 @@ class RemoteSystemConfigValidator:
         if timeout is None:
             timeout = self.command_timeout
 
+        # 清空輸入緩衝區，避免讀取到上一次命令的殘留輸出 (如 Prompt)
+        self.serial_conn.reset_input_buffer()
+        
         # 生成唯一標記
-        marker = f"__CMD_END_{int(time.time() * 1000)}__"
+        timestamp = int(time.time() * 1000)
+        start_marker = f"__CMD_START_{timestamp}__"
+        end_marker = f"__CMD_END_{timestamp}__"
 
-        # 發送命令（附加標記）
-        full_cmd = f"{cmd}; echo '{marker}'\n"
+        # 發送命令（附加標記，使用 \r 確保執行）
+        # 使用開始和結束標記來精確擷取輸出
+        full_cmd = f"\necho '{start_marker}'\n{cmd}\necho '{end_marker}'\r"
         logger.debug(f"執行遠端命令: {cmd}")
 
         try:
@@ -161,53 +249,74 @@ class RemoteSystemConfigValidator:
 
             # 接收回應
             output_lines = []
-            all_lines = []  # 用於調試，記錄所有行
             start_time = time.time()
             marker_found = False
-            cmd_echo_skipped = False
+            start_marker_found = False
 
-            while time.time() - start_time < timeout:
-                if self.serial_conn.in_waiting > 0:
-                    try:
-                        line = self.serial_conn.readline().decode('utf-8', errors='ignore').rstrip()
-                        all_lines.append(line)  # 記錄所有行用於調試
-                        logger.debug(f"收到原始行: {repr(line)}")
+            # 使用 read_until 讀取直到結束標記出現
+            marker_bytes = end_marker.encode('utf-8')
+            raw_output = b''
+            
+            while True:
+                chunk = self.serial_conn.read_until(marker_bytes)
+                raw_output += chunk
+                
+                if marker_bytes not in chunk:
+                    break
+                
+                # 檢查是否為命令回顯
+                chunk_str = chunk.decode('utf-8', errors='ignore')
+                if f"echo '{end_marker}'" in chunk_str:
+                    logger.debug("跳過包含結束標記的命令回顯")
+                    continue
+                
+                logger.debug("✓ 找到結束標記")
+                marker_found = True
+                break
 
-                        # 跳過空行
-                        if not line.strip():
-                            logger.debug("跳過空行")
-                            continue
-
-                        # 跳過 shell prompt（root@xxx:/#）
-                        if re.match(r'^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+:[^#]*#', line):
-                            logger.debug(f"跳過 shell prompt: {line}")
-                            continue
-
-                        # 檢查是否為結束標記（必須是單獨一行，不包含其他內容）
-                        if line.strip() == marker:
-                            marker_found = True
-                            logger.debug(f"找到結束標記（單獨一行）")
-                            break
-
-                        # 跳過命令回顯行（包含完整命令的行）
-                        if not cmd_echo_skipped and (f"{cmd};" in line or full_cmd.strip() in line):
-                            cmd_echo_skipped = True
-                            logger.debug(f"跳過命令回顯: {line[:80]}...")
-                            continue
-
-                        # 收集有效輸出
-                        output_lines.append(line)
-                        logger.debug(f"✓ 收集輸出行 #{len(output_lines)}: {line[:80]}...")
-
-                    except Exception as e:
-                        logger.warning(f"讀取行時發生錯誤: {e}")
-                        continue
-                else:
-                    time.sleep(0.01)  # 短暫休息避免忙等待
+            output_str = raw_output.decode('utf-8', errors='ignore')
+            logger.debug(f"Raw output len: {len(output_str)}")
+            logger.debug(f"Raw output content:\n{output_str}")
+            
+            # 處理輸出
+            lines = output_str.splitlines()
+            output_lines = []
+            start_marker_found = False
+            
+            for line in lines:
+                line = line.strip()
+                if not line: continue
+                
+                # 尋找開始標記
+                if start_marker in line:
+                    if not start_marker_found:
+                        start_marker_found = True
+                        logger.debug("✓ 找到開始標記")
+                    continue
+                
+                if not start_marker_found:
+                    continue
+                
+                # 尋找結束標記
+                if end_marker in line:
+                    break
+                    
+                # 跳過 echo 回顯
+                # 寬鬆匹配：如果行包含命令，或者是命令的一部分
+                if line == cmd or cmd in line or line in cmd:
+                    logger.debug(f"  [Skip] Command echo: {line}")
+                    continue
+                
+                # 跳過 prompt
+                if line.endswith('#') or line.endswith('$') or line.startswith('root@'):
+                    logger.debug(f"  [Skip] Prompt: {line}")
+                    continue
+                    
+                output_lines.append(line)
 
             if not marker_found:
                 logger.warning(f"命令執行超時 ({timeout}s)，可能未完成")
-                logger.debug(f"收到的所有行 ({len(all_lines)} 行): {all_lines}")
+                logger.debug(f"收到的所有行 ({len(output_lines)} 行): {output_lines}")
 
             output = '\n'.join(output_lines)
             logger.debug(f"命令輸出 ({len(output_lines)} 行):")
@@ -223,134 +332,124 @@ class RemoteSystemConfigValidator:
             logger.error(f"執行遠端命令失敗: {e}")
             return ""
 
-    def check_emmc_config(self) -> Dict[str, any]:
+    def check_file_config(self, file_path: str, expected_content: str) -> Dict[str, any]:
         """
-        檢查 /etc/init.d/emmc 配置
+        檢查單一檔案配置
+
+        Args:
+            file_path: 檔案路徑
+            expected_content: 預期內容
 
         Returns:
-            檢查結果字典：
-                - has_error (bool): 是否有錯誤
-                - error_type (str): 錯誤類型
-                - current_content (str): 當前配置內容
-                - needs_fix (bool): 是否需要修正
-                - matched_line (str): 匹配到的錯誤行
+            檢查結果字典
         """
-        logger.info(f"檢查遠端配置檔: {self.EMMC_CONFIG_PATH}")
+        logger.info(f"檢查遠端配置檔: {file_path}")
 
-        # 讀取配置檔
-        cmd = f"cat {self.EMMC_CONFIG_PATH}"
-        content = self.execute_remote_command(cmd)
+        # 讀取配置檔，增加重試機制
+        content = ""
+        max_retries = 3
+        for attempt in range(max_retries):
+            cmd = f"cat {file_path}"
+            content = self.execute_remote_command(cmd)
+            if content:
+                break
+            logger.warning(f"讀取失敗，重試 {attempt + 1}/{max_retries}...")
+            time.sleep(1.0)
 
         if not content:
-            logger.error(f"無法讀取配置檔: {self.EMMC_CONFIG_PATH}")
-            return {
+            logger.error(f"無法讀取配置檔: {file_path}")
+            ret = {
+                'file_path': file_path,
                 'has_error': None,
                 'error_type': 'file_not_readable',
                 'current_content': '',
                 'needs_fix': False,
                 'matched_line': None
             }
+            logger.debug(f"Returning from check_file_config (error): {ret}")
+            return ret
 
-        # 檢查是否已經是正確配置
-        if self.CORRECT_CONFIG in content:
-            logger.info("✓ 配置已經正確")
+        # 移除內容前後的空白以便比較
+        clean_content = content.strip()
+        
+        # 正規化預期內容（移除空白行和縮排，以匹配 execute_remote_command 的行為）
+        expected_lines = [line.strip() for line in expected_content.splitlines() if line.strip()]
+        expected_clean = '\n'.join(expected_lines)
+        
+        # 簡單比較
+        if clean_content == expected_clean:
+            logger.info(f"✓ {file_path} 配置完全匹配")
             return {
+                'file_path': file_path,
                 'has_error': False,
                 'error_type': None,
                 'current_content': content,
                 'needs_fix': False,
                 'matched_line': None
             }
-
-        # 檢查錯誤模式
-        for pattern, error_type in self.WRONG_PATTERNS:
-            match = re.search(pattern, content, re.MULTILINE)
-            if match:
-                matched_line = match.group(0)
-                logger.warning(f"⚠️ 檢測到配置錯誤: {error_type}")
-                logger.warning(f"   錯誤行: {matched_line}")
-
-                return {
-                    'has_error': True,
-                    'error_type': error_type,
-                    'current_content': content,
-                    'needs_fix': True,
-                    'matched_line': matched_line
-                }
-
-        # 沒有匹配到任何模式（可能是其他配置）
-        logger.info("未檢測到已知的錯誤配置模式")
+        
+        logger.warning(f"⚠️ {file_path} 配置內容不匹配")
+        logger.debug(f"預期長度: {len(expected_clean)}, 實際長度: {len(clean_content)}")
+        logger.debug(f"預期內容:\n{expected_clean}")
+        logger.debug(f"實際內容:\n{clean_content}")
+        
         return {
-            'has_error': False,
-            'error_type': None,
+            'file_path': file_path,
+            'has_error': True,
+            'error_type': 'content_mismatch',
             'current_content': content,
-            'needs_fix': False,
-            'matched_line': None
+            'needs_fix': True,
+            'matched_line': 'Entire file content mismatch'
         }
 
-    def fix_emmc_config(self) -> bool:
+    def fix_file_config(self, file_path: str, expected_content: str) -> bool:
         """
-        修正 /etc/init.d/emmc 配置
+        修正單一檔案配置
+        
+        Args:
+            file_path: 檔案路徑
+            expected_content: 預期內容
 
         Returns:
             是否修正成功
         """
-        logger.info("=" * 60)
-        logger.info("正在修正遠端配置...")
+        logger.info("-" * 40)
+        logger.info(f"正在修正檔案: {file_path}")
 
-        # 1. 備份原始檔案
-        logger.info("步驟 1: 備份原始配置")
-        backup_cmd = f"cp {self.EMMC_CONFIG_PATH} {self.EMMC_CONFIG_PATH}.backup"
-        backup_result = self.execute_remote_command(backup_cmd)
-        logger.info("✓ 配置已備份")
+        # 1. 備份
+        backup_cmd = f"cp {file_path} {file_path}.backup"
+        self.execute_remote_command(backup_cmd)
+        
+        # 2. 寫入新內容
+        temp_file = f"/tmp/config_new_{int(time.time())}"
+        write_cmd = f"cat > {temp_file} << 'EOF'\n{expected_content}\nEOF"
+        
+        logger.debug("執行寫入命令...")
+        self.execute_remote_command(write_cmd, timeout=10.0)
+        
+        # 移動並設定權限
+        mv_cmd = f"mv {temp_file} {file_path} && chmod 755 {file_path}"
+        self.execute_remote_command(mv_cmd)
+        
+        # 3. 驗證
+        check_result = self.check_file_config(file_path, expected_content)
 
-        # 2. 使用 sed 修正配置
-        logger.info("步驟 2: 修正配置")
-        # 策略：先刪除包含 start_uvoice.sh 的所有行，然後在 bt_gatt_server 之後插入正確配置
-
-        # 步驟 2.1: 刪除所有包含 start_uvoice.sh 的行
-        delete_cmd = f"sed -i '/\\/uvoice\\/start_uvoice\\.sh/d' {self.EMMC_CONFIG_PATH}"
-        logger.debug(f"執行 sed 刪除命令: {delete_cmd}")
-        self.execute_remote_command(delete_cmd)
-
-        # 步驟 2.2: 在 bt_gatt_server 之後插入正確配置（保持縮排）
-        # 使用 shell 變數搭配 $'...' 語法來產生真正的 tab 字元
-        # 原始配置使用 8 個空格縮排，為了保持一致，這裡也使用空格
-        indent = "        "  # 8 個空格，與原始配置保持一致
-        insert_cmd = f"sed -i '/bt_gatt_server/a\\{indent}{self.CORRECT_CONFIG}' {self.EMMC_CONFIG_PATH}"
-        logger.debug(f"執行 sed 插入命令 (使用 8 空格縮排): {insert_cmd}")
-        fix_result = self.execute_remote_command(insert_cmd)
-
-        # 3. 驗證修正結果
-        logger.info("步驟 3: 驗證修正結果")
-        check_result = self.check_emmc_config()
-
-        if not check_result['has_error'] and self.CORRECT_CONFIG in check_result['current_content']:
-            logger.info("✓ 配置修正成功")
-            logger.info(f"   新配置: {self.CORRECT_CONFIG}")
-            logger.info("=" * 60)
+        if not check_result['has_error']:
+            logger.info(f"✓ {file_path} 修正成功")
             return True
         else:
-            logger.error("✗ 配置修正失敗")
-            logger.error(f"   檢查結果: {check_result}")
-            logger.info("=" * 60)
+            logger.error(f"✗ {file_path} 修正失敗")
             return False
 
     def validate_uart_setup(self) -> Dict[str, any]:
         """
-        完整的 UART 設定驗證流程
+        完整的 UART 設定驗證流程 (檢查所有配置檔)
 
         Returns:
-            驗證結果字典：
-                - config_ok (bool): 配置是否正確
-                - fixed (bool): 是否已修正
-                - needs_reboot (bool): 是否需要重開機
-                - reboot_command (str): 重開機命令
-                - error_message (str): 錯誤訊息
-                - details (dict): 詳細資訊
+            驗證結果字典
         """
         result = {
-            'config_ok': False,
+            'config_ok': True,
             'fixed': False,
             'needs_reboot': False,
             'reboot_command': None,
@@ -359,62 +458,83 @@ class RemoteSystemConfigValidator:
         }
 
         try:
-            # 連接串列埠
             logger.info("驗證遠端系統配置...")
 
             if not self.connect():
                 result['error_message'] = f"無法連接串列埠: {self.port}"
+                result['config_ok'] = False
                 return result
 
-            # 等待遠端設備就緒
             logger.info("等待遠端設備就緒...")
             time.sleep(1.0)
-
-            # 發送換行以激活 shell
             self.serial_conn.write(b'\n')
             time.sleep(0.5)
 
-            # 檢查配置
-            check_result = self.check_emmc_config()
-            result['details']['check_result'] = check_result
+            # 檢查所有配置
+            all_fixed = True
+            any_error = False
+            
+            for file_path, expected_content in self.TARGET_CONFIGS.items():
+                check_result = self.check_file_config(file_path, expected_content)
+                logger.debug(f"Check result for {file_path}: {check_result}")
+                result['details'][file_path] = check_result
 
-            if check_result['has_error'] is None:
-                result['error_message'] = f"無法讀取配置檔: {self.EMMC_CONFIG_PATH}"
-                return result
+                if check_result['has_error']:
+                    any_error = True
+                    result['config_ok'] = False
+                    logger.warning(f"⚠️ 發現錯誤: {file_path}")
+                    
+                    # 嘗試修正
+                    if self.fix_file_config(file_path, expected_content):
+                        result['fixed'] = True
+                        result['needs_reboot'] = True
+                    else:
+                        all_fixed = False
+                        result['error_message'] = f"修正失敗: {file_path}"
 
-            if not check_result['has_error']:
-                logger.info("✓ 遠端配置正確")
-                result['config_ok'] = True
-                return result
-
-            # 自動修正
-            logger.warning(f"⚠️ 檢測到配置錯誤: {check_result['error_type']}")
-            logger.warning(f"   錯誤行: {check_result['matched_line']}")
-            logger.info(f"將自動修正為: {self.CORRECT_CONFIG}")
-
-            if self.fix_emmc_config():
-                result['fixed'] = True
-                result['needs_reboot'] = True
+            if result['fixed'] and all_fixed:
                 result['reboot_command'] = "reboot"
-
-                logger.warning("")
                 logger.warning("=" * 60)
-                logger.warning("⚠️  重要：配置已修正，但需要重開機才能生效")
-                logger.warning("=" * 60)
-                logger.warning("")
-                logger.warning("請執行以下命令重開機遠端設備：")
+                logger.warning("⚠️  配置已修正，需要重開機")
                 logger.warning(f"  {result['reboot_command']}")
-                logger.warning("")
-                logger.warning("重開機後，請重新執行測試。")
                 logger.warning("=" * 60)
-            else:
-                result['error_message'] = "配置修正失敗，請手動檢查"
+            elif any_error and not all_fixed:
+                result['error_message'] = "部分配置修正失敗，請檢查日誌"
 
             return result
 
         except Exception as e:
             logger.error(f"驗證過程發生錯誤: {e}")
             result['error_message'] = str(e)
+            # 檢查 uvcapture 是否正在運行
+            logger.info("檢查 uvcapture 狀態...")
+            ps_output = self.execute_remote_command("ps | grep uvcapture")
+            uvcapture_running = False
+            for line in ps_output:
+                if "uvcapture" in line and "grep" not in line:
+                    uvcapture_running = True
+                    logger.info(f"✓ uvcapture 正在運行: {line}")
+                    break
+            
+            if not uvcapture_running:
+                logger.warning("⚠️  uvcapture 未運行，嘗試手動啟動...")
+                self.execute_remote_command("/uvoice/start_uvoice.sh &")
+                time.sleep(2)
+                
+                # 再次檢查
+                ps_output = self.execute_remote_command("ps | grep uvcapture")
+                for line in ps_output:
+                    if "uvcapture" in line and "grep" not in line:
+                        uvcapture_running = True
+                        logger.info(f"✓ uvcapture 已啟動: {line}")
+                        break
+                
+                if not uvcapture_running:
+                    logger.error("✗ 無法啟動 uvcapture")
+                    result['error_message'] = "uvcapture 服務無法啟動"
+                    return result
+
+            result['config_ok'] = True
             return result
 
         finally:
@@ -425,27 +545,25 @@ class RemoteSystemConfigValidator:
     # ===========================================
 
     def 連接遠端設備(self, port: str = '/dev/ttyUSB0', baudrate: int = 115200) -> bool:
-        """
-        連接遠端設備
-
-        Args:
-            port: 串列埠路徑
-            baudrate: 鮑率
-
-        Returns:
-            是否成功連接
-        """
+        """連接遠端設備"""
         self.port = port
         self.baudrate = baudrate
         return self.connect()
 
     def 檢查遠端配置(self) -> Dict[str, any]:
-        """檢查遠端 /etc/init.d/emmc 配置"""
-        return self.check_emmc_config()
+        """檢查所有遠端配置"""
+        results = {}
+        for file_path, expected_content in self.TARGET_CONFIGS.items():
+            results[file_path] = self.check_file_config(file_path, expected_content)
+        return results
 
     def 修正遠端配置(self) -> bool:
-        """修正遠端 /etc/init.d/emmc 配置"""
-        return self.fix_emmc_config()
+        """修正所有遠端配置"""
+        all_success = True
+        for file_path, expected_content in self.TARGET_CONFIGS.items():
+            if not self.fix_file_config(file_path, expected_content):
+                all_success = False
+        return all_success
 
     def 驗證並修正遠端配置(self) -> Dict[str, any]:
         """完整的遠端配置驗證與修正流程"""

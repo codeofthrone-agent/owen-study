@@ -599,6 +599,38 @@ robot --reporttitle "Gherkin Style Test Report" tests/
 
 ---
 
+## AudioKeywords - 音訊硬體控制關鍵字 (libraries/voice_control/AudioKeywords.py)
+
+用於控制 Focusrite Scarlett 4i4 音訊介面，支援 4 聲道獨立輸出測試。
+
+### 引用方式
+```robotframework
+Resource    resources/audio_keywords.robot
+```
+
+### 常用關鍵字
+
+#### Given Scarlett 音訊介面可用
+檢查系統中是否已正確設定 Scarlett 4i4 的虛擬音訊設備 (Scarlett_1-2, Scarlett_3-4)。
+
+#### When 使用者播放音訊檔案 "${audio_file}" 到聲道 "${channel}"
+播放指定的音訊檔案到目標聲道 (1-4)。
+- `audio_file`: 音訊檔案路徑
+- `channel`: 目標聲道 (1, 2, 3, 4)
+- `duration`: 播放時間 (秒)，預設 5 秒
+
+#### When 使用者播放音訊檔案 "${audio_file}" 到聲道 "${channel}" 持續 "${duration}" 秒
+播放指定的音訊檔案到目標聲道，並指定播放持續時間。
+- `audio_file`: 音訊檔案路徑
+- `channel`: 目標聲道 (1, 2, 3, 4)
+- `duration`: 播放時間 (秒)
+
+#### Then 預設音訊輸出應該是 "${expected_sink}"
+驗證當前的系統預設音訊輸出設備。
+- `expected_sink`: 預期的設備名稱 (如 "Scarlett_1-2")
+
+---
+
 ## 🎤 語音控制關鍵字 (libraries/voice_control/VoiceControlKeywords.py) ✅ **符合規範**
 
 ### 📋 模組資訊
@@ -1407,6 +1439,32 @@ Log    亮度變化: ${變化}[difference]
 ```
 - 參數：delay - 兩次測量間隔（秒）
 - 回傳：包含兩次亮度和變化量的字典
+
+**取得環境燈光亮度**
+```robotframework
+${brightness} =    When 取得環境燈光亮度    light_one
+```
+- 參數：light_id - 燈光 ID (定義於 YAML)
+- 回傳：亮度數值 (float)
+- 用途：取得指定燈光的當前亮度值，用於後續比較
+
+**驗證亮度變化**
+```robotframework
+Then 驗證亮度變化    ${before}    ${after}    increase    10
+Then 驗證亮度變化    ${before}    ${after}    decrease    10
+# 支援中文參數
+Then 驗證亮度變化    ${before}    ${after}    增加    10
+Then 驗證亮度變化    ${before}    ${after}    減少    10
+# 支援符號參數
+Then 驗證亮度變化    ${before}    ${after}    +    10
+Then 驗證亮度變化    ${before}    ${after}    -    10
+```
+- 參數：
+  - before_brightness: 變化前亮度
+  - after_brightness: 變化後亮度
+  - expected_change: 預期變化方向 (increase/decrease/增加/減少/+/-)
+  - min_delta: 最小變化量 (預設 10.0)
+- 用途：驗證亮度是否發生顯著變化，適用於相對亮度檢查 (解決絕對閾值不準確問題)
 
 #### 完整測試範例
 

@@ -168,6 +168,7 @@ robot-test-project/
 
 - **[系統規格書](spec.md)**：專案的整體功能與非功能性需求。
 - **[視覺偵測詳細架構](docs/vision_detection_architecture_detailed.md)**：深入了解影像分析（包含 RTSP）的完整流程與設計細節。
+- **[遠端配置驗證指南](docs/remote_config_validator_guide.md)**：UART 日誌監控配置與故障排除指南。
 - **[任務清單](todo.md)**：目前的開發待辦事項。
 
 ## 安裝與環境設置
@@ -725,16 +726,42 @@ ANDROID_APP_ACTIVITY=.MainActivity
 - ✅ 完整測試案例與文檔
 - ✅ 設備狀態檢測與驗證
 
+### 6. 專業音訊硬體控制 (Scarlett 4i4)
+
+本專案整合了 Focusrite Scarlett 4i4 4th Gen 音訊介面的自動化控制，支援 4 聲道獨立輸出測試。
+
+- **核心功能**:
+  - 自動 PipeWire 路由配置
+  - 4 聲道獨立音訊播放
+  - 虛擬設備 (Sink) 自動切換
+  - 支援 Robot Framework Gherkin 風格測試
+
+- **快速開始**:
+  ```bash
+  # 1. 設定 PipeWire 路由
+  cd libraries/voice_control
+  ./setup_pipewire_routing_v3.sh
+
+  # 2. 執行測試
+  robot tests/audio_hardware/advanced_audio_test.robot
+  ```
+
+- **相關文件**:
+  - [AudioKeywords 文檔](keywords_readme.md#audiokeywords---音訊硬體控制關鍵字-librariesvoice_controlaudiokeywordspy)
+  - [詳細模組說明](libraries/voice_control/README.md)
+
 ## 📹 IP Camera 燈光檢測系統 ✅
 
 ### 功能概述
 
 基於 RTSP 串流的 IP Camera 影像分析系統，支援：
-- 實時影像擷取（HEVC/H.265 編碼）
-- 智能亮度分析（0-255 數值範圍）
-- 自動燈光狀態判定（可配置閾值）
-- 多攝影機環境管理
-- 完整的中文 Robot Framework 關鍵字
+- **實時影像擷取**：使用背景執行緒 (`FrameReader`) 確保影像零延遲 (HEVC/H.265 編碼)
+- **混合驗證機制**：
+  - **開燈驗證**：絕對亮度檢查 (Absolute Threshold)
+  - **關燈驗證**：相對亮度檢查 (Relative Comparison)，解決自動曝光干擾
+- **智能亮度分析**：0-255 數值範圍，支援 ROI 區域分析
+- **多攝影機環境管理**：支援實驗室與 RV 車環境切換
+- **完整的中文 Robot Framework 關鍵字**
 
 ### 測試通過的攝影機
 
@@ -755,13 +782,20 @@ detector.connect_camera('laboratory', 'level1')
 brightness = detector.get_current_brightness()
 ```
 
-#### Robot Framework
+#### Robot Framework (混合驗證)
 ```robotframework
 *** Test Cases ***
 自動化燈光檢測
+    # 開燈驗證 (絕對值)
     Given 連接實驗室 Level1 攝影機
     When 取得當前燈光亮度
     Then 驗證燈光為開啟狀態
+
+    # 關燈驗證 (相對值)
+    ${before} =    When 取得環境燈光亮度    light_one
+    When 執行關燈動作
+    ${after} =     When 取得環境燈光亮度    light_one
+    Then 驗證亮度變化    ${before}    ${after}    減少    10
 ```
 
 ### 相關文檔
@@ -772,8 +806,8 @@ brightness = detector.get_current_brightness()
 - [模組摘要](docs/ipcam_module_summary.md)
 - [測試案例](tests/ipcam_testing/ipcam_light_detection_test.robot)
 
-**開發完成日期**: 2025-11-05
-**測試狀態**: ✅ 生產就緒 (Production Ready)
+**開發完成日期**: 2025-11-28
+**測試狀態**: ✅ 生產就緒 (Production Ready) - 支援動態檔名與背景串流
 
 #### 🌐 測試標準化系統 ✅ **[完整實現]**
 - ✅ 全面中文關鍵字標準化
