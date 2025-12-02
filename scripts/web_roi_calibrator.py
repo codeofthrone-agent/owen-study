@@ -812,7 +812,8 @@ class WebButtonROICalibrator:
                         cam_config = EnvironmentConfig.get_camera(env_name, camera_id)
                         # EnvironmentConfig 已經處理好認證和 URL
                         test_url = cam_config['rtsp_url']
-                        print(f"   取得 Camera URL: {test_url}")
+                        transport = cam_config.get('transport', 'tcp')
+                        print(f"   取得 Camera URL: {test_url} (Transport: {transport})")
                         stream_paths = [test_url]
                     except ValueError as e:
                         return {"success": False, "error": str(e)}
@@ -820,8 +821,13 @@ class WebButtonROICalibrator:
                 cap = None
                 successful_path = None
 
-                # 強制使用 UDP 傳輸 (嘗試解決 461 錯誤，因為 TCP 失敗)
-                os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;udp"
+                # 設定傳輸協議
+                if transport == 'udp':
+                    os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;udp"
+                    print("   設定 FFmpeg 選項: UDP 傳輸")
+                else:
+                    os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
+                    print("   設定 FFmpeg 選項: TCP 傳輸")
 
                 for rtsp_url in stream_paths:
                     print(f"   嘗試連接: {rtsp_url.replace(os.getenv('IPCAM_PASSWORD', ''), '******') if os.getenv('IPCAM_PASSWORD') else rtsp_url}")
@@ -1319,18 +1325,44 @@ def capture_rtsp_image():
         successful_url = None
         
         # 嘗試連接
-        # 使用 TCP 傳輸（避免 UDP 問題）
+        # 根據 EnvironmentConfig 設定傳輸協議
+        from config.robot_arm.environment_config import EnvironmentConfig
+        # 嘗試從 URL 反查 Camera 配置以取得 transport 設定
+        # 這是一個簡化的做法，理想情況下應該從前端傳遞 transport 參數
+        transport = 'udp' # 預設 UDP (為了相容性)
+        
+        # 嘗試解析環境和 Camera ID (如果可能)
+        # 這裡我們簡單地預設使用 UDP，因為這是此工具的主要修復目標
+        # 但如果能從 EnvironmentConfig 獲取會更好
+        
+        if transport == 'udp':
+            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;udp"
+        else:
+            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
+            
         cap = cv2.VideoCapture(rtsp_url)
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 10)  # Increase buffer size for stability
 
         if cap.isOpened():
-            # 測試讀取一幀
-            ret, test_frame = cap.read()
-            if ret and test_frame is not None:
-                print(f"✅ 成功連接: {rtsp_url}")
-                successful_url = rtsp_url
-            else:
-                print(f"⚠️  連接成功但無法讀取幀: {rtsp_url}")
+            print(f"   ⏳ 已連接，正在等待影像 (最多 60 幀)...")
+            
+            # 嘗試連續讀取直到獲得有效影像 (取代原本的 sleep 5s)
+            # 對於 UDP 串流，必須持續讀取 buffer 才能獲得最新影像
+            frame_read_success = False
+            for i in range(60):  # 嘗試讀取 60 幀 (約 2-3 秒)
+                ret, test_frame = cap.read()
+                if ret and test_frame is not None and test_frame.size > 0:
+                    # 讀到第一幀後，再多讀幾幀確保穩定 (HEVC 預熱)
+                    if i > 5: 
+                        print(f"✅ 成功連接並讀取影像: {rtsp_url} (Frame {i})")
+                        successful_url = rtsp_url
+                        frame_read_success = True
+                        break
+                import time
+                time.sleep(0.05)
+            
+            if not frame_read_success:
+                print(f"⚠️  連接成功但無法讀取有效幀 (Timeout): {rtsp_url}")
                 cap.release()
                 cap = None
         else:

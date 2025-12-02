@@ -39,6 +39,42 @@ class AudioPlayer:
             print(f"警告: 無法檢測 Scarlett 設備: {e}")
             return False
 
+    def verify_routing(self, target_channel: int) -> Tuple[bool, str]:
+        """
+        驗證指定聲道的路由是否已設定 (檢查虛擬 Sink 是否存在)
+
+        Args:
+            target_channel: 目標聲道 (1-4)
+
+        Returns:
+            (是否通過, 錯誤訊息)
+        """
+        try:
+            # 決定預期的 Sink 名稱
+            if target_channel in [1, 2]:
+                expected_sink = "Scarlett_1-2"
+            elif target_channel in [3, 4]:
+                expected_sink = "Scarlett_3-4"
+            else:
+                return False, f"無效的聲道編號: {target_channel}"
+
+            # 執行 pactl list sinks short
+            result = subprocess.run(
+                ["pactl", "list", "sinks", "short"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            
+            # 檢查輸出中是否包含預期的 Sink
+            if expected_sink in result.stdout:
+                return True, ""
+            else:
+                return False, f"找不到虛擬 Sink '{expected_sink}'，請執行 setup_pipewire_routing_v5.sh 進行設定"
+
+        except Exception as e:
+            return False, f"路由驗證過程發生錯誤: {e}"
+
     def play_to_channel(self, audio_file: str, target_channel: int,
                        duration: int = 5) -> bool:
         """

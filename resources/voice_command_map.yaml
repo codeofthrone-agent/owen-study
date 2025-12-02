@@ -1,0 +1,330 @@
+CMD_WAKE_UP:
+  id: 1
+  filename: kws_answer.mp3
+CMD_LIGHT1_ON:
+  id: 2
+  filename: cmd_002.mp3
+CMD_LIGHT1_OFF:
+  id: 3
+  filename: cmd_003.mp3
+CMD_LIGHT1_ONE_HUND_PERCENT:
+  id: 10
+  filename: cmd_010.mp3
+CMD_LIGHT2_ON:
+  id: 4
+  filename: cmd_004.mp3
+CMD_LIGHT2_OFF:
+  id: 5
+  filename: cmd_005.mp3
+CMD_LIGHT2_ONE_HUND_PERCENT:
+  id: 11
+  filename: cmd_011.mp3
+CMD_LIGHT3_ON:
+  id: 6
+  filename: cmd_006.mp3
+CMD_LIGHT3_OFF:
+  id: 7
+  filename: cmd_007.mp3
+CMD_LIGHT3_ONE_HUND_PERCENT:
+  id: 12
+  filename: cmd_012.mp3
+CMD_LIGHT4_ON:
+  id: 8
+  filename: cmd_008.mp3
+CMD_LIGHT4_OFF:
+  id: 9
+  filename: cmd_009.mp3
+CMD_LIGHT4_ONE_HUND_PERCENT:
+  id: 13
+  filename: cmd_013.mp3
+CMD_LIGHT5_ON:
+  id: 52
+  filename: cmd_052.mp3
+CMD_LIGHT5_OFF:
+  id: 53
+  filename: cmd_053.mp3
+CMD_LIGHT5_ONE_HUND_PERCENT:
+  id: 56
+  filename: cmd_056.mp3
+CMD_LIGHT6_ON:
+  id: 54
+  filename: cmd_054.mp3
+CMD_LIGHT6_OFF:
+  id: 55
+  filename: cmd_055.mp3
+CMD_LIGHT6_ONE_HUND_PERCENT:
+  id: 57
+  filename: cmd_057.mp3
+CMD_LIGHT7_ON:
+  id: 61
+  filename: cmd_061.mp3
+CMD_LIGHT7_OFF:
+  id: 62
+  filename: cmd_062.mp3
+CMD_LIGHT7_ONE_HUND_PERCENT:
+  id: 65
+  filename: cmd_065.mp3
+CMD_LIGHT8_ON:
+  id: 63
+  filename: cmd_063.mp3
+CMD_LIGHT8_OFF:
+  id: 64
+  filename: cmd_064.mp3
+CMD_LIGHT8_ONE_HUND_PERCENT:
+  id: 66
+  filename: cmd_066.mp3
+CMD_ALL_LIGHTS_ON:
+  id: 28
+  filename: cmd_028.mp3
+CMD_ALL_LIGHTS_ONE_HUND_PERCENT:
+  id: 29
+  filename: cmd_029.mp3
+CMD_ALL_LIGHTS_FIFTY_PERCENT:
+  id: 91
+  filename: cmd_091.mp3
+CMD_ALL_LIGHTS_OFF:
+  id: 30
+  filename: cmd_030.mp3
+CMD_WATER_PUMP_ON:
+  id: 34
+  filename: cmd_034.mp3
+CMD_WATER_PUMP_OFF:
+  id: 35
+  filename: cmd_035.mp3
+CMD_ELECTRIC_HEATER_ON:
+  id: 36
+  filename: cmd_036.mp3
+CMD_ELECTRIC_HEATER_OFF:
+  id: 37
+  filename: cmd_037.mp3
+CMD_GAS_HEATER_ON:
+  id: 38
+  filename: cmd_038.mp3
+CMD_GAS_HEATER_OFF:
+  id: 39
+  filename: cmd_039.mp3
+CMD_TANK_HEATER_ON:
+  id: 50
+  filename: cmd_050.mp3
+CMD_TANK_HEATER_OFF:
+  id: 51
+  filename: cmd_051.mp3
+CMD_BATTERY_LEVEL_CHECK:
+  id: 40
+  filename: cmd_040.mp3
+CMD_HOLDING_TANK_LEVEL_CHECK:
+  id: 41
+  filename: cmd_041.mp3
+CMD_FRESH_WATER_TANK_LEVEL_CHECK:
+  id: 42
+  filename: cmd_042.mp3
+CMD_GRAY_TANK_LEVEL_CHECK:
+  id: 43
+  filename: cmd_043.mp3
+CMD_BLACK_TANK_LEVEL_CHECK:
+  id: 44
+  filename: cmd_044.mp3
+CMD_I_AM_HOME:
+  id: 45
+  filename: cmd_045.mp3
+CMD_GOODBYE:
+  id: 46
+  filename: cmd_046.mp3
+CMD_GOODNIGHT:
+  id: 47
+  filename: cmd_047.mp3
+CMD_I_AM_AWAKE:
+  id: 48
+  filename: cmd_048.mp3
+CMD_SHUTDOWN_RV:
+  id: 49
+  filename: cmd_049.mp3
+CMD_KITCHEN_ON:
+  id: 14
+  filename: cmd_014.mp3
+CMD_KITCHEN_OFF:
+  id: 15
+  filename: cmd_015.mp3
+CMD_KITCHEN_ONE_HUND_PERCENT:
+  id: 24
+  filename: cmd_024.mp3
+CMD_BEDROOM_ON:
+  id: 16
+  filename: cmd_016.mp3
+CMD_BEDROOM_OFF:
+  id: 17
+  filename: cmd_017.mp3
+CMD_BEDROOM_ONE_HUND_PERCENT:
+  id: 25
+  filename: cmd_025.mp3
+CMD_LIVINGROOM_ON:
+  id: 18
+  filename: cmd_018.mp3
+CMD_LIVINGROOM_OFF:
+  id: 19
+  filename: cmd_019.mp3
+CMD_LIVINGROOM_ONE_HUND_PERCENT:
+  id: 26
+  filename: cmd_026.mp3
+CMD_BATHROOM_ON:
+  id: 20
+  filename: cmd_020.mp3
+CMD_BATHROOM_OFF:
+  id: 21
+  filename: cmd_021.mp3
+CMD_BATHROOM_ONE_HUND_PERCENT:
+  id: 27
+  filename: cmd_027.mp3
+CMD_EXTERIOR_ON:
+  id: 22
+  filename: cmd_022.mp3
+CMD_EXTERIOR_OFF:
+  id: 23
+  filename: cmd_023.mp3
+CMD_EXTERIOR_ONE_HUND_PERCENT:
+  id: 110
+  filename: cmd_110.mp3
+CMD_ACCENT_ON:
+  id: 58
+  filename: cmd_058.mp3
+CMD_ACCENT_OFF:
+  id: 59
+  filename: cmd_059.mp3
+CMD_ACCENT_ONE_HUND_PERCENT:
+  id: 60
+  filename: cmd_060.mp3
+CMD_STEP_ON:
+  id: 67
+  filename: cmd_067.mp3
+CMD_STEP_OFF:
+  id: 68
+  filename: cmd_068.mp3
+CMD_STEP_ONE_HUND_PERCENT:
+  id: 69
+  filename: cmd_069.mp3
+CMD_GARAGE_ON:
+  id: 70
+  filename: cmd_070.mp3
+CMD_GARAGE_OFF:
+  id: 71
+  filename: cmd_071.mp3
+CMD_GARAGE_ONE_HUND_PERCENT:
+  id: 72
+  filename: cmd_072.mp3
+CMD_AWNING_ON:
+  id: 73
+  filename: cmd_073.mp3
+CMD_AWNING_OFF:
+  id: 74
+  filename: cmd_074.mp3
+CMD_AWNING_ONE_HUND_PERCENT:
+  id: 75
+  filename: cmd_075.mp3
+CMD_BUNK_ON:
+  id: 76
+  filename: cmd_076.mp3
+CMD_BUNK_OFF:
+  id: 77
+  filename: cmd_077.mp3
+CMD_BUNK_ONE_HUND_PERCENT:
+  id: 78
+  filename: cmd_078.mp3
+CMD_LOFT_ON:
+  id: 79
+  filename: cmd_079.mp3
+CMD_LOFT_OFF:
+  id: 80
+  filename: cmd_080.mp3
+CMD_LOFT_ONE_HUND_PERCENT:
+  id: 81
+  filename: cmd_081.mp3
+CMD_CARGO_ON:
+  id: 82
+  filename: cmd_082.mp3
+CMD_CARGO_OFF:
+  id: 83
+  filename: cmd_083.mp3
+CMD_CARGO_ONE_HUND_PERCENT:
+  id: 84
+  filename: cmd_084.mp3
+CMD_GALLEY_ON:
+  id: 85
+  filename: cmd_085.mp3
+CMD_GALLEY_OFF:
+  id: 86
+  filename: cmd_086.mp3
+CMD_GALLEY_ONE_HUND_PERCENT:
+  id: 87
+  filename: cmd_087.mp3
+CMD_DINETTE_ON:
+  id: 88
+  filename: cmd_088.mp3
+CMD_DINETTE_OFF:
+  id: 89
+  filename: cmd_089.mp3
+CMD_DINETTE_ONE_HUND_PERCENT:
+  id: 90
+  filename: cmd_090.mp3
+CMD_READING_MODE:
+  id: 31
+  filename: cmd_031.mp3
+CMD_MOVIE_MODE:
+  id: 32
+  filename: cmd_032.mp3
+CMD_RELAXATION_MODE:
+  id: 33
+  filename: cmd_033.mp3
+CMD_LOCK_DOOR:
+  id: 92
+  filename: cmd_092.mp3
+CMD_UNLOCK_DOOR:
+  id: 93
+  filename: cmd_093.mp3
+CMD_CLIMATE_CONTROL_ON:
+  id: 94
+  filename: cmd_094.mp3
+CMD_CLIMATE_CONTROL_OFF:
+  id: 95
+  filename: cmd_095.mp3
+CMD_FAN_LOW_ON:
+  id: 96
+  filename: cmd_096.mp3
+CMD_FAN_HIGH_ON:
+  id: 97
+  filename: cmd_097.mp3
+CMD_COOL_RV:
+  id: 98
+  filename: cmd_098.mp3
+CMD_HEAT_RV:
+  id: 99
+  filename: cmd_099.mp3
+CMD_ZONE_ONE_COOL:
+  id: 100
+  filename: cmd_100.mp3
+CMD_ZONE_ONE_HEAT:
+  id: 101
+  filename: cmd_101.mp3
+CMD_ZONE_ONE_FAN_LOW:
+  id: 102
+  filename: cmd_102.mp3
+CMD_ZONE_ONE_FAN_HIGH:
+  id: 103
+  filename: cmd_103.mp3
+CMD_ZONE_TWO_COOL:
+  id: 104
+  filename: cmd_104.mp3
+CMD_ZONE_TWO_HEAT:
+  id: 105
+  filename: cmd_105.mp3
+CMD_ZONE_TWO_FAN_LOW:
+  id: 106
+  filename: cmd_106.mp3
+CMD_ZONE_TWO_FAN_HIGH:
+  id: 107
+  filename: cmd_107.mp3
+CMD_INTERIOR_TEMPERATURE:
+  id: 108
+  filename: cmd_108.mp3
+CMD_EXTERIOR_TEMPERATURE:
+  id: 109
+  filename: cmd_109.mp3

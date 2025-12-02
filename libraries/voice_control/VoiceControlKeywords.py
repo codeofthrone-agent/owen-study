@@ -13,8 +13,10 @@
 import os
 import time
 import sys
+from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
+import yaml
 
 # Robot Framework 支援
 try:
@@ -84,6 +86,9 @@ class VoiceControlKeywords:
         # 設定日誌
         self._setup_logging()
 
+        # 載入語音指令對照表 (v1.4.0)
+        self.voice_command_map = self._load_voice_command_map()
+
         if ROBOT_AVAILABLE:
             robot_logger.info("VoiceControlKeywords 初始化完成 (v1.2.0)")
         else:
@@ -104,11 +109,62 @@ class VoiceControlKeywords:
         except Exception as e:
             print(f"日誌設定失敗: {e}")
 
+    def _load_voice_command_map(self) -> Dict[str, Any]:
+        """
+        載入語音指令對照表 (內部方法)
+        
+        Returns:
+            指令對照字典
+        """
+        try:
+            # 假設 yaml 檔案位於專案根目錄的 resources 資料夾下
+            project_root = Path(__file__).parent.parent.parent
+            yaml_path = project_root / "resources" / "voice_command_map.yaml"
+            
+            if not yaml_path.exists():
+                logger.warning(f"找不到語音指令對照表: {yaml_path}")
+                return {}
+                
+            with open(yaml_path, 'r', encoding='utf-8') as f:
+                command_map = yaml.safe_load(f)
+                
+            if command_map:
+                logger.info(f"已載入 {len(command_map)} 個語音指令定義")
+                return command_map
+            else:
+                return {}
+                
+        except Exception as e:
+            logger.error(f"載入語音指令對照表失敗: {e}")
+            return {}
+
+    def _resolve_pattern(self, pattern: str) -> str:
+        """
+        解析模式字串，如果是指令 Key 則轉換為對應的檔案名稱
+        
+        Args:
+            pattern: 模式字串或指令 Key (例如 "CMD_WAKE_UP")
+            
+        Returns:
+            對應的檔案名稱或原始模式
+        """
+        pattern = pattern.strip()
+        
+        # 檢查是否為指令 Key
+        if self.voice_command_map and pattern in self.voice_command_map:
+            entry = self.voice_command_map[pattern]
+            if isinstance(entry, dict) and 'filename' in entry:
+                filename = entry['filename']
+                logger.info(f"解析指令 Key: {pattern} -> {filename}")
+                return filename
+                
+        return pattern
+
     # ===========================================
     # UART 監控相關內部方法 (新增於 v1.1.0)
     # ===========================================
 
-    def _init_uart_monitor(self, port: Optional[str] = None, baudrate: int = 115200) -> bool:
+    def _init_uart_monitor(self, port: Optional[str] = None, baudrate: int = 115200, auto_validate: bool = True) -> bool:
         """
         初始化 UART 監控器 (內部方法)
 
@@ -129,7 +185,7 @@ class VoiceControlKeywords:
             self.uart_parser = SerialLogParser(port=port, baudrate=baudrate)
 
             # 連接串列埠
-            if not self.uart_parser.connect(auto_validate=True):
+            if not self.uart_parser.connect(auto_validate=auto_validate):
                 logger.error("UART 串列埠連接失敗")
                 return False
 
@@ -772,12 +828,20 @@ class VoiceControlKeywords:
                 
             # 檢查 Scarlett 設備可用性
             if not self.audio_player.scarlett_available:
-                logger.error("Scarlett 4i4 設備不可用")
+                logger.error("Scarlett 4i4 設備不可用 (未檢測到硬體)")
                 if ROBOT_AVAILABLE:
-                    robot_logger.error("✗ Scarlett 4i4 設備不可用")
+                    robot_logger.error("✗ Scarlett 4i4 設備不可用 (未檢測到硬體)")
+                return False
+
+            # 驗證路由設定 (v1.3.0 新增)
+            is_routed, error_msg = self.audio_player.verify_routing(channel_num)
+            if not is_routed:
+                logger.error(f"聲道 {channel_num} 路由未就緒: {error_msg}")
+                if ROBOT_AVAILABLE:
+                    robot_logger.error(f"✗ 聲道 {channel_num} 路由未就緒: {error_msg}")
                 return False
                 
-            logger.info(f"聲道 {channel_num} 已準備就緒")
+            logger.info(f"聲道 {channel_num} 已準備就緒 (硬體與路由皆正常)")
             if ROBOT_AVAILABLE:
                 robot_logger.info(f"✓ 音訊輸出聲道 {channel_num} 已準備就緒")
                 
@@ -823,7 +887,14 @@ class VoiceControlKeywords:
         Returns:
             bool: 播放是否成功
         """
-        return self.speak_text_to_channel(text, int(channel), 'en', 5)
+        result = self.speak_text_to_channel(text, int(channel), 'en', 5)
+        
+        # Log completion time
+        command_end = datetime.now().strftime('%Y%m%d_%H%M%S.%f')
+        if ROBOT_AVAILABLE:
+            robot_logger.console(f"語音命令完成時間: {command_end}")
+            
+        return result
 
     @keyword('When 使用者播放文字 "${text}" 到聲道 "${channel}" 使用語言 "${language}"')
     def when_user_plays_text_to_channel_with_language(self, text: str, channel: int, language: str) -> bool:
@@ -860,7 +931,14 @@ class VoiceControlKeywords:
         Returns:
             bool: 播放是否成功
         """
-        return self.speak_text_to_channel(text, int(channel), language, 5)
+        result = self.speak_text_to_channel(text, int(channel), language, 5)
+        
+        # Log completion time
+        command_end = datetime.now().strftime('%Y%m%d_%H%M%S.%f')
+        if ROBOT_AVAILABLE:
+            robot_logger.console(f"語音命令完成時間: {command_end}")
+            
+        return result
 
     @keyword('When 使用者切換 TTS 引擎到 "${engine_name}"')
     def when_user_switches_tts_engine(self, engine_name: str) -> bool:
@@ -1428,7 +1506,7 @@ class VoiceControlKeywords:
     # ===========================================
 
     @keyword('Given UART 日誌監控器已初始化')
-    def given_uart_monitor_initialized(self, port: Optional[str] = None, baudrate: int = 115200) -> bool:
+    def given_uart_monitor_initialized(self, port: Optional[str] = None, baudrate: int = 115200, auto_validate: bool = True) -> bool:
         """
         Given: 確認 UART 日誌監控器已初始化
 
@@ -1437,6 +1515,7 @@ class VoiceControlKeywords:
         Arguments:
         - port: UART 埠路徑 (可選，預設從環境變數讀取)
         - baudrate: 鮑率 (預設 115200)
+        - auto_validate: 是否自動驗證並修正遠端配置 (預設 True)
 
         Prerequisites:
         - UART 設備已連接
@@ -1453,7 +1532,7 @@ class VoiceControlKeywords:
         Returns:
             bool: 初始化是否成功
         """
-        success = self._init_uart_monitor(port, baudrate)
+        success = self._init_uart_monitor(port, baudrate, auto_validate)
 
         if ROBOT_AVAILABLE:
             if success:
@@ -1629,7 +1708,8 @@ class VoiceControlKeywords:
             AssertionError: 當語音回應不符合預期時
         """
         timeout_val = float(timeout)
-        pattern_list = [p.strip() for p in patterns.split(',')]
+        # 解析每個模式，支援 YAML Key
+        pattern_list = [self._resolve_pattern(p) for p in patterns.split(',')]
         expected_count = len(pattern_list)
 
         passed, actual_count, filenames, raw_log_lines = self._check_voice_response_count(

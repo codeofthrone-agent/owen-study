@@ -119,6 +119,7 @@ robot_arm_control/
 - 控制庫: pymycobot
 - 座標系統: 3D 座標映射
 - 視覺輔助: OpenCV 定位
+- **RTSP 傳輸協議**: 必須使用 **UDP** (避免 TCP 461 Unsupported transport 錯誤)
 
 **註**: 機器手臂作為測試執行工具，其精度校準、安全機制等驗證測試存放在 libraries/ 目錄下，不納入 TestLink 產品測試案例管理範圍。
 

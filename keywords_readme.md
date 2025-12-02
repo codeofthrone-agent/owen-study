@@ -1,5 +1,13 @@
 # Robot Framework 關鍵字說明文件 - Gherkin 風格 (最新更新)
 
+## 🚀 重大更新 (2025-12-02) - v1.3.0 音訊路由驗證增強
+
+### ✅ 音訊關鍵字增強
+- **Given 音訊輸出聲道 "${channel}" 已準備就緒**
+  - 新增自動路由驗證功能
+  - 現在會檢查 PipeWire 虛擬 Sink (Scarlett_1-2 / Scarlett_3-4) 是否存在
+  - 若路由未設定，將自動報錯並提示執行 `setup_pipewire_routing_v5.sh`
+
 ## 🚀 重大更新 (2025-11-18) - v4.0.0 本機化視覺檢測系統
 
 ### ✅ 機器手臂視覺檢測系統 - 本機化遷移完成
@@ -661,7 +669,7 @@ Resource    resources/audio_keywords.robot
 - **Given Scarlett 4i4 音效介面已正確連接** - 確認 Focusrite Scarlett 4i4 音效介面正確連接並可用
 - **Given TTS 引擎已設定為 "${engine_name}"** - 設定並確認指定的 TTS 引擎已正確配置 (gtts/pyttsx3)
 - **Given TTS 語言已設定為 "${language}"** - 設定並確認指定的 TTS 語言已正確配置 (en/zh-TW/ja)
-- **Given 音訊輸出聲道 "${channel}" 已準備就緒** - 確認指定音訊輸出聲道已準備就緒 (1-4)
+- **Given 音訊輸出聲道 "${channel}" 已準備就緒** - 確認指定音訊輸出聲道已準備就緒 (含路由驗證) (1-4)
 - **Given UART 日誌監控器已初始化** - 初始化 UART 監控器用於檢測語音回應 (v1.2.0 新增)
 
 #### When Keywords (執行動作)
@@ -797,7 +805,7 @@ Scenario: 測試 Off Grid Mode 語音指令
 - **Given 語音控制系統已成功初始化** - 初始化語音控制系統
 - **Given TTS 引擎已設定為 "${engine_name}"** - 切換 TTS 引擎 (gtts/pyttsx3)
 - **Given TTS 語言已設定為 "${language}"** - 設定語音語言 (zh-TW/en/ja)
-- **Given 音訊輸出聲道 "${channel}" 已準備就緒** - 準備指定聲道輸出
+- **Given 音訊輸出聲道 "${channel}" 已準備就緒** - 準備指定聲道輸出 (含路由驗證)
 
 #### ✅ 設備連接與狀態驗證 (現代化版本)
 - **Given Scarlett 4i4 音效介面已正確連接** - 檢查並確認 Scarlett 4i4 設備狀態

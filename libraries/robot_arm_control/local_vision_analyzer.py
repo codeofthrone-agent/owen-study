@@ -510,6 +510,7 @@ class LocalVisionAnalyzer:
 
             # 3. 計算平均影像
             avg_frame = np.mean(frames, axis=0).astype(np.uint8)
+            logger.info(f"📸 擷取影像解析度: {avg_frame.shape[1]}x{avg_frame.shape[0]}")
 
             # 4. 提取 ROI
             x, y, w, h = roi_config['x'], roi_config['y'], roi_config['width'], roi_config['height']

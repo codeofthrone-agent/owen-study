@@ -126,7 +126,7 @@ class ImageSourceManager:
         Args:
             source_type: 影像源類型 ("rtsp" | "socket")
             source_config: 源配置字典
-                - RTSP: {"url": "rtsp://...", "timeout": 10}
+                - RTSP: {"url": "rtsp://...", "timeout": 10, "transport": "udp"}
                 - Socket: {"host": "10.42.0.180", "port": 9000}
                 - HTTP: {"host": "10.42.0.180", "port": 8000}
 
@@ -240,12 +240,15 @@ class ImageSourceManager:
             # Phase 1.4 完成 - RTSP 影像擷取
             url = self.current_config["url"]
             timeout = self.current_config.get("timeout", 10)
+            transport = self.current_config.get("transport", "tcp")
+            use_tcp = (transport.lower() != "udp")
 
             return self.rtsp_source.capture_frame(
                 url=url,
                 retry_attempts=3,
                 retry_delay=2.0,
-                frame_skip=3
+                frame_skip=3,
+                use_tcp=use_tcp
             )
 
         elif self.current_source == "socket":
@@ -312,13 +315,16 @@ class ImageSourceManager:
         if self.current_source == "rtsp":
             # Phase 1.4 完成 - RTSP 多幀擷取
             url = self.current_config["url"]
+            transport = self.current_config.get("transport", "tcp")
+            use_tcp = (transport.lower() != "udp")
 
             return self.rtsp_source.capture_multiple_frames(
                 url=url,
                 num_frames=num_frames,
                 warmup_frames=warmup_frames,
                 retry_attempts=3,
-                retry_delay=2.0
+                retry_delay=2.0,
+                use_tcp=use_tcp
             )
 
         elif self.current_source == "socket":

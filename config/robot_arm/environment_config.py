@@ -148,7 +148,7 @@ class EnvironmentConfig:
             "robot_arm_http_port": 8000,
             "robot_arm_image_source": "http",
 
-            "panel_types": ["3611c"],
+            "panel_types": ["3611a", "3611c"],
             "button_config_path": "config/robot_arm/rv_car_buttons.yaml",
             "hsv_adjustments": {},
             "description": "RV Car 車載測試環境，使用 Socket 影像源"
@@ -243,6 +243,7 @@ class EnvironmentConfig:
                 - port (int): 端口
                 - protocol (str): 協議 (rtsp)
                 - stream_path (str): 串流路徑
+                - transport (str): 傳輸協議 (udp/tcp)
                 - rtsp_url (str): 完整 RTSP URL（✨ v4.2.0 包含認證資訊）
                 - description (str): 描述
                 - purpose (str): 用途
@@ -279,6 +280,7 @@ class EnvironmentConfig:
                     port = cam_copy.get("port", 554)
                     stream_path = cam_copy.get("stream_path", "/live0")
                     protocol = cam_copy.get("protocol", "rtsp")
+                    transport = cam_copy.get("transport", "tcp")  # 預設 TCP，但 ipcam_config 可覆蓋為 udp
                     
                     # 處理路徑開頭的斜線
                     if stream_path and not stream_path.startswith("/"):
@@ -373,7 +375,7 @@ class EnvironmentConfig:
 
         Returns:
             dict: 影像源配置字典，格式依影像源類型而定：
-                - RTSP: {"type": "rtsp", "url": "rtsp://...", "timeout": 10}
+                - RTSP: {"type": "rtsp", "url": "rtsp://...", "timeout": 10, "transport": "udp"}
                 - Socket: {"type": "socket", "host": "...", "port": 9000, "num_frames": 5}
                 - HTTP: {"type": "http", "host": "...", "port": 8000, "num_frames": 5}
 
@@ -412,7 +414,9 @@ class EnvironmentConfig:
                 return {
                     "type": "rtsp",
                     "url": camera["rtsp_url"],
+                    "url": camera["rtsp_url"],
                     "timeout": 10,
+                    "transport": camera.get("transport", "tcp"),
                     "camera_id": camera["id"],
                     "description": camera.get("description", "")
                 }
@@ -446,7 +450,9 @@ class EnvironmentConfig:
             return {
                 "type": "rtsp",
                 "url": camera["rtsp_url"],
+                "url": camera["rtsp_url"],
                 "timeout": 10,
+                "transport": camera.get("transport", "tcp"),
                 "camera_id": camera["id"],
                 "description": camera.get("description", "")
             }

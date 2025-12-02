@@ -1,4 +1,4 @@
-environment: {name: rv_car, display_name: RV Car 測試環境, panel_type: 3611c, description: RV
+environment: {name: rv_car, display_name: RV Car 測試環境, panel_type: 3611a, description: RV
     Car 控制面板，包含 7 個控制按鈕和 16 個觀測點}
 connection:
   socket: {host: 10.42.0.180, port: 9000}
@@ -9,7 +9,7 @@ buttons:
     name: HVAC 按鈕
     description: 空調控制
     type: rv_control
-    panel_section: 3611c
+    panel_section: 3611a
     down_angles: [-7.1, -68.8, -61.6, 23.9, 0, 0]
     up_angles: [-6.8, -52.5, -61.3, 23.3, 0, 0]
     speed: 100
@@ -23,7 +23,7 @@ buttons:
     name: Water Pump 按鈕
     description: 水泵控制
     type: rv_control
-    panel_section: 3611c
+    panel_section: 3611a
     down_angles: [-8.5, -58, -80, 20, 0, 0]
     up_angles: [-8.5, -25, -80, 20, 0, 0]
     speed: 100
@@ -37,7 +37,7 @@ buttons:
     name: Water Heater 按鈕
     description: 熱水器控制
     type: rv_control
-    panel_section: 3611c
+    panel_section: 3611a
     down_angles: [-8.2, -62, -72.2, 20, 0, 0]
     up_angles: [-8.2, -25, -72.2, 20, 0, 0]
     speed: 100
@@ -51,7 +51,7 @@ buttons:
     name: Gas 按鈕
     description: 瓦斯控制
     type: rv_control
-    panel_section: 3611c
+    panel_section: 3611a
     down_angles: [-2.7, -60, -75.5, 17, 0, 0]
     up_angles: [-2.7, -30, -75.5, 17, 0, 0]
     speed: 100
@@ -65,7 +65,7 @@ buttons:
     name: Extend 按鈕
     description: 伸展控制
     type: rv_control
-    panel_section: 3611c
+    panel_section: 3611a
     down_angles: [-1.7, -69, -62, 19, 0, 0]
     up_angles: [-1.8, -30, -61, 20, 0, 0]
     speed: 100
@@ -79,7 +79,7 @@ buttons:
     name: Retract 按鈕
     description: 縮回控制
     type: rv_control
-    panel_section: 3611c
+    panel_section: 3611a
     down_angles: [3.1, -68, -67, 22, 0, 0]
     up_angles: [3.1, -35, -67, 22, 0, 0]
     speed: 100
@@ -93,7 +93,7 @@ buttons:
     name: Tanker Heater 按鈕
     description: 水箱加熱器
     type: rv_control
-    panel_section: 3611c
+    panel_section: 3611a
     down_angles: [-3, -58, -83, 20, 0, 0]
     up_angles: [-3, -25, -83, 20, 0, 0]
     speed: 100
@@ -264,16 +264,7 @@ environment_lights:
     environment: rv_car
     camera_id: cam1
     camera_purpose: area1_light_1_detection
-    roi: {x: 1143, y: 762, width: 203, height: 147}
-    bright_threshold: 150
-    dark_threshold: 50
-  area1_light_2:
-    name: 區域一 燈光 2
-    type: single_light
-    environment: rv_car
-    camera_id: cam1
-    camera_purpose: area1_light_2_detection
-    roi: {x: 541, y: 508, width: 210, height: 178}
+    roi: {x: 1223, y: 815, width: 145, height: 73}
     bright_threshold: 150
     dark_threshold: 50
   area1_light_3:
@@ -282,7 +273,16 @@ environment_lights:
     environment: rv_car
     camera_id: cam1
     camera_purpose: area1_light_3_detection
-    roi: {x: 533, y: 500, width: 222, height: 186}
+    roi: {x: 594, y: 529, width: 226, height: 161}
+    bright_threshold: 150
+    dark_threshold: 50
+  area1_light_4:
+    name: 區域一 燈光 4
+    type: single_light
+    environment: rv_car
+    camera_id: cam1
+    camera_purpose: area1_light_4_detection
+    roi: {x: 1905, y: 1271, width: 73, height: 52}
     bright_threshold: 150
     dark_threshold: 50
   area2_light_1:
@@ -291,7 +291,7 @@ environment_lights:
     environment: rv_car
     camera_id: cam2
     camera_purpose: area2_light_1_detection
-    roi: {x: 723, y: 1073, width: 186, height: 133}
+    roi: {x: 715, y: 1057, width: 153, height: 105}
     bright_threshold: 150
     dark_threshold: 50
   area2_light_2:
@@ -300,7 +300,7 @@ environment_lights:
     environment: rv_car
     camera_id: cam2
     camera_purpose: area2_light_2_detection
-    roi: {x: 1712, y: 484, width: 331, height: 230}
+    roi: {x: 1724, y: 476, width: 282, height: 210}
     bright_threshold: 150
     dark_threshold: 50
   area2_light_3:
@@ -309,7 +309,7 @@ environment_lights:
     environment: rv_car
     camera_id: cam2
     camera_purpose: area2_light_3_detection
-    roi: {x: 235, y: 1432, width: 137, height: 85}
+    roi: {x: 211, y: 1404, width: 141, height: 85}
     bright_threshold: 150
     dark_threshold: 50
   area3_light_1:
@@ -318,7 +318,7 @@ environment_lights:
     environment: rv_car
     camera_id: cam3
     camera_purpose: area3_light_1_detection
-    roi: {x: 100, y: 100, width: 200, height: 150}
+    roi: {x: 541, y: 1033, width: 153, height: 89}
     bright_threshold: 150
     dark_threshold: 50
   area3_light_2:
@@ -327,52 +327,16 @@ environment_lights:
     environment: rv_car
     camera_id: cam3
     camera_purpose: area3_light_2_detection
-    roi: {x: 350, y: 100, width: 200, height: 150}
+    roi: {x: 844, y: 303, width: 371, height: 278}
     bright_threshold: 150
     dark_threshold: 50
-  area3_light_3:
-    name: 區域三 燈光 3
+  area3_light_4:
+    name: 區域三 燈光 4
     type: single_light
     environment: rv_car
     camera_id: cam3
-    camera_purpose: area3_light_3_detection
-    roi: {x: 600, y: 100, width: 200, height: 150}
-    bright_threshold: 150
-    dark_threshold: 50
-  headlight_left:
-    name: 左前燈
-    type: single_light
-    environment: rv_car
-    camera_id: rv_panel
-    camera_purpose: headlight_left_detection
-    roi: {x: 120, y: 80, width: 100, height: 100}
-    bright_threshold: 150
-    dark_threshold: 50
-  headlight_right:
-    name: 右前燈
-    type: single_light
-    environment: rv_car
-    camera_id: rv_panel
-    camera_purpose: headlight_right_detection
-    roi: {x: 520, y: 80, width: 100, height: 100}
-    bright_threshold: 150
-    dark_threshold: 50
-  taillight:
-    name: 尾燈
-    type: single_light
-    environment: rv_car
-    camera_id: rv_panel
-    camera_purpose: taillight_detection
-    roi: {x: 320, y: 400, width: 80, height: 80}
-    bright_threshold: 150
-    dark_threshold: 50
-  interior_light:
-    name: 車內照明
-    type: single_light
-    environment: rv_car
-    camera_id: rv_panel
-    camera_purpose: interior_light_detection
-    roi: {x: 320, y: 240, width: 120, height: 120}
+    camera_purpose: area3_light_4_detection
+    roi: {x: 1494, y: 843, width: 190, height: 109}
     bright_threshold: 150
     dark_threshold: 50
 hsv_adjustments: {}
@@ -389,14 +353,8 @@ metadata:
       9.93, -134.73, 34.45, 2.19, -45.08]', 觀測點使用較慢速度 50 (vs 標準 100), '特殊按壓行為: water_pump/water_heater/gas/tanker_heater
       = 4 次按壓', '特殊按壓行為: extend/retract = 7 秒長按', 觀測點 press_duration=0.0 表示不執行按壓動作,
     車載燈光使用絕對座標 ROI，需根據實際 Camera 解析度調整]
-
 voice_mappings:
-  light_one:
-    environment_light: area1_light_1
-    panel_light: hvac
-  light_two:
-    environment_light: area1_light_2
-    panel_light: water_pump
-  light_three:
-    environment_light: area1_light_3
-    panel_light: water_heater
+  light_one: {environment_light: area1_light_1, panel_light: light_one}
+  light_two: {environment_light: area2_light_2, panel_light: light_two}
+  light_three: {environment_light: area1_light_3, panel_light: light_three}
+  light_four: {environment_light: area3_light_4, panel_light: light_four}

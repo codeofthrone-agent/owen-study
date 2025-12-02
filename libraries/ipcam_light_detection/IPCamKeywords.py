@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from robot.api.deco import keyword
 from robot.api import logger
+from datetime import datetime
 
 # 支援兩種匯入方式：
 # 1. 作為模組匯入: Library    libraries.ipcam_light_detection.IPCamKeywords
@@ -268,7 +269,7 @@ class IPCamKeywords:
         
         Args:
             voice_light_id: 語音指令 ID (例如: "light_one")
-            file_path: 儲存路徑
+            file_path: 儲存路徑 (支援 {timestamp} 佔位符)
         """
         self._ensure_config_loader()
         mapping = self.config_loader.get_voice_mapping(voice_light_id)
@@ -284,6 +285,11 @@ class IPCamKeywords:
         if env_light_id not in lights:
              raise ValueError(f"Environment light {env_light_id} not found in config")
              
+        # Generate timestamp if needed
+        if "{timestamp}" in file_path:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            file_path = file_path.replace("{timestamp}", timestamp)
+
         # Always capture new image to ensure freshness
         self.ipcam.capture_image()
             
@@ -298,7 +304,7 @@ class IPCamKeywords:
         
         Args:
             voice_light_id: 語音指令 ID (例如: "light_one")
-            file_path: 儲存路徑
+            file_path: 儲存路徑 (支援 {timestamp} 佔位符)
         """
         self._ensure_config_loader()
         mapping = self.config_loader.get_voice_mapping(voice_light_id)
@@ -314,6 +320,11 @@ class IPCamKeywords:
         if env_light_id not in lights:
              raise ValueError(f"Environment light {env_light_id} not found in config")
              
+        # Generate timestamp if needed
+        if "{timestamp}" in file_path:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            file_path = file_path.replace("{timestamp}", timestamp)
+
         # Always capture new image to ensure freshness
         self.ipcam.capture_image()
             
