@@ -1,0 +1,31 @@
+[project]
+name = "robot-multiplatform-automation"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "appium-python-client>=2.0.0",
+    "flask>=2.0.0",
+    "gtts>=2.3.0",
+    "librosa>=0.10.0",
+    "loguru>=0.7.0",
+    "numpy>=1.21.0",
+    "opencv-python>=4.5.0",
+    "pyaudio>=0.2.11",
+    "pygame>=2.6.1",
+    "pymycobot>=4.0.1",
+    "pyserial>=3.5",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "python-dotenv>=0.19.0",
+    "pyttsx3>=2.90",
+    "pyyaml>=6.0",
+    "reportlab>=3.6.0",
+    "requests>=2.28.0",
+    "robotframework>=7.3.1",
+    "robotframework-appiumlibrary>=2.0",
+    "robotframework-requests>=0.9.0",
+    "robotframework-seleniumlibrary>=6.0",
+    "soundfile>=0.12.0",
+]

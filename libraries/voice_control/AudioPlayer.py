@@ -282,6 +282,60 @@ class AudioPlayer:
         except subprocess.CalledProcessError:
             return []
 
+    def play_to_default_device(self, audio_file: str) -> bool:
+        """
+        播放音訊到系統預設設備 (不經過 PipeWire 複雜路由)
+        支援 macOS (afplay) 和 Linux (ffplay/aplay)
+
+        Args:
+            audio_file: 音訊檔案路徑
+
+        Returns:
+            bool: 是否成功
+        """
+        if not os.path.exists(audio_file):
+            print(f"錯誤: 音訊檔案不存在: {audio_file}")
+            return False
+
+        print(f"正在使用預設設備播放: {audio_file}")
+
+        try:
+            # 根據作業系統選擇播放指令
+            if sys.platform == 'darwin':
+                # macOS 使用 afplay
+                cmd = ["afplay", audio_file]
+            else:
+                # Linux 嘗試使用 ffplay (auto-exit) 或 aplay
+                # 優先嘗試 ffplay 因為它支援更多格式
+                cmd = ["ffplay", "-nodisp", "-autoexit", "-hide_banner", audio_file]
+            
+            # 執行播放
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                print("✅ 播放成功 (Default Device)")
+                return True
+            else:
+                # 如果 ffplay 失敗，Linux 上嘗試 aplay (僅 wav)
+                if sys.platform != 'darwin' and "ffplay" in cmd[0]:
+                    print("ffplay 失敗，嘗試使用 aplay...")
+                    cmd = ["aplay", audio_file]
+                    result = subprocess.run(cmd, capture_output=True, text=True)
+                    if result.returncode == 0:
+                        print("✅ 播放成功 (aplay)")
+                        return True
+                
+                print(f"❌ 播放失敗: {result.stderr}")
+                return False
+
+        except Exception as e:
+            print(f"❌ 播放發生例外: {e}")
+            return False
+
 
 def play_audio_to_channel(audio_file: str, target_channel: int, duration: int = 5) -> bool:
     """

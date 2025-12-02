@@ -940,6 +940,70 @@ class VoiceControlKeywords:
             
         return result
 
+    @keyword('When 使用者使用預設喇叭播放文字 "${text}"')
+    def when_user_plays_text_using_default_speaker(self, text: str) -> bool:
+        """
+        When: 使用者使用預設喇叭播放文字
+        When: User plays text using default speaker
+        
+        此關鍵字將文字轉換為語音並使用系統預設音訊輸出設備播放（不經過 Scarlett 4i4）。
+        This keyword converts text to speech and plays it using the system default audio output device (bypassing Scarlett 4i4).
+        
+        Arguments:
+        - text: 要播放的文字
+        
+        Examples:
+        | When | 使用者使用預設喇叭播放文字 "Hello World" |
+        
+        Returns:
+            bool: 播放是否成功
+        """
+        try:
+            logger.info(f"開始使用預設喇叭播放: '{text}'")
+            
+            if ROBOT_AVAILABLE:
+                robot_logger.info(f"將使用預設喇叭播放文字 '{text}'")
+                
+            # 步驟 1: 使用 TTS 生成音訊檔案
+            # 預設使用英文，若需多語言可擴充
+            audio_file = self.tts_manager.text_to_file(
+                text=text,
+                language='en',
+                format='mp3'
+            )
+            
+            if not audio_file:
+                error_msg = "TTS 音訊生成失敗"
+                logger.error(error_msg)
+                if ROBOT_AVAILABLE:
+                    robot_logger.error(error_msg)
+                return False
+                
+            # 記錄生成的檔案
+            self.last_audio_file = audio_file
+            self.temp_audio_files.append(audio_file)
+            
+            # 步驟 2: 使用預設設備播放
+            success = self.audio_player.play_to_default_device(audio_file)
+            
+            if success:
+                logger.info("預設喇叭播放完成")
+                if ROBOT_AVAILABLE:
+                    robot_logger.info("✓ 預設喇叭播放成功")
+            else:
+                logger.error("預設喇叭播放失敗")
+                if ROBOT_AVAILABLE:
+                    robot_logger.error("✗ 預設喇叭播放失敗")
+                    
+            return success
+            
+        except Exception as e:
+            error_msg = f"預設喇叭播放失敗: {e}"
+            logger.error(error_msg)
+            if ROBOT_AVAILABLE:
+                robot_logger.error(error_msg)
+            return False
+
     @keyword('When 使用者切換 TTS 引擎到 "${engine_name}"')
     def when_user_switches_tts_engine(self, engine_name: str) -> bool:
         """
