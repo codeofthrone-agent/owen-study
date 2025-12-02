@@ -30,9 +30,7 @@ Suite Teardown    測試套件清理
     Given 語音控制系統已成功初始化
     And Given Scarlett 4i4 音效介面已正確連接
     And Given TTS 引擎已設定為 "gtts"
-    And Given IP 攝影機已連接到攝影機    rv_car    cam1
-    And Given IP 攝影機已連接到攝影機    rv_car    cam2
-    And Given IP 攝影機已連接到攝影機    rv_car    cam3
+    And Given IP 攝影機已連接到攝影機    rv_car
     And Given 測試環境設定為 "rv_car"
     And Given 面板類型設定為 "3611a"
     And Given UART 日誌監控器已初始化

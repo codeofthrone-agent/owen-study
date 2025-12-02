@@ -8,6 +8,20 @@
   - 現在會檢查 PipeWire 虛擬 Sink (Scarlett_1-2 / Scarlett_3-4) 是否存在
   - 若路由未設定，將自動報錯並提示執行 `setup_pipewire_routing_v5.sh`
 
+## 🚀 重大更新 (2025-12-02) - v1.4.0 語音命令日誌與交叉測試增強
+
+### ✅ 語音控制關鍵字優化
+- **When 使用者播放文字 "${text}" 到聲道 "${channel}"**
+  - 新增自動記錄語音命令完成時間 (`${command_end}`)
+  - 格式: `YYYYMMDD_HHMMSS.f`
+  - 方便後續計算響應時間，無需在測試案例中手動調用 `Get Current Date`
+
+### ✅ 測試案例完善
+- **tests/test_voice_commands_rv.robot**
+  - 新增 Light 1 - Light 4 的完整交叉聲道測試
+  - 涵蓋 Ch1->Ch2, Ch2->Ch3, Ch3->Ch1 的所有組合
+  - 移除 `Then 語音應該成功播放到指定聲道` (改由 UART 回應驗證)
+
 ## 🚀 重大更新 (2025-11-18) - v4.0.0 本機化視覺檢測系統
 
 ### ✅ 機器手臂視覺檢測系統 - 本機化遷移完成
