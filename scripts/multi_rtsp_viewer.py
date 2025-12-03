@@ -623,7 +623,7 @@ def main():
     parser.add_argument('--no-default-config', action='store_true', help='不載入預設配置')
     parser.add_argument('--max-workers', type=int, default=4, help='最大工作線程數 (預設: 4)')
     parser.add_argument('--interval', type=float, default=1.0, help='預設更新頻率 (秒) (預設: 1.0)')
-    parser.add_argument('--stream-suffix', type=str, default='stream1', help='RTSP 串流路徑後綴 (例如: stream1, live1) (預設: stream1)')
+    parser.add_argument('--stream-suffix', type=str, default='live1', help='RTSP 串流路徑後綴 (例如: stream1, live1) (預設: 使用設定檔中的路徑)')
     
     args = parser.parse_args()
     

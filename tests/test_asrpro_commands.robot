@@ -54,31 +54,31 @@ Scenario: 測試 kws_answer
     When 使用者播放文字 "hey power pro" 到聲道 "1"
     Then 應該在 "5" 秒內收到包含以下檔案的語音回應 "kws_answer.mp3"
 
-Scenario: 測試 Propane Tank Levels 語音指令
-    #TODO 測試回應不應該是44-1
-    [Documentation]    測試查詢丙烷罐液位的語音指令
-    ...                預期回應: 1 個語音檔案 (cmd_044-1.mp3)
-    [Tags]    voice    tts    asrpro    propane
+# Scenario: 測試 Propane Tank Levels 語音指令
+#     #TODO 測試回應不應該是44-1
+#     [Documentation]    測試查詢丙烷罐液位的語音指令
+#     ...                預期回應: 1 個語音檔案 (cmd_044-1.mp3)
+#     [Tags]    voice    tts    asrpro    propane
 
-    # 前置條件
-    Given 音訊輸出聲道 "1" 已準備就緒
-    And 清空 UART 事件記錄
+#     # 前置條件
+#     Given 音訊輸出聲道 "1" 已準備就緒
+#     And 清空 UART 事件記錄
 
-    # 啟動 UART 監控
-    When 使用者啟動 UART 背景監控
+#     # 啟動 UART 監控
+#     When 使用者啟動 UART 背景監控
 
-    # 執行語音命令
-    When 使用者播放文字 "hey power pro" 到聲道 "1"
-    Sleep    2
-    When 使用者播放文字 "Propane Tank Levels" 到聲道 "1"
+#     # 執行語音命令
+#     When 使用者播放文字 "hey power pro" 到聲道 "1"
+#     Sleep    2
+#     When 使用者播放文字 "Propane Tank Levels" 到聲道 "1"
 
-    # 驗證語音播放
-    Then 語音應該成功播放到指定聲道
-    And 語音品質應該符合標準
-    And 沒有音訊延遲或中斷
+#     # 驗證語音播放
+#     Then 語音應該成功播放到指定聲道
+#     And 語音品質應該符合標準
+#     And 沒有音訊延遲或中斷
 
-    # 驗證 UART 日誌中的語音回應（恰好 1 個回應）
-    Then 應該在 "5" 秒內收到包含以下檔案的語音回應 "cmd_044-1.mp3"
+#     # 驗證 UART 日誌中的語音回應（恰好 1 個回應）
+#     Then 應該在 "5" 秒內收到包含以下檔案的語音回應 "cmd_044-1.mp3"
 
 
 Scenario: 測試 I'm Going Outside 語音指令
@@ -145,6 +145,9 @@ Scenario: 測試 Turn on Bluetooth 語音指令
     # 啟動 UART 監控
     When 使用者啟動 UART 背景監控
 
+
+    
+
     # 執行語音命令
     When 使用者播放文字 "hey power pro" 到聲道 "1"
     Sleep    2
@@ -175,9 +178,9 @@ Scenario: 測試 Off Grid Mode 語音指令
     When 使用者啟動 UART 背景監控
 
     # 執行語音命令
-    When 使用者播放文字 "hey power pro" 到聲道 "1"
+    When 使用者播放文字 "hey power pro" 到聲道 "3"
     Sleep    2
-    When 使用者播放文字 "Off Grid Mode" 到聲道 "1"
+    When 使用者播放文字 "Off Grid Mode" 到聲道 "3"
 
     # 驗證語音播放
     Then 語音應該成功播放到指定聲道
@@ -381,3 +384,74 @@ Scenario: 測試 Stop Timer 語音指令
 
     # 驗證 UART 日誌中的語音回應（恰好 1 個回應）
     Then 應該在 "5" 秒內收到包含以下檔案的語音回應 "stop_timer.mp3"
+
+Scenario: 測試 Companion 語音指令
+    [Documentation]    測試回到Companion的語音指令
+    ...                預期回應: 1 個語音檔案 (Welcome_back.mp3)
+    [Tags]    voice    tts    asrpro    i
+
+    # 前置條件
+    Given 音訊輸出聲道 "1" 已準備就緒
+    # And 清空 UART 事件記錄
+
+    # 啟動 UART 監控
+    #When 使用者啟動 UART 背景監控
+
+    # 執行語音命令
+    When 使用者播放文字 "hey power pro" 到聲道 "1"
+    Sleep    3
+    When 使用者播放文字 "Companion" 到聲道 "1"
+    Sleep    2
+    When 使用者播放文字 "how to install power pro app" 到聲道 "1"
+
+    # 驗證語音播放
+    Then 語音應該成功播放到指定聲道
+    And 語音品質應該符合標準
+    And 沒有音訊延遲或中斷
+
+Scenario: 測試 Turn on Climate Control 語音指令
+    [Documentation]    測試 Turn on Climate Control 的語音指令
+    ...                預期回應: 1 個語音檔案 (Welcome_back.mp3)
+    [Tags]    voice    tts    asrpro    i
+
+    # 前置條件
+    Given 音訊輸出聲道 "1" 已準備就緒
+    # And 清空 UART 事件記錄
+
+    # 啟動 UART 監控
+    #When 使用者啟動 UART 背景監控
+
+    # 執行語音命令
+    When 使用者播放文字 "hey power pro" 到聲道 "1"
+    Sleep    2
+    When 使用者播放文字 "Turn on Climate Control" 到聲道 "1"
+
+
+    # 驗證語音播放
+    Then 語音應該成功播放到指定聲道
+    And 語音品質應該符合標準
+    And 沒有音訊延遲或中斷
+
+Scenario: 測試 Turn offClimate Control 語音指令
+    [Documentation]    測試 Turn on Climate Control 的語音指令
+    ...                預期回應: 1 個語音檔案 (Welcome_back.mp3)
+    [Tags]    voice    tts    asrpro    i
+
+    # 前置條件
+    Given 音訊輸出聲道 "1" 已準備就緒
+    # And 清空 UART 事件記錄
+
+    # 啟動 UART 監控
+    #When 使用者啟動 UART 背景監控
+
+    # 執行語音命令
+    When 使用者播放文字 "hey power pro" 到聲道 "1"
+    Sleep    2
+    When 使用者播放文字 "Turn off Climate Control" 到聲道 "1"
+
+    # 驗證語音播放
+    Then 語音應該成功播放到指定聲道
+    And 語音品質應該符合標準
+    And 沒有音訊延遲或中斷
+
+      

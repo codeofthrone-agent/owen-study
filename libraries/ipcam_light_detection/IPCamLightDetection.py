@@ -103,20 +103,6 @@ class FrameReader(threading.Thread):
         self.running = True
         self._read_loop()
 
-    @contextlib.contextmanager
-    def suppress_stderr(self):
-        """
-        Context manager to suppress stderr (file descriptor 2)
-        """
-        with open(os.devnull, "w") as devnull:
-            old_stderr = os.dup(sys.stderr.fileno())
-            try:
-                os.dup2(devnull.fileno(), sys.stderr.fileno())
-                yield
-            finally:
-                os.dup2(old_stderr, sys.stderr.fileno())
-                os.close(old_stderr)
-
     def _read_loop(self):
         # 設定 FFmpeg 選項
         os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = f'rtsp_transport;{self.transport}|analyzeduration;10000000|probesize;10000000'
@@ -129,16 +115,10 @@ class FrameReader(threading.Thread):
         
         while self.running:
             try:
-                # 使用 suppress_stderr 抑制 C++ 層級的 FFmpeg 輸出
-                with self.suppress_stderr():
-                    cap = cv2.VideoCapture(self.rtsp_url)
-                    buffer_size = self.connection_config.get('rtsp_buffer_size', 1)
-                    cap.set(cv2.CAP_PROP_BUFFERSIZE, buffer_size)
+                cap = cv2.VideoCapture(self.rtsp_url)
+                buffer_size = self.connection_config.get('rtsp_buffer_size', 1)
+                cap.set(cv2.CAP_PROP_BUFFERSIZE, buffer_size)
 
-                    if not cap.isOpened():
-                        # 恢復 stderr 後再記錄日誌
-                        pass
-                
                 if not cap.isOpened():
                     logger.error("FrameReader: 無法開啟 RTSP 串流，5秒後重試...")
                     time.sleep(5)
@@ -148,17 +128,14 @@ class FrameReader(threading.Thread):
                 
                 # 暖身
                 warmup_frames = 30
-                with self.suppress_stderr():
-                    for _ in range(warmup_frames):
-                        cap.read()
+                for _ in range(warmup_frames):
+                    cap.read()
                 
                 logger.info("FrameReader: 暖身完成，開始持續讀取影像")
                 self.connected = True
 
                 while self.running and cap.isOpened():
-                    # 讀取影像時也抑制錯誤輸出
-                    with self.suppress_stderr():
-                        ret, frame = cap.read()
+                    ret, frame = cap.read()
                     
                     if ret and frame is not None:
                         with self.lock:
