@@ -229,7 +229,7 @@ class IPCamLightDetection:
                     return
                 time.sleep(0.5)
             
-            logger.warning("RTSP 連線建立較慢，背景執行緒仍在嘗試連線中...")
+            raise RuntimeError(f"無法連接到攝影機 {camera_name} (RTSP 連線逾時)")
 
         except ValueError as e:
             logger.error(f"連接攝影機失敗: {e}")

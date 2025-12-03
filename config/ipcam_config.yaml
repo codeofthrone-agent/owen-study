@@ -80,7 +80,7 @@ environments:
         # username 和 password 會自動從 .env 讀取
 
       rv_panel:
-        ip: "192.168.166.122"
+        ip: "192.168.166.158"
         port: 554
         protocol: "rtsp"
         stream_path: "/live0"
@@ -89,7 +89,7 @@ environments:
         # username 和 password 會自動從 .env 讀取
 
       rv_motor:
-        ip: "10.42.0.246"
+        ip: "192.168.166.176"
         port: 554
         protocol: "rtsp"
         stream_path: "/live0"
