@@ -214,11 +214,14 @@ cleanup_routes() {
 # --- 音訊測試 ---
 run_test() {
     set +e
+    # 取得腳本所在目錄的絕對路徑
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
     log_info "即將開始自動音訊測試 (使用 ultimate_play.py)..."
     echo "將依序測試聲道 1, 2, 3 (各播放 1 秒)..."
     sleep 1
 
-    local test_file="file_example_WAV_2MG.wav"
+    local test_file="$SCRIPT_DIR/file_example_WAV_2MG.wav"
     if [ ! -f "$test_file" ]; then
         log_warn "找不到測試音訊檔 '$test_file'，跳過測試。"
         return 0
@@ -226,7 +229,7 @@ run_test() {
 
     for channel in 1 2 3; do
         log_info "正在測試聲道 $channel..."
-        uv run python3 ultimate_play.py "$test_file" "$channel" 1
+        uv run python3 "$SCRIPT_DIR/ultimate_play.py" "$test_file" "$channel" 1
         if [ $? -ne 0 ]; then
             log_error "聲道 $channel 測試失敗。"
         else
@@ -295,7 +298,10 @@ main_setup() {
     echo ""
 
     log_action "4. 偵測 Scarlett Pro Audio 實體輸出設備..."
-    DEVICE_NAME=$(pactl list sinks short | grep -i "Focusrite_Scarlett.*pro-output" | awk '{print $2}' | head -n 1)
+    # 使用 pw-link 偵測實體輸出端口，因為 pactl 有時會漏掉 sink
+    # 尋找包含 "Focusrite" 和 "pro-output" 的節點名稱
+    DEVICE_NAME=$(pw-link -i | grep -i "Focusrite.*pro-output" | head -n 1 | cut -d: -f1)
+    
     if [ -z "$DEVICE_NAME" ]; then
         log_error "找不到 Scarlett Pro Audio 實體輸出設備！"
         echo "這通常發生在 Pro Audio 模式切換失敗後。請檢查先前的日誌。"

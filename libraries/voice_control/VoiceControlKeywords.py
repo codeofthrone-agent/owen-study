@@ -119,7 +119,7 @@ class VoiceControlKeywords:
         try:
             # 假設 yaml 檔案位於專案根目錄的 resources 資料夾下
             project_root = Path(__file__).parent.parent.parent
-            yaml_path = project_root / "resources" / "voice_command_map.yaml"
+            yaml_path = project_root / "config" / "voice_command_map.yaml"
             
             if not yaml_path.exists():
                 logger.warning(f"找不到語音指令對照表: {yaml_path}")
