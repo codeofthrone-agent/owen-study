@@ -36,6 +36,7 @@ from typing import Tuple, Optional, Dict, Any
 from pathlib import Path
 from loguru import logger
 import os
+import contextlib
 
 # 設定環境變數以抑制 OpenCV 和 FFmpeg 的日誌輸出
 # 必須在 import cv2 之前設定
@@ -87,10 +88,11 @@ class FrameReader(threading.Thread):
     背景執行緒影像讀取器
     持續從 RTSP 串流讀取影像，確保隨時能取得最新的一幀
     """
-    def __init__(self, rtsp_url: str, connection_config: dict):
+    def __init__(self, rtsp_url: str, connection_config: dict, transport: str = 'tcp'):
         super().__init__()
         self.rtsp_url = rtsp_url
         self.connection_config = connection_config
+        self.transport = transport
         self.latest_frame = None
         self.running = False
         self.lock = threading.Lock()
@@ -101,9 +103,23 @@ class FrameReader(threading.Thread):
         self.running = True
         self._read_loop()
 
+    @contextlib.contextmanager
+    def suppress_stderr(self):
+        """
+        Context manager to suppress stderr (file descriptor 2)
+        """
+        with open(os.devnull, "w") as devnull:
+            old_stderr = os.dup(sys.stderr.fileno())
+            try:
+                os.dup2(devnull.fileno(), sys.stderr.fileno())
+                yield
+            finally:
+                os.dup2(old_stderr, sys.stderr.fileno())
+                os.close(old_stderr)
+
     def _read_loop(self):
         # 設定 FFmpeg 選項
-        os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = 'rtsp_transport;tcp|analyzeduration;10000000|probesize;10000000'
+        os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = f'rtsp_transport;{self.transport}|analyzeduration;10000000|probesize;10000000'
         
         # 再次確保日誌級別被設定 (雖然模組層級已設定，但 FrameReader 可能在不同 context)
         try:
@@ -111,17 +127,18 @@ class FrameReader(threading.Thread):
         except AttributeError:
             pass # 舊版 OpenCV 可能不支援
         
-        try:
-            cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_SILENT)
-        except AttributeError:
-            pass # 舊版 OpenCV 可能不支援
-        
         while self.running:
             try:
-                cap = cv2.VideoCapture(self.rtsp_url)
-                buffer_size = self.connection_config.get('rtsp_buffer_size', 1)
-                cap.set(cv2.CAP_PROP_BUFFERSIZE, buffer_size)
+                # 使用 suppress_stderr 抑制 C++ 層級的 FFmpeg 輸出
+                with self.suppress_stderr():
+                    cap = cv2.VideoCapture(self.rtsp_url)
+                    buffer_size = self.connection_config.get('rtsp_buffer_size', 1)
+                    cap.set(cv2.CAP_PROP_BUFFERSIZE, buffer_size)
 
+                    if not cap.isOpened():
+                        # 恢復 stderr 後再記錄日誌
+                        pass
+                
                 if not cap.isOpened():
                     logger.error("FrameReader: 無法開啟 RTSP 串流，5秒後重試...")
                     time.sleep(5)
@@ -131,14 +148,18 @@ class FrameReader(threading.Thread):
                 
                 # 暖身
                 warmup_frames = 30
-                for _ in range(warmup_frames):
-                    cap.read()
+                with self.suppress_stderr():
+                    for _ in range(warmup_frames):
+                        cap.read()
                 
                 logger.info("FrameReader: 暖身完成，開始持續讀取影像")
                 self.connected = True
 
                 while self.running and cap.isOpened():
-                    ret, frame = cap.read()
+                    # 讀取影像時也抑制錯誤輸出
+                    with self.suppress_stderr():
+                        ret, frame = cap.read()
+                    
                     if ret and frame is not None:
                         with self.lock:
                             self.latest_frame = frame
@@ -194,8 +215,11 @@ class IPCamLightDetection:
             logger.info(f"準備連接攝影機: {environment}/{camera_name}")
             logger.info(f"RTSP URL: {self._get_safe_url()}")
 
+            # 取得傳輸協定設定 (預設 tcp)
+            transport = self.camera_config.get('transport', 'tcp')
+            
             # 啟動背景讀取執行緒
-            self.frame_reader = FrameReader(self.rtsp_url, self.connection_config)
+            self.frame_reader = FrameReader(self.rtsp_url, self.connection_config, transport)
             self.frame_reader.start()
             
             # 等待連線建立 (最多等待 10 秒)
@@ -411,7 +435,7 @@ if __name__ == "__main__":
         print("\n✅ 初始化成功")
 
         print("\n測試連接攝影機...")
-        detector.connect_camera('laboratory', 'level1')
+        detector.connect_camera('taipei_lab', 'level1')
         print("✅ 連接成功")
 
         print("\n測試擷取影像...")

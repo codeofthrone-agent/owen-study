@@ -1845,6 +1845,53 @@ class VoiceControlKeywords:
 
             raise AssertionError(error_msg)
 
+    @keyword('Then 應該在 "${timeout}" 秒內收到語音指令 "${command_keys}" 的回應')
+    def then_should_receive_voice_command_response(self, timeout: float, command_keys: str):
+        """
+        Then: 應該在指定時間內收到語音指令的回應
+        
+        此關鍵字專用於驗證透過 voice_command_map.yaml 定義的語音指令回應。
+        支援單一或多個指令 Key（使用逗號分隔）。
+        如果任一指令 Key 不存在於對照表中，將會直接失敗。
+        
+        Arguments:
+        - timeout: 超時時間（秒）
+        - command_keys: 語音指令 Key，多個指令可用逗號分隔 (例如: "CMD_WAKE_UP,CMD_LIGHT1_ON")
+        
+        Raises:
+            AssertionError: 當指令 Key 不存在或回應不符合預期時
+        """
+        if not self.voice_command_map:
+            error_msg = "語音指令對照表未載入"
+            logger.error(error_msg)
+            if ROBOT_AVAILABLE:
+                robot_logger.error(f"✗ {error_msg}")
+            raise AssertionError(error_msg)
+
+        # 分割並處理每個 Key
+        keys = [k.strip() for k in command_keys.split(',')]
+        filenames = []
+        
+        for key in keys:
+            # 驗證 Key 是否存在
+            if key not in self.voice_command_map:
+                error_msg = f"語音指令 Key 未定義: {key} (請檢查 voice_command_map.yaml)"
+                logger.error(error_msg)
+                if ROBOT_AVAILABLE:
+                    robot_logger.error(f"✗ {error_msg}")
+                raise AssertionError(error_msg)
+                
+            # 取得對應的檔案名稱
+            entry = self.voice_command_map[key]
+            filename = entry['filename'] if isinstance(entry, dict) else str(entry)
+            filenames.append(filename)
+        
+        # 組合檔案名稱字串 (逗號分隔)
+        patterns_str = ','.join(filenames)
+        
+        # 呼叫原有的驗證邏輯
+        self.then_should_receive_voice_responses_with_patterns(timeout, patterns_str)
+
     @keyword('And 清空 UART 事件記錄')
     def and_clear_uart_events(self):
         """

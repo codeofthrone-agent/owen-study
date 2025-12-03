@@ -702,7 +702,8 @@ Resource    resources/audio_keywords.robot
 - **Then 系統應該回傳正確的 TTS 引擎資訊** - 驗證系統是否回傳正確的 TTS 引擎資訊
 - **Then Scarlett 4i4 設備應該處於正常運作狀態** - 驗證 Scarlett 4i4 設備是否處於正常運作狀態
 - **Then 應該在 "${timeout}" 秒內收到恰好 "${count}" 個語音回應** - 驗證 UART 日誌中語音回應的數量 (v1.2.0 新增)
-- **Then 應該在 "${timeout}" 秒內收到包含以下檔案的語音回應 "${patterns}"** - 驗證 UART 日誌中語音回應的檔案名稱 (v1.2.0 新增)
+- **Then 應該在 "${timeout}" 秒內收到包含以下檔案的語音回應 "${patterns}"** - 驗證 UART 日誌中語音回應的檔案名稱（支援多個檔案，逗號分隔） (v1.2.0 新增)
+- **Then 應該在 "${timeout}" 秒內收到語音指令 "${command_keys}" 的回應** - 驗證 UART 日誌中語音回應是否符合指定的語音指令 Key（支援多個 Key，逗號分隔） (v1.4.1 新增)
 
 #### And Keywords (附加驗證)
 - **And 語音品質應該符合標準** - 驗證語音品質是否符合預定標準
