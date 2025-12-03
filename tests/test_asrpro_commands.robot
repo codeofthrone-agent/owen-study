@@ -408,6 +408,7 @@ Scenario: 測試 Companion 語音指令
     Then 語音應該成功播放到指定聲道
     And 語音品質應該符合標準
     And 沒有音訊延遲或中斷
+    Sleep    20
 
 Scenario: 測試 Turn on Climate Control 語音指令
     [Documentation]    測試 Turn on Climate Control 的語音指令
@@ -431,6 +432,7 @@ Scenario: 測試 Turn on Climate Control 語音指令
     Then 語音應該成功播放到指定聲道
     And 語音品質應該符合標準
     And 沒有音訊延遲或中斷
+    Sleep    5
 
 Scenario: 測試 Turn offClimate Control 語音指令
     [Documentation]    測試 Turn on Climate Control 的語音指令
@@ -453,5 +455,6 @@ Scenario: 測試 Turn offClimate Control 語音指令
     Then 語音應該成功播放到指定聲道
     And 語音品質應該符合標準
     And 沒有音訊延遲或中斷
+    Sleep    5
 
       

@@ -68,7 +68,7 @@ USE_PROCD=1
 start_service() {
     sleep 8
     #/etc/thortron/start_emmc.sh
-    bt_gatt_server > /dev/S0 &
+    bt_gatt_server > /dev/ttyS0 &
 	sleep 8
 	/uvoice/start_uvoice.sh
 }
