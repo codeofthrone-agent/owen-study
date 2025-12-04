@@ -67,13 +67,47 @@ class AudioPlayer:
             )
             
             # 檢查輸出中是否包含預期的 Sink
-            if expected_sink in result.stdout:
-                return True, ""
-            else:
+            if expected_sink not in result.stdout:
                 return False, f"找不到虛擬 Sink '{expected_sink}'，請執行 setup_pipewire_routing_v5.sh 進行設定"
+
+            # 檢查連接狀態 (v1.3.0 新增)
+            links_ok, link_msg = self._verify_links(expected_sink)
+            if not links_ok:
+                return False, f"Sink '{expected_sink}' 未連接到實體輸出: {link_msg}"
+
+            return True, ""
 
         except Exception as e:
             return False, f"路由驗證過程發生錯誤: {e}"
+
+    def _verify_links(self, sink_name: str) -> Tuple[bool, str]:
+        """
+        驗證 Sink 是否有有效的輸出連接 (內部方法)
+
+        Args:
+            sink_name: Sink 名稱
+
+        Returns:
+            (是否連接, 錯誤訊息)
+        """
+        try:
+            # 使用 pw-link -l 列出所有連接
+            result = subprocess.run(
+                ["pw-link", "-l"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            
+            # 檢查是否有從該 Sink 出發的連接
+            # 格式通常為: sink_name:monitor_FL |-> ...
+            if f"{sink_name}:monitor" in result.stdout:
+                return True, ""
+            else:
+                return False, "找不到任何從此 Sink 出發的連接"
+
+        except Exception as e:
+            return False, f"檢查連接失敗: {e}"
 
     def play_to_channel(self, audio_file: str, target_channel: int,
                        duration: int = 5) -> bool:

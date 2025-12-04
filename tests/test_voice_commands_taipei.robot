@@ -61,6 +61,7 @@ S01 : Light 1 - 客廳開(Ch1) -> 廚房關(Ch3)
     
     When 使用者播放文字 "hey power pro" 到聲道 "1"
     Then 應該在 "3" 秒內收到包含以下檔案的語音回應 "kws_answer.mp3"
+    
 
     ${command_end}=    Get Current Date    result_format=%Y%m%d_%H%M%S.%f
     Log    喚醒命令完成時間: ${command_end}    console=True
