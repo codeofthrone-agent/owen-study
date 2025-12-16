@@ -1,262 +1,365 @@
 environment: {name: rv_car, display_name: RV Car 測試環境, panel_type: 3611a, description: RV
     Car 控制面板，包含 7 個控制按鈕和 16 個觀測點}
 connection:
-  socket: {host: 10.42.0.180, port: 9000}
+  socket: {host: 192.168.165.144, port: 9000}
   serial: {port: /dev/ttyTHS1, baudrate: 1000000}
 defaults: {speed: 100, press_duration: 1.0, lift_duration: 0.1, count: 1}
 buttons:
-  hvac:
-    name: HVAC 按鈕
-    description: 空調控制
-    type: rv_control
+  light1:
+    name: Light1 按鈕
+    description: 燈光控制 1
+    type: panel_light
     panel_section: 3611a
-    down_angles: [-7.1, -68.8, -61.6, 23.9, 0, 0]
-    up_angles: [-6.8, -52.5, -61.3, 23.3, 0, 0]
+    down_angles: [3.5, -60, -82, 25, 0, 0]
+    up_angles: [3.5, -35, -82, 25, 0, 0]
     speed: 100
     count: 1
-    lift_duration: 0.1
-    press_duration: 1.0
+    lift_duration: 0.01
+    press_duration: 0.01
     vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 125, y: 74, width: 74, height: 71}
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 306, y: 213, width: 66, height: 60}
+      aruco_markers:
+      - id: 2
+        center: [567.2, 43.5]
+        corners:
+        - [594, 15]
+        - [593, 73]
+        - [540, 72]
+        - [541, 13]
+      - id: 1
+        center: [563.8, 407.5]
+        corners:
+        - [538, 436]
+        - [537, 382]
+        - [588, 379]
+        - [589, 433]
+      - id: 3
+        center: [102.5, 60.5]
+        corners:
+        - [135, 29]
+        - [136, 92]
+        - [70, 92]
+        - [69, 28]
+      - id: 4
+        center: [116.2, 412.8]
+        corners:
+        - [146, 381]
+        - [149, 441]
+        - [87, 444]
+        - [82, 385]
+      aruco_timestamp: 1732091522.0
+  light2:
+    name: Light2 按鈕
+    description: 燈光控制 2
+    type: panel_light
+    panel_section: 3611a
+    down_angles: [8.5, -56, -111.3, 70, 0, 0]
+    up_angles: [8.5, -35, -111.3, 70, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 308, y: 273, width: 66, height: 62}
+      aruco_markers:
+      - id: 2
+        center: [567.2, 43.5]
+        corners:
+        - [594, 15]
+        - [593, 73]
+        - [540, 72]
+        - [541, 13]
+      - id: 1
+        center: [563.8, 407.5]
+        corners:
+        - [538, 436]
+        - [537, 382]
+        - [588, 379]
+        - [589, 433]
+      - id: 3
+        center: [102.5, 60.5]
+        corners:
+        - [135, 29]
+        - [136, 92]
+        - [70, 92]
+        - [69, 28]
+      - id: 4
+        center: [116.2, 412.8]
+        corners:
+        - [146, 381]
+        - [149, 441]
+        - [87, 444]
+        - [82, 385]
+      aruco_timestamp: 1732091522.0
+  light3:
+    name: Light3 按鈕
+    description: 燈光控制 3
+    type: panel_light
+    panel_section: 3611a
+    down_angles: [13.2, -57, -113, 70, 0, 0]
+    up_angles: [13.2, -50, -113, 70, 0, 0]
+    speed: 100
+    count: 2
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 306, y: 337, width: 70, height: 64}
+  light4:
+    name: Light4 按鈕
+    description: 燈光控制 4
+    type: panel_light
+    panel_section: 3611a
+    down_angles: [-7, -66.5, -65, 20, 0, 0]
+    up_angles: [-7, -55, -65, 20, 0, 0]
+    speed: 100
+    count: 2
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 232, y: 80, width: 74, height: 68}
+  light5:
+    name: Light5 按鈕
+    description: 燈光控制 5
+    type: panel_light
+    panel_section: 3611a
+    down_angles: [-1.7, -66, -70, 20, 0, 0]
+    up_angles: [-1.7, -35, -70, 20, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 238, y: 149, width: 68, height: 62}
+  light6:
+    name: Light6 按鈕
+    description: 燈光控制 6
+    type: panel_light
+    panel_section: 3611a
+    down_angles: [4, -62, -83, 34, 0, 0]
+    up_angles: [4, -50, -83, 34, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 236, y: 213, width: 74, height: 64}
+  light7:
+    name: Light7 按鈕
+    description: 燈光控制 7
+    type: panel_light
+    panel_section: 3611a
+    down_angles: [8.3, -64, -68, 15.5, 0, 0]
+    up_angles: [8.3, -50, -68, 15.5, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 240, y: 275, width: 68, height: 62}
+  light8:
+    name: Light8 按鈕
+    description: 燈光控制 8
+    type: panel_light
+    panel_section: 3611a
+    down_angles: [12.5, -62, -78, 27.4, 0, 0]
+    up_angles: [12.5, -35, -78, 27.4, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 242, y: 341, width: 68, height: 58}
+  bluetooth:
+    name: Bluetooth 按鈕
+    description: 藍牙控制按鈕
+    type: control
+    panel_section: 3611a
+    down_angles: [16.5, -51, -130, 73.7, 0, 0]
+    up_angles: [16.5, -13, -130, 73.7, 0, 0]
+    speed: 100
+    count: 2
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 436, y: 325, width: 66, height: 70}
+  select:
+    name: Select 按鈕
+    description: 選擇按鈕
+    type: control
+    panel_section: 3611a
+    down_angles: [12.8, -62.8, -73.7, 29.3, 0, 0]
+    up_angles: [12.8, -35, -73.7, 29.3, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 173, y: 339, width: 70, height: 66}
+  aux1:
+    name: AUX1 按鈕
+    description: 輔助控制按鈕 1
+    type: control
+    panel_section: 3611a
+    down_angles: [8.9, -50.3, -109.6, 50, 0, 0]
+    up_angles: [8.9, -35, -109.6, 50, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 368, y: 273, width: 72, height: 58}
+  aux2:
+    name: AUX2 按鈕
+    description: 輔助控制按鈕 2
+    type: control
+    panel_section: 3611a
+    down_angles: [16.6, -55, -89, 20, 0, 0]
+    up_angles: [16.6, -35, -89, 20, 0, 0]
+    speed: 100
+    count: 2
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 372, y: 331, width: 66, height: 68}
+  door_lock:
+    name: Door Lock 按鈕
+    description: 門鎖控制
+    type: control
+    panel_section: 3611a
+    down_angles: [5.2, -57, -88.2, 22, 0, 0]
+    up_angles: [5.2, -35, -88.2, 22, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 368, y: 209, width: 70, height: 62}
+  tank_heater:
+    name: Tank Heater 按鈕
+    description: 油箱加熱控制
+    type: control
+    panel_section: 3611a
+    down_angles: [-2.3, -54, -99.3, 39.4, 0, 0]
+    up_angles: [-2.3, -35, -99.3, 39.4, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 368, y: 209, width: 70, height: 62}
   water_pump:
     name: Water Pump 按鈕
     description: 水泵控制
-    type: rv_control
+    type: control
     panel_section: 3611a
-    down_angles: [-8.5, -58, -80, 20, 0, 0]
-    up_angles: [-8.5, -25, -80, 20, 0, 0]
+    down_angles: [-7.8, -54.3, -105, 53.9, 0, 0]
+    up_angles: [-7.8, -35, -105, 53.9, 0, 0]
     speed: 100
-    count: 4
-    lift_duration: 0.1
-    press_duration: 1.0
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
     vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 338, y: 85, width: 65, height: 61}
-  water_heater:
-    name: Water Heater 按鈕
-    description: 熱水器控制
-    type: rv_control
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 368, y: 209, width: 70, height: 62}
+  water_heater_electric:
+    name: Water Heater Electric 按鈕
+    description: 水暖控制按鈕
+    type: panel_light
     panel_section: 3611a
-    down_angles: [-8.2, -62, -72.2, 20, 0, 0]
-    up_angles: [-8.2, -25, -72.2, 20, 0, 0]
+    down_angles: [-7.5, -59, -82, 30.6, 0, 0]
+    up_angles: [-7.5, -30, -82, 30.6, 0, 0]
     speed: 100
-    count: 4
-    lift_duration: 0.1
-    press_duration: 1.0
+    count: 2
+    lift_duration: 0.01
+    press_duration: 0.01
     vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 272, y: 79, width: 66, height: 67}
-  gas:
-    name: Gas 按鈕
-    description: 瓦斯控制
-    type: rv_control
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 232, y: 80, width: 74, height: 68}
+  water_heater_gas:
+    name: Water Heater Gas 按鈕
+    description: 水暖控制按鈕
+    type: panel_light
     panel_section: 3611a
-    down_angles: [-2.7, -60, -75.5, 17, 0, 0]
-    up_angles: [-2.7, -30, -75.5, 17, 0, 0]
+    down_angles: [-2.5, -59.5, -78, 22.6, 0, 0]
+    up_angles: [-2.5, -30, -78, 22.6, 0, 0]
     speed: 100
-    count: 4
-    lift_duration: 0.1
-    press_duration: 1.0
+    count: 2
+    lift_duration: 0.01
+    press_duration: 0.01
     vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 273, y: 147, width: 66, height: 64}
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 232, y: 80, width: 74, height: 68}
+  fridge:
+    name: Fridge 按鈕
+    description: 水暖控制按鈕
+    type: panel_light
+    panel_section: 3611a
+    down_angles: [-9, -54.5, -93, 27, 0, 0]
+    up_angles: [-9, -35, -93, 27, 0, 0]
+    speed: 100
+    count: 2
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 232, y: 80, width: 74, height: 68}
+  climate_control:
+    name: Climate Control 按鈕
+    description: 空調控制按鈕
+    type: panel_light
+    panel_section: 3611a
+    down_angles: [-6.2, -67.5, -69, 34.0, 0, 0]
+    up_angles: [-6.2, -35, -69, 34.0, 0, 0]
+    speed: 100
+    count: 2
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 232, y: 80, width: 74, height: 68}
   extend:
     name: Extend 按鈕
-    description: 伸展控制
-    type: rv_control
+    description: 拓展按鈕
+    type: panel_light
     panel_section: 3611a
-    down_angles: [-1.7, -69, -62, 19, 0, 0]
-    up_angles: [-1.8, -30, -61, 20, 0, 0]
+    down_angles: [-2, -72, -51.5, 12, 0, 0]
+    up_angles: [-2, -35, -51.5, 12, 0, 0]
     speed: 100
-    count: 1
-    lift_duration: 0.1
-    press_duration: 7.0
+    count: 2
+    lift_duration: 0.01
+    press_duration: 0.01
     vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 103, y: 145, width: 100, height: 66}
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 232, y: 80, width: 74, height: 68}
   retract:
     name: Retract 按鈕
-    description: 縮回控制
-    type: rv_control
+    description: 收縮按鈕
+    type: panel_light
     panel_section: 3611a
-    down_angles: [3.1, -68, -67, 22, 0, 0]
-    up_angles: [3.1, -35, -67, 22, 0, 0]
+    down_angles: [4, -69, -59.5, 16, 0, 0]
+    up_angles: [4, -35, -59.5, 16, 0, 0]
     speed: 100
-    count: 1
-    lift_duration: 0.1
-    press_duration: 7.0
+    count: 2
+    lift_duration: 0.01
+    press_duration: 0.01
     vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 107, y: 212, width: 96, height: 65}
-  tanker_heater:
-    name: Tanker Heater 按鈕
-    description: 水箱加熱器
-    type: rv_control
-    panel_section: 3611a
-    down_angles: [-3, -58, -83, 20, 0, 0]
-    up_angles: [-3, -25, -83, 20, 0, 0]
-    speed: 100
-    count: 4
-    lift_duration: 0.1
-    press_duration: 1.0
-    vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 339, y: 147, width: 65, height: 65}
-  camera_observe:
-    name: 相機觀測點
-    description: 相機觀測位置
-    type: observe_position
-    down_angles: [1, 11, -134, 35, 1, -45]
-    up_angles: [1, 11, -134, 35, 1, -45]
-    speed: 50
-    count: 1
-    lift_duration: 0.1
-    press_duration: 0.0
-    vision: null
-  fridge_observe:
-    name: 冰箱 按鈕
-    description: 冰箱控制
-    type: observe_position
-    down_angles: [1, 11, -134, 35, 1, -45]
-    up_angles: [1, 11, -134, 35, 1, -45]
-    speed: 50
-    count: 1
-    lift_duration: 0.1
-    press_duration: 0.0
-    vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 402, y: 82, width: 68, height: 67}
-  mic_observe:
-    name: 麥克風觀測點
-    description: 麥克風觀測位置
-    type: observe_position
-    down_angles: [1, 11, -134, 35, 1, -45]
-    up_angles: [1, 11, -134, 35, 1, -45]
-    speed: 50
-    count: 1
-    lift_duration: 0.1
-    press_duration: 0.0
-    vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 497, y: 157, width: 27, height: 67}
-  wifi_observe:
-    name: WiFi 觀測點
-    description: WiFi 觀測位置
-    type: observe_position
-    down_angles: [1, 11, -134, 35, 1, -45]
-    up_angles: [1, 11, -134, 35, 1, -45]
-    speed: 50
-    count: 1
-    lift_duration: 0.1
-    press_duration: 0.0
-    vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 497, y: 262, width: 33, height: 69}
-  awning1_observe:
-    name: 遮陽棚 1 觀測點
-    description: 遮陽棚 1 觀測位置
-    type: observe_position
-    down_angles: [1, 11, -134, 35, 1, -45]
-    up_angles: [1, 11, -134, 35, 1, -45]
-    speed: 50
-    count: 1
-    lift_duration: 0.1
-    press_duration: 0.0
-    vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 181, y: 285, width: 21, height: 48}
-  awning2_observe:
-    name: 遮陽棚 2 觀測點
-    description: 遮陽棚 2 觀測位置
-    type: observe_position
-    down_angles: [1, 11, -134, 35, 1, -45]
-    up_angles: [1, 11, -134, 35, 1, -45]
-    speed: 50
-    count: 1
-    lift_duration: 0.1
-    press_duration: 0.0
-    vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 163, y: 284, width: 20, height: 49}
-  slide1_observe:
-    name: 滑軌 1 觀測點
-    description: 滑軌 1 觀測位置
-    type: observe_position
-    down_angles: [1, 11, -134, 35, 1, -45]
-    up_angles: [1, 11, -134, 35, 1, -45]
-    speed: 50
-    count: 1
-    lift_duration: 0.1
-    press_duration: 0.0
-    vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 147, y: 287, width: 18, height: 45}
-  slide2_observe:
-    name: 滑軌 2 觀測點
-    description: 滑軌 2 觀測位置
-    type: observe_position
-    down_angles: [1, 11, -134, 35, 1, -45]
-    up_angles: [1, 11, -134, 35, 1, -45]
-    speed: 50
-    count: 1
-    lift_duration: 0.1
-    press_duration: 0.0
-    vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 129, y: 286, width: 18, height: 48}
-  slide3_observe:
-    name: 滑軌 3 觀測點
-    description: 滑軌 3 觀測位置
-    type: observe_position
-    down_angles: [1, 11, -134, 35, 1, -45]
-    up_angles: [1, 11, -134, 35, 1, -45]
-    speed: 50
-    count: 1
-    lift_duration: 0.1
-    press_duration: 0.0
-    vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 110, y: 287, width: 19, height: 44}
-  slide4_observe:
-    name: 滑軌 4 觀測點
-    description: 滑軌 4 觀測位置
-    type: observe_position
-    down_angles: [1, 11, -134, 35, 1, -45]
-    up_angles: [1, 11, -134, 35, 1, -45]
-    speed: 50
-    count: 1
-    lift_duration: 0.1
-    press_duration: 0.0
-    vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 91, y: 287, width: 21, height: 48}
-  slide5_observe:
-    name: 滑軌 5 觀測點
-    description: 滑軌 5 觀測位置
-    type: observe_position
-    down_angles: [1, 11, -134, 35, 1, -45]
-    up_angles: [1, 11, -134, 35, 1, -45]
-    speed: 50
-    count: 1
-    lift_duration: 0.1
-    press_duration: 0.0
-    vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 72, y: 287, width: 20, height: 47}
-  lockout_observe:
-    name: 鎖定觀測點
-    description: 鎖定觀測位置
-    type: observe_position
-    down_angles: [1, 11, -134, 35, 1, -45]
-    up_angles: [1, 11, -134, 35, 1, -45]
-    speed: 50
-    count: 1
-    lift_duration: 0.1
-    press_duration: 0.0
-    vision:
-      observe_angles: [1.75, 9.93, -134.73, 34.45, 2.19, -45.08]
-      roi: {x: 50, y: 284, width: 23, height: 55}
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 232, y: 80, width: 74, height: 68}
+
 environment_lights:
   area1_light_1:
     name: 區域一 燈光 1

@@ -29,12 +29,14 @@ except ImportError:
 # Internal imports
 try:
     from .ultimate_play import play_audio_to_channel
+    from .check_audio_signal import check_signal
 except ImportError:
     # Fallback for direct execution or Robot Framework import
     import sys
     from pathlib import Path
     sys.path.append(str(Path(__file__).parent))
     from ultimate_play import play_audio_to_channel
+    from check_audio_signal import check_signal
 from pathlib import Path
 
 

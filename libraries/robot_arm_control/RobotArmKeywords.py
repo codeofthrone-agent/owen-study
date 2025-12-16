@@ -124,13 +124,21 @@ class RobotArmKeywords:
         Raises:
             ConnectionError: 如果連接失敗
         """
-        # 從配置文件讀取預設值
-        socket_config = self.config_loader.get_socket_config()
-
-        if host is None:
-            host = socket_config['host']
-        if port is None:
-            port = socket_config['port']
+        if host is None or port is None:
+            # 1. 優先從當前環境配置讀取 (v4.0.0+)
+            if self.env_config:
+                if host is None:
+                    host = self.env_config.get("robot_arm_host")
+                if port is None:
+                    port = self.env_config.get("robot_arm_port")
+            
+            # 2. 回退到舊版配置加載器 (v3.0.0)
+            if host is None or port is None:
+                socket_config = self.config_loader.get_socket_config()
+                if host is None:
+                    host = socket_config['host']
+                if port is None:
+                    port = socket_config['port']
 
         logger.info(f"正在連接機器手臂: {host}:{port}")
 

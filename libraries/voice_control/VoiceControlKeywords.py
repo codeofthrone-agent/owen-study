@@ -13,6 +13,7 @@
 import os
 import time
 import sys
+import subprocess
 from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
@@ -622,6 +623,27 @@ class VoiceControlKeywords:
             
             if available:
                 logger.info("Scarlett 4i4 設備連接檢查 - 正常")
+                
+                # v1.5.0: 自動檢查並修復路由設定
+                # 檢查聲道 1 (代表 Scarlett_1-2) 和 聲道 3 (代表 Scarlett_3-4)
+                routing_ok_1, _ = self.audio_player.verify_routing(1)
+                routing_ok_3, _ = self.audio_player.verify_routing(3)
+                
+                if not (routing_ok_1 and routing_ok_3):
+                    logger.warning("檢測到路由設定不完整，嘗試自動執行設定腳本...")
+                    if ROBOT_AVAILABLE:
+                        robot_logger.info("⚠ 檢測到路由設定不完整，嘗試自動執行 setup_pipewire_routing_v5.sh")
+                        
+                    if self._run_setup_script():
+                        logger.info("路由設定腳本執行成功")
+                        if ROBOT_AVAILABLE:
+                            robot_logger.info("✓ 路由設定腳本執行成功")
+                    else:
+                        logger.error("路由設定腳本執行失敗")
+                        if ROBOT_AVAILABLE:
+                            robot_logger.error("✗ 路由設定腳本執行失敗")
+                            # 這裡不一定要 return False，因為可能只是部分失敗，後續檢查會再次確認
+                
                 if ROBOT_AVAILABLE:
                     robot_logger.info("✓ Scarlett 4i4 音效介面已正確連接")
             else:
@@ -635,6 +657,43 @@ class VoiceControlKeywords:
             logger.error(f"Scarlett 4i4 設備檢查失敗: {e}")
             if ROBOT_AVAILABLE:
                 robot_logger.error(f"✗ Scarlett 4i4 設備檢查失敗: {e}")
+            return False
+
+    def _run_setup_script(self) -> bool:
+        """
+        執行 PipeWire 路由設定腳本 (內部方法)
+        """
+        try:
+            # 取得腳本絕對路徑
+            script_path = Path(__file__).parent / "setup_pipewire_routing_v5.sh"
+            
+            if not script_path.exists():
+                logger.error(f"找不到設定腳本: {script_path}")
+                return False
+                
+            logger.info(f"正在執行設定腳本: {script_path}")
+            
+            # 執行腳本 (不帶參數執行完整設定，或帶 --test 僅測試? 這裡應該執行完整設定但跳過測試以節省時間?)
+            # 腳本預設會執行測試。我們可以修改腳本或只執行設定部分。
+            # setup_pipewire_routing_v5.sh 目前沒有只設定不測試的選項，除非改腳本。
+            # 但執行測試也是好事，確保聲音真的有出來。
+            
+            result = subprocess.run(
+                [str(script_path)],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            
+            logger.info("設定腳本輸出:\n" + result.stdout)
+            return True
+            
+        except subprocess.CalledProcessError as e:
+            logger.error(f"設定腳本執行失敗 (Exit Code: {e.returncode})")
+            logger.error(f"錯誤輸出:\n{e.stderr}")
+            return False
+        except Exception as e:
+            logger.error(f"執行設定腳本時發生例外: {e}")
             return False
 
     @keyword('Given TTS 引擎已設定為 "${engine_name}"')

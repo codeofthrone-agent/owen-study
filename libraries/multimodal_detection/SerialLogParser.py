@@ -75,6 +75,11 @@ class SerialLogParser:
     PATTERN_PLAYING = re.compile(r'Playing (?:audio file|voice command reply):\s+(.+\.mp3)')
     PATTERN_FINISHED = re.compile(r'Finished playing\s+(.+\.mp3)')
 
+    # 預設忽略的日誌模式 (Regex)
+    DEFAULT_IGNORE_PATTERNS = [
+        re.compile(r'sunxi_i2c_do_xfer.*incomplete xfer'),  # 忽略 I2C 傳輸錯誤
+    ]
+
     def __init__(self, port: Optional[str] = None, baudrate: int = 115200):
         """
         初始化 UART 日誌解析器
@@ -93,6 +98,7 @@ class SerialLogParser:
         self.monitor_thread: Optional[threading.Thread] = None
         self.play_events: List[Dict[str, any]] = []
         self.raw_logs: List[Dict[str, any]] = []  # v1.3.0: 保存所有原始日誌
+        self.ignore_patterns: List[re.Pattern] = list(self.DEFAULT_IGNORE_PATTERNS)
         self._lock = threading.Lock()
 
         logger.info(f"初始化 UART 日誌解析器 (v{self.ROBOT_LIBRARY_VERSION})")
@@ -258,6 +264,11 @@ class SerialLogParser:
             line: 日誌字串
         """
         # v1.3.0: 保存所有原始日誌（包含時間戳記）
+        # 先檢查是否為忽略的模式
+        for pattern in self.ignore_patterns:
+            if pattern.search(line):
+                return
+
         raw_log_entry = {
             'timestamp': time.time(),
             'line': line
@@ -374,6 +385,21 @@ class SerialLogParser:
             self.raw_logs.clear()  # v1.3.0: 同時清空原始日誌
         logger.info("事件記錄和原始日誌已清空")
 
+    def add_ignore_pattern(self, pattern_str: str):
+        """
+        新增忽略的日誌模式
+
+        Args:
+            pattern_str: Regex 模式字串
+        """
+        try:
+            pattern = re.compile(pattern_str)
+            with self._lock:
+                self.ignore_patterns.append(pattern)
+            logger.info(f"已新增忽略模式: {pattern_str}")
+        except re.error as e:
+            logger.error(f"無效的 Regex 模式 '{pattern_str}': {e}")
+
     # ===========================================
     # Robot Framework 關鍵字
     # ===========================================
@@ -440,6 +466,18 @@ class SerialLogParser:
     def 斷開串列埠(self):
         """斷開串列埠連接"""
         self.disconnect()
+
+    def 新增忽略日誌模式(self, pattern: str):
+        """
+        新增忽略的日誌模式
+
+        Args:
+            pattern: Regex 模式字串
+        
+        Example:
+            | 新增忽略日誌模式 | .*error_to_ignore.* |
+        """
+        self.add_ignore_pattern(pattern)
 
     def 驗證遠端系統配置(self) -> Dict[str, any]:
         """

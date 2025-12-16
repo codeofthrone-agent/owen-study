@@ -57,23 +57,12 @@ class AudioPlayer:
             self.physical_output = 2 if self.target_channel == 2 else 4
 
     def switch_output_device(self) -> bool:
-        """切换系统默认输出设备"""
-        print(f"(步骤 1/3) 正在将系统默认输出切换到: {self.sink_name} ...")
-
-        try:
-            result = subprocess.run(
-                ["pactl", "set-default-sink", self.sink_name],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            print("    ✅ 切换成功。")
-            return True
-        except subprocess.CalledProcessError as e:
-            print("❌ 错误：切换输出设备失败！")
-            print(f"    原因: {e.stderr}")
-            print("    请确认 setup_pipewire_routing_v3.sh 是否已成功执行。")
-            return False
+        """
+        (已棄用) 以前用於切換系統預設輸出。
+        現在使用 pacat 直接指定設備，因此此步驟不再需要，
+        但保留函式定義以相容舊版呼叫邏輯（直接回傳 True）。
+        """
+        return True
 
     def play_audio(self, duration: int = 5) -> bool:
         """
@@ -98,44 +87,48 @@ class AudioPlayer:
             "-ar", "48000",
             "-ac", "2",
             "-f", "s16le",
+            "-v", "quiet",  # 減少 ffmpeg 輸出
             "-"
         ]
 
-        # 构建 aplay 命令
-        aplay_cmd = [
-            "aplay",
-            "-f", "S16_LE",
-            "-r", "48000",
-            "-c", "2"
+        # 构建 pacat 命令 (使用 PulseAudio 原生客戶端，可指定 device)
+        pacat_cmd = [
+            "pacat",
+            "--format=s16le",
+            "--rate=48000",
+            "--channels=2",
+            f"--device={self.sink_name}"
         ]
 
         try:
-            # 使用管道连接 ffmpeg 和 aplay
+            # 使用管道连接 ffmpeg 和 pacat
             ffmpeg_process = subprocess.Popen(
                 ffmpeg_cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL
             )
 
-            aplay_process = subprocess.Popen(
-                aplay_cmd,
+            pacat_process = subprocess.Popen(
+                pacat_cmd,
                 stdin=ffmpeg_process.stdout,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
+                stderr=subprocess.PIPE  # 捕獲錯誤輸出
             )
 
-            # 关闭 ffmpeg 的 stdout（让 aplay 接管）
+            # 关闭 ffmpeg 的 stdout（让 pacat 接管）
             ffmpeg_process.stdout.close()
 
             # 等待两个进程完成
-            aplay_process.wait()
+            stdout, stderr = pacat_process.communicate()
             ffmpeg_process.wait()
 
-            if aplay_process.returncode == 0 and ffmpeg_process.returncode == 0:
+            if pacat_process.returncode == 0 and ffmpeg_process.returncode == 0:
                 print("✅ 播放完毕。")
                 return True
             else:
                 print("❌ 播放失败。")
+                if stderr:
+                    print(f"    pacat error: {stderr.decode()}")
                 return False
 
         except Exception as e:
