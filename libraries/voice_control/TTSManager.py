@@ -431,7 +431,8 @@ class TTSManager:
 
     def cleanup_temp_files(self) -> int:
         """
-        清理暫存音訊檔案
+        清理本此執行期間產生的暫存音訊檔案
+        (只清理 self.temp_files 列表中的檔案)
 
         Returns:
             清理的檔案數量
@@ -448,6 +449,35 @@ class TTSManager:
 
         if cleaned_count > 0:
             logger.info(f"清理了 {cleaned_count} 個暫存音訊檔案")
+
+        return cleaned_count
+
+    def cleanup_all_temp_files(self) -> int:
+        """
+        清理 temp_audio 目錄下的所有檔案
+        (用於初始化時清理舊的暫存檔)
+
+        Returns:
+            清理的檔案數量
+        """
+        cleaned_count = 0
+        if not self.temp_dir.exists():
+            return 0
+
+        try:
+            for file_path in self.temp_dir.glob('*'):
+                if file_path.is_file():
+                    try:
+                        file_path.unlink()
+                        cleaned_count += 1
+                    except Exception as e:
+                        logger.warning(f"無法刪除檔案 {file_path}: {e}")
+            
+            if cleaned_count > 0:
+                logger.info(f"初始化清理: 刪除了 {cleaned_count} 個舊的暫存音訊檔案")
+                
+        except Exception as e:
+            logger.error(f"清理暫存目錄失敗: {e}")
 
         return cleaned_count
 

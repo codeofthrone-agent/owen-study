@@ -94,7 +94,7 @@ environments:
         protocol: "rtsp"
         stream_path: "/live0"
         transport: "udp"
-        description: "馬達區域監控攝影機"
+        description: "RV 馬達攝影機"
         # username 和 password 會自動從 .env 讀取        
 
 # 燈光檢測設定

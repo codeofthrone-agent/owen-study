@@ -143,7 +143,7 @@ class EnvironmentConfig:
             "default_camera": None,
 
             "image_source": "http",  # ✨ 修改：使用 HTTP 影像源 (v4.2.0)
-            "robot_arm_host": "192.168.165.144",
+            "robot_arm_host": "192.168.166.189",
             "robot_arm_port": 9000,
             "robot_arm_http_port": 8000,
             "robot_arm_image_source": "http",

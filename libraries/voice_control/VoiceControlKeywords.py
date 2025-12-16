@@ -74,6 +74,12 @@ class VoiceControlKeywords:
         """初始化語音控制關鍵字庫"""
         # 初始化核心模組
         self.tts_manager = TTSManager()
+        
+        # 初始化時清理舊的暫存音訊檔案
+        cleaned_count = self.tts_manager.cleanup_all_temp_files()
+        if cleaned_count > 0 and ROBOT_AVAILABLE:
+            robot_logger.info(f"✓ 清理了 {cleaned_count} 個舊的暫存音訊檔案")
+
         self.audio_player = AudioPlayer()
 
         # 狀態管理
@@ -107,6 +113,8 @@ class VoiceControlKeywords:
                     rotation="10 MB",
                     retention="7 days",
                 )
+                # 確保日誌也輸出到控制台 (stderr)
+                logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}", level="INFO")
         except Exception as e:
             print(f"日誌設定失敗: {e}")
 
@@ -187,7 +195,10 @@ class VoiceControlKeywords:
 
             # 連接串列埠
             if not self.uart_parser.connect(auto_validate=auto_validate):
-                logger.error("UART 串列埠連接失敗")
+                error_msg = getattr(self.uart_parser, 'last_error', '未知錯誤')
+                logger.error(f"UART 串列埠連接失敗: {error_msg}")
+                if ROBOT_AVAILABLE:
+                    robot_logger.error(f"✗ UART 串列埠連接失敗: {error_msg}")
                 return False
 
             logger.info("✓ UART 監控器初始化成功")
@@ -1022,6 +1033,23 @@ class VoiceControlKeywords:
             
             if ROBOT_AVAILABLE:
                 robot_logger.info(f"將使用預設喇叭播放文字 '{text}'")
+
+            # Platform detection validation log
+            platform_name = "macOS" if sys.platform == 'darwin' else "Linux"
+            logger.info(f"目前運行平台: {platform_name} - 將使用系統預設指令播放 (afplay/ffplay)")
+            if ROBOT_AVAILABLE:
+                robot_logger.info(f"ℹ️ 偵測到運行平台: {platform_name} (支援跨平台播放)")
+
+            # Check for dummy/null audio on Linux (Common cause for "No Sound" in remote env)
+            if sys.platform != 'darwin':
+                sinks = self.audio_player.list_available_sinks()
+                if not sinks or (len(sinks) >= 1 and any('auto_null' in s for s in sinks)):
+                     warning_msg = "⚠️ 偵測到 Linux 系統無有效音訊輸出 (auto_null)。若您是透過 SSH 遠端連線，聲音無法傳送到您的本機電腦。"
+                     logger.warning(warning_msg)
+                     if ROBOT_AVAILABLE:
+                         robot_logger.warn(warning_msg)
+
+
                 
             # 步驟 1: 使用 TTS 生成音訊檔案
             # 預設使用英文，若需多語言可擴充
@@ -1776,9 +1804,10 @@ class VoiceControlKeywords:
                     robot_logger.error("⚠️  日誌中未找到任何包含 mp3/audio/playing 的內容")
 
                 # v1.2.0: 輸出完整的 UART 日誌用於診斷
-                robot_logger.error(f"\n完整 UART 日誌 ({len(raw_log_lines)} 行):")
+                filtered_logs = self._filter_log_lines(raw_log_lines)
+                robot_logger.error(f"\n完整 UART 日誌 ({len(filtered_logs)}/{len(raw_log_lines)} 行, 已過濾雜訊):")
                 robot_logger.error("=" * 60)
-                for i, line in enumerate(raw_log_lines, 1):
+                for i, line in enumerate(filtered_logs, 1):
                     robot_logger.error(f"{i:4d} | {line}")
                 robot_logger.error("=" * 60)
 
@@ -1797,12 +1826,52 @@ class VoiceControlKeywords:
             else:
                 error_msg += "\n\n⚠️ 診斷：日誌中未找到任何包含 mp3/audio/playing 的內容"
 
-            error_msg += f"\n\n完整 UART 日誌 ({len(raw_log_lines)} 行):\n"
+            filtered_logs = self._filter_log_lines(raw_log_lines)
+            error_msg += f"\n\n完整 UART 日誌 ({len(filtered_logs)}/{len(raw_log_lines)} 行, 已過濾雜訊):\n"
             error_msg += "=" * 60 + "\n"
-            for i, line in enumerate(raw_log_lines, 1):
+            for i, line in enumerate(filtered_logs, 1):
                 error_msg += f"{i:4d} | {line}\n"
             error_msg += "=" * 60
             raise AssertionError(error_msg)
+
+    def _filter_log_lines(self, lines: List[str]) -> List[str]:
+        """
+        過濾掉不需要的日誌行 (如 I2C 錯誤)
+        
+        Args:
+            lines: 原始日誌行列表
+            
+        Returns:
+            過濾後的日誌行列表
+        """
+        filtered_lines = []
+        for line in lines:
+            # 過濾 sunxi_i2c_do_xfer 相關錯誤
+            if "sunxi_i2c_do_xfer" in line and "incomplete xfer" in line:
+                continue
+            filtered_lines.append(line)
+        return filtered_lines
+
+    def _get_key_by_filename(self, filename: str) -> Optional[str]:
+        """
+        根據檔案名稱反查指令 Key (內部方法)
+        
+        Args:
+            filename: 檔案名稱
+            
+        Returns:
+            指令 Key，若找不到則回傳 None
+        """
+        if not self.voice_command_map:
+            return None
+            
+        for key, value in self.voice_command_map.items():
+            if isinstance(value, dict) and value.get('filename') == filename:
+                return key
+            elif value == filename:
+                return key
+                
+        return None
 
     @keyword('Then 應該在 "${timeout}" 秒內收到包含以下檔案的語音回應 "${patterns}"')
     def then_should_receive_voice_responses_with_patterns(self, timeout: float, patterns: str):
@@ -1845,17 +1914,23 @@ class VoiceControlKeywords:
             if passed:
                 robot_logger.info(f"✓ 收到符合預期的 {expected_count} 個語音回應")
                 for i, (filename, pattern) in enumerate(zip(filenames, pattern_list), 1):
-                    robot_logger.info(f"  {i}. {filename} (預期包含: {pattern})")
+                    key = self._get_key_by_filename(filename)
+                    key_info = f" ({key})" if key else ""
+                    robot_logger.info(f"  {i}. {filename}{key_info} (預期包含: {pattern})")
             else:
                 robot_logger.error(f"✗ 語音回應不符合預期")
                 robot_logger.error(f"  預期數量: {expected_count}，實際數量: {actual_count}")
                 robot_logger.error("  預期模式:")
                 for i, pattern in enumerate(pattern_list, 1):
-                    robot_logger.error(f"    {i}. {pattern}")
+                    key = self._get_key_by_filename(pattern)
+                    key_info = f" ({key})" if key else ""
+                    robot_logger.error(f"    {i}. {pattern}{key_info}")
                 if filenames:
                     robot_logger.error("  實際收到:")
                     for i, filename in enumerate(filenames, 1):
-                        robot_logger.error(f"    {i}. {filename}")
+                        key = self._get_key_by_filename(filename)
+                        key_info = f" ({key})" if key else ""
+                        robot_logger.error(f"    {i}. {filename}{key_info}")
 
                 # v1.2.0: 診斷資訊
                 mp3_related_lines = [line for line in raw_log_lines if 'mp3' in line.lower() or 'audio' in line.lower() or 'playing' in line.lower()]
@@ -1867,9 +1942,10 @@ class VoiceControlKeywords:
                     robot_logger.error("⚠️  日誌中未找到任何包含 mp3/audio/playing 的內容")
 
                 # v1.2.0: 輸出完整的 UART 日誌用於診斷
-                robot_logger.error(f"\n完整 UART 日誌 ({len(raw_log_lines)} 行):")
+                filtered_logs = self._filter_log_lines(raw_log_lines)
+                robot_logger.error(f"\n完整 UART 日誌 ({len(filtered_logs)}/{len(raw_log_lines)} 行, 已過濾雜訊):")
                 robot_logger.error("=" * 60)
-                for i, line in enumerate(raw_log_lines, 1):
+                for i, line in enumerate(filtered_logs, 1):
                     robot_logger.error(f"{i:4d} | {line}")
                 robot_logger.error("=" * 60)
 
@@ -1878,13 +1954,22 @@ class VoiceControlKeywords:
             error_msg = f"語音回應不符合預期:\n"
             error_msg += f"  預期數量: {expected_count} 個\n"
             error_msg += f"  實際數量: {actual_count} 個\n"
-            error_msg += f"  預期模式: {', '.join(pattern_list)}\n"
+            
+            error_msg += f"  預期模式:\n"
+            for i, pattern in enumerate(pattern_list, 1):
+                key = self._get_key_by_filename(pattern)
+                key_info = f" ({key})" if key else ""
+                error_msg += f"    {i}. {pattern}{key_info}\n"
 
             # 總是顯示實際收到的檔案清單（即使為空）
             if filenames:
-                error_msg += f"  實際模式: {', '.join(filenames)}"
+                error_msg += f"  實際收到:\n"
+                for i, filename in enumerate(filenames, 1):
+                    key = self._get_key_by_filename(filename)
+                    key_info = f" ({key})" if key else ""
+                    error_msg += f"    {i}. {filename}{key_info}\n"
             else:
-                error_msg += f"  實際模式: (在 {timeout_val} 秒內未收到任何語音回應)"
+                error_msg += f"  實際收到: (在 {timeout_val} 秒內未收到任何語音回應)\n"
 
             # v1.2.0: 診斷資訊
             mp3_related_lines = [line for line in raw_log_lines if 'mp3' in line.lower() or 'audio' in line.lower() or 'playing' in line.lower()]
@@ -1896,9 +1981,10 @@ class VoiceControlKeywords:
                 error_msg += "\n\n⚠️ 診斷：日誌中未找到任何包含 mp3/audio/playing 的內容"
 
             # v1.2.0: 附加完整的 UART 日誌
-            error_msg += f"\n\n完整 UART 日誌 ({len(raw_log_lines)} 行):\n"
+            filtered_logs = self._filter_log_lines(raw_log_lines)
+            error_msg += f"\n\n完整 UART 日誌 ({len(filtered_logs)}/{len(raw_log_lines)} 行, 已過濾雜訊):\n"
             error_msg += "=" * 60 + "\n"
-            for i, line in enumerate(raw_log_lines, 1):
+            for i, line in enumerate(filtered_logs, 1):
                 error_msg += f"{i:4d} | {line}\n"
             error_msg += "=" * 60
 

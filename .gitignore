@@ -49,7 +49,7 @@ coverage.xml
 
 # Test results
 results/
-output/
+#output/
 log.html
 output.xml
 report.html

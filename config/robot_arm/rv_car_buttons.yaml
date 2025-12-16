@@ -1,7 +1,7 @@
 environment: {name: rv_car, display_name: RV Car 測試環境, panel_type: 3611a, description: RV
     Car 控制面板，包含 7 個控制按鈕和 16 個觀測點}
 connection:
-  socket: {host: 192.168.165.144, port: 9000}
+  socket: {host: 192.168.166.189, port: 9000}
   serial: {port: /dev/ttyTHS1, baudrate: 1000000}
 defaults: {speed: 100, press_duration: 1.0, lift_duration: 0.1, count: 1}
 buttons:

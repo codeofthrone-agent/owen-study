@@ -99,6 +99,7 @@ class SerialLogParser:
         self.play_events: List[Dict[str, any]] = []
         self.raw_logs: List[Dict[str, any]] = []  # v1.3.0: 保存所有原始日誌
         self.ignore_patterns: List[re.Pattern] = list(self.DEFAULT_IGNORE_PATTERNS)
+        self.last_error: Optional[str] = None  # v1.3.1: 記錄最後一次錯誤訊息
         self._lock = threading.Lock()
 
         logger.info(f"初始化 UART 日誌解析器 (v{self.ROBOT_LIBRARY_VERSION})")
@@ -114,6 +115,8 @@ class SerialLogParser:
         Returns:
             是否成功連接
         """
+        self.last_error = None  # 重置錯誤訊息
+
         if self.serial_conn and self.serial_conn.is_open:
             logger.warning("串列埠已連接")
             return True
@@ -132,7 +135,8 @@ class SerialLogParser:
                 result = validator.validate_uart_setup()
 
                 if result['error_message']:
-                    logger.error(f"配置驗證失敗: {result['error_message']}")
+                    self.last_error = f"配置驗證失敗: {result['error_message']}"
+                    logger.error(self.last_error)
                     return False
 
                 if result['needs_reboot']:
@@ -143,6 +147,7 @@ class SerialLogParser:
                     logger.warning(f"請執行: {result['reboot_command']}")
                     logger.warning("重開機後，請重新執行測試")
                     logger.warning("=" * 60)
+                    self.last_error = f"配置已修正，需要重開機: {result['reboot_command']}"
                     return False
 
                 if result['config_ok']:
@@ -169,7 +174,8 @@ class SerialLogParser:
             
             return True
         except Exception as e:
-            logger.error(f"串列埠連接失敗: {e}")
+            self.last_error = f"串列埠連接失敗: {str(e)}"
+            logger.error(self.last_error)
             return False
 
     def disconnect(self):

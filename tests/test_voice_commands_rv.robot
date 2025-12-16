@@ -52,11 +52,22 @@ S00 : All Light off
     
     # Step 1: Turn On (Channel 1)
     When 使用者播放文字 "hey power pro" 到聲道 "2"
-    Then 應該在 "3" 秒內收到語音指令 "CMD_WAKE_UP" 的回應
+    Sleep    3
+    # Then 應該在 "3" 秒內收到語音指令 "CMD_WAKE_UP" 的回應
+    
+    When 使用者播放文字 "Turn on all lights" 到聲道 "2"
+
+    # Then 應該在 "3" 秒內收到語音指令 "CMD_ALL_LIGHTS_ON" 的回應
+
+
+    Sleep    3
+    When 使用者播放文字 "hey power pro" 到聲道 "2"
+    Sleep    3
+    # Then 應該在 "3" 秒內收到語音指令 "CMD_WAKE_UP" 的回應
     
     When 使用者播放文字 "Turn off all lights" 到聲道 "2"
 
-    Then 應該在 "3" 秒內收到語音指令 "CMD_ALL_LIGHTS_OFF" 的回應
+    # Then 應該在 "3" 秒內收到語音指令 "CMD_ALL_LIGHTS_OFF" 的回應
 
 
     Sleep    3

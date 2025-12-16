@@ -126,19 +126,25 @@ class RobotArmKeywords:
         """
         if host is None or port is None:
             # 1. 優先從當前環境配置讀取 (v4.0.0+)
+
+            
+            # 1. 優先從 Config Loader (YAML) 讀取 (v4.3.0: 依據用戶需求調整優先級)
+            if host is None or port is None:
+                try:
+                    socket_config = self.config_loader.get_socket_config()
+                    if host is None:
+                        host = socket_config.get('host')
+                    if port is None:
+                        port = socket_config.get('port')
+                except Exception as e:
+                    logger.debug(f"無法從 Config Loader 讀取連接配置: {e}")
+
+            # 2. 及其次從當前環境配置讀取 (EnvironmentConfig)
             if self.env_config:
                 if host is None:
                     host = self.env_config.get("robot_arm_host")
                 if port is None:
                     port = self.env_config.get("robot_arm_port")
-            
-            # 2. 回退到舊版配置加載器 (v3.0.0)
-            if host is None or port is None:
-                socket_config = self.config_loader.get_socket_config()
-                if host is None:
-                    host = socket_config['host']
-                if port is None:
-                    port = socket_config['port']
 
         logger.info(f"正在連接機器手臂: {host}:{port}")
 
@@ -407,6 +413,19 @@ class RobotArmKeywords:
             logger.info("   視覺模組狀態: 使用共享 Socket")
         else:
             logger.info("   視覺模組狀態: 將建立獨立連接")
+        # 更新 Config Loader (確保連接時使用正確的 YAML)
+        if "button_config_path" in self.env_config:
+            try:
+                config_path = self.env_config["button_config_path"]
+                # 嘗試解析路徑 (處理相對路徑)
+                if not Path(config_path).is_absolute():
+                    project_root = Path(__file__).parent.parent.parent
+                    config_path = str(project_root / config_path)
+                
+                self.config_loader = ButtonConfigLoader(config_path)
+                logger.info(f"   Config Loader 已更新為: {config_path}")
+            except Exception as e:
+                logger.warning(f"更新 Config Loader 失敗: {e}，將使用預設配置或 EnvironmentConfig")
 
     @keyword('Given 面板類型設定為 "${panel_type}"')
     def given_panel_type_is(self, panel_type: str):

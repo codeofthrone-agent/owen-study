@@ -105,7 +105,8 @@ class FrameReader(threading.Thread):
 
     def _read_loop(self):
         # 設定 FFmpeg 選項
-        os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = f'rtsp_transport;{self.transport}|analyzeduration;10000000|probesize;10000000'
+        # 加入 loglevel;quiet 以抑制 FFmpeg 輸出
+        os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = f'rtsp_transport;{self.transport}|analyzeduration;10000000|probesize;10000000|loglevel;quiet'
         
         # 再次確保日誌級別被設定 (雖然模組層級已設定，但 FrameReader 可能在不同 context)
         try:
@@ -115,6 +116,9 @@ class FrameReader(threading.Thread):
         
         while self.running:
             try:
+                print(f"FrameReader: Opening RTSP stream with transport={self.transport}")
+                print(f"FrameReader: Env Options={os.environ.get('OPENCV_FFMPEG_CAPTURE_OPTIONS')}")
+                
                 cap = cv2.VideoCapture(self.rtsp_url)
                 buffer_size = self.connection_config.get('rtsp_buffer_size', 1)
                 cap.set(cv2.CAP_PROP_BUFFERSIZE, buffer_size)
@@ -192,25 +196,54 @@ class IPCamLightDetection:
             logger.info(f"準備連接攝影機: {environment}/{camera_name}")
             logger.info(f"RTSP URL: {self._get_safe_url()}")
 
-            # 取得傳輸協定設定 (預設 tcp)
-            transport = self.camera_config.get('transport', 'tcp')
+            # 取得傳輸協定設定 (預設 udp)
+            primary_transport = self.camera_config.get('transport', 'udp')
+            # 決定 fallback 順序
+            transports = [primary_transport]
+            if primary_transport == 'udp':
+                transports.append('tcp')
+            else:
+                transports.append('udp')
+
+            last_error = None
             
-            # 啟動背景讀取執行緒
-            self.frame_reader = FrameReader(self.rtsp_url, self.connection_config, transport)
-            self.frame_reader.start()
-            
-            # 等待連線建立 (最多等待 10 秒)
-            for _ in range(20):
-                if self.frame_reader.connected and self.frame_reader.get_frame() is not None:
-                    logger.info("RTSP 連線已建立且已取得首張影像")
+            for transport in transports:
+                logger.info(f"嘗試使用 {transport.upper()} 協定連接...")
+                try:
+                    self._connect_with_transport(transport)
+                    logger.info(f"成功使用 {transport.upper()} 協定建立連線")
                     return
-                time.sleep(0.5)
+                except Exception as e:
+                    logger.warning(f"使用 {transport.upper()} 連接失敗: {e}")
+                    last_error = e
+                    self.disconnect() # 確保清理資源
             
-            raise RuntimeError(f"無法連接到攝影機 {camera_name} (RTSP 連線逾時)")
+            raise RuntimeError(f"無法連接到攝影機 {camera_name} (所有嘗試皆失敗). 最後錯誤: {last_error}")
 
         except ValueError as e:
             logger.error(f"連接攝影機失敗: {e}")
             raise
+
+    def _connect_with_transport(self, transport: str):
+        """
+        嘗試使用指定傳輸協定連接
+        """
+        # 啟動背景讀取執行緒
+        self.frame_reader = FrameReader(self.rtsp_url, self.connection_config, transport)
+        self.frame_reader.start()
+        
+        # 等待連線建立 (最多等待 10 秒)
+        # 可以從 config 讀取 timeout，這裡先維持原本邏輯
+        timeout = self.connection_config.get('timeout', 10)
+        check_interval = 0.5
+        max_attempts = int(timeout / check_interval)
+
+        for _ in range(max_attempts):
+            if self.frame_reader.connected and self.frame_reader.get_frame() is not None:
+                return
+            time.sleep(check_interval)
+        
+        raise RuntimeError("RTSP 連線逾時")
 
     def _get_safe_url(self) -> str:
         if not self.rtsp_url:

@@ -41,7 +41,7 @@ Suite Teardown    測試套件清理
 Scenario: 測試 kws_answer
     [Documentation]    測試喚醒詞是否正確觸發
     ...                預期回應: 1 個語音檔案 (kws_answer.mp3)
-    [Tags]    voice    tts    asrpro    propane
+    [Tags]    voice    tts    asrpro   
 
     # 前置條件
     Given 音訊輸出聲道 "1" 已準備就緒
@@ -457,4 +457,49 @@ Scenario: 測試 Turn offClimate Control 語音指令
     And 沒有音訊延遲或中斷
     Sleep    5
 
+Scenario: 測試 cool rv 語音指令
+    [Documentation]    測試 Turn on Climate Control 的語音指令
+    ...                預期回應: 1 個語音檔案 (Welcome_back.mp3)
+    [Tags]    voice    tts    asrpro    i
+
+    # 前置條件
+    Given 音訊輸出聲道 "1" 已準備就緒
+    # And 清空 UART 事件記錄
+
+    # 啟動 UART 監控
+    #When 使用者啟動 UART 背景監控
+
+    # 執行語音命令
+    When 使用者播放文字 "hey power pro" 到聲道 "1"
+    Sleep    2
+    When 使用者播放文字 "cool rv" 到聲道 "1"
+
+    # 驗證語音播放
+    Then 語音應該成功播放到指定聲道
+    And 語音品質應該符合標準
+    And 沒有音訊延遲或中斷
+    Sleep    5
       
+
+Scenario: 測試 heat rv 語音指令
+    [Documentation]    測試 Turn on Climate Control 的語音指令
+    ...                預期回應: 1 個語音檔案 (Welcome_back.mp3)
+    [Tags]    voice    tts    asrpro    i
+
+    # 前置條件
+    Given 音訊輸出聲道 "1" 已準備就緒
+    # And 清空 UART 事件記錄
+
+    # 啟動 UART 監控
+    #When 使用者啟動 UART 背景監控
+
+    # 執行語音命令
+    When 使用者播放文字 "hey power pro" 到聲道 "1"
+    Sleep    2
+    When 使用者播放文字 "heat rv" 到聲道 "1"
+
+    # 驗證語音播放
+    Then 語音應該成功播放到指定聲道
+    And 語音品質應該符合標準
+    And 沒有音訊延遲或中斷
+    Sleep    5

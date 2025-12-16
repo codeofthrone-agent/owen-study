@@ -116,14 +116,14 @@ def print_result(result: dict):
     print()
 
     # 檢查結果詳情
-    if 'details' in result and 'check_result' in result['details']:
-        check_result = result['details']['check_result']
-        if check_result.get('error_type'):
-            print("🔍 檢測到的配置問題:")
-            print(f"   - 錯誤類型: {check_result['error_type']}")
-            if check_result.get('matched_line'):
-                print(f"   - 錯誤行: {check_result['matched_line']}")
-            print()
+    if 'details' in result:
+        for file_path, check_result in result['details'].items():
+            if check_result.get('has_error'):
+                print(f"🔍 檢測到的配置問題 ({file_path}):")
+                print(f"   - 錯誤類型: {check_result.get('error_type')}")
+                if check_result.get('matched_line'):
+                    print(f"   - 錯誤行: {check_result['matched_line']}")
+                print()
 
     # 重開機指示
     if result['needs_reboot'] and result['reboot_command']:
@@ -171,19 +171,23 @@ def check_only_mode(validator: RemoteSystemConfigValidator) -> dict:
         time.sleep(0.5)
 
         # 檢查配置
-        check_result = validator.check_emmc_config()
+        all_ok = True
+        details = {}
+        
+        for file_path, expected_content in validator.TARGET_CONFIGS.items():
+            check_result = validator.check_file_config(file_path, expected_content)
+            details[file_path] = check_result
+            if check_result['has_error']:
+                all_ok = False
 
         result = {
-            'config_ok': not check_result['has_error'],
+            'config_ok': all_ok,
             'fixed': False,
             'needs_reboot': False,
             'reboot_command': None,
-            'error_message': None,
-            'details': {'check_result': check_result}
+            'error_message': None if all_ok else "配置檢查失敗",
+            'details': details
         }
-
-        if check_result['has_error'] is None:
-            result['error_message'] = f"無法讀取配置檔: {validator.EMMC_CONFIG_PATH}"
 
         return result
 
