@@ -221,12 +221,12 @@ class RobotArmKeywords:
         # 1. 移動到按鈕上方 (抬起位置)，確保安全起點
         logger.debug(f"移動到按鈕上方: {config['up_angles']}")
         self.controller.send_angles(config['up_angles'], config['speed'])
-        self.controller.wait_for_movement()
+        self.controller.wait_for_movement(check_interval=0.02)
 
         # 移動到按下位置
         logger.debug(f"下壓按鈕: {config['down_angles']}")
         self.controller.send_angles(config['down_angles'], config['speed'])
-        self.controller.wait_for_movement()
+        self.controller.wait_for_movement(check_interval=0.02)
 
         # 保持按壓
         duration = custom_duration if custom_duration is not None else config['press_duration']
@@ -236,7 +236,7 @@ class RobotArmKeywords:
         # 移動到抬起位置
         logger.debug(f"抬起手臂: {config['up_angles']}")
         self.controller.send_angles(config['up_angles'], config['speed'])
-        self.controller.wait_for_movement()
+        self.controller.wait_for_movement(check_interval=0.02)
 
         # 抬起後等待
         time.sleep(config['lift_duration'])

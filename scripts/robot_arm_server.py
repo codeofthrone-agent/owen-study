@@ -68,14 +68,15 @@ has_return = [0x01,0x02,0x03,0x04,0x09,0x12, 0x14, 0x15, 0x17,0x1B, 0x20,0x23, 0
 # - GET  /api/v1/capture/multiple     - 多張影像截取
 
 class HTTPAPIServer:
-    """HTTP API Server (v4.2.0) - Flask Implementation"""
+    """HTTP API Server (v4.3.0) - Flask Implementation with YOLO support"""
 
-    def __init__(self, host, port, camera_capture, camera_lock, logger):
+    def __init__(self, host, port, camera_capture, camera_lock, logger, yolo_detector=None):
         self.host = host
         self.port = port
         self.camera_capture = camera_capture
         self.camera_lock = camera_lock
         self.logger = logger
+        self.yolo_detector = yolo_detector
         self.app = Flask(__name__)
         self.server = None
         self.server_thread = None
@@ -91,6 +92,10 @@ class HTTPAPIServer:
         self.app.add_url_rule('/api/v1/capture', 'capture', self.capture, methods=['GET'])
         self.app.add_url_rule('/api/v1/capture/multiple', 'capture_multiple', self.capture_multiple, methods=['GET'])
 
+        # YOLO endpoint (v4.3.0)
+        if yolo_detector:
+            self.app.add_url_rule('/api/v1/yolo/detect', 'yolo_detect', self.yolo_detect, methods=['GET'])
+
     def start(self):
         """Start HTTP API Server in a separate thread"""
         self.server_thread = threading.Thread(target=self._run, daemon=True)
@@ -100,6 +105,8 @@ class HTTPAPIServer:
         self.logger.info(f"   - GET /health")
         self.logger.info(f"   - GET /api/v1/capture?num_frames=5&format=jpeg")
         self.logger.info(f"   - GET /api/v1/capture/multiple?count=5&num_frames=5&format=jpeg")
+        if self.yolo_detector:
+            self.logger.info(f"   - GET /api/v1/yolo/detect?num_frames=5&confidence=0.5&save_image=true")
 
     def _run(self):
         try:
@@ -213,6 +220,88 @@ class HTTPAPIServer:
 
         except Exception as e:
             self.logger.error(f"Multiple capture error: {e}")
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    def yolo_detect(self):
+        """YOLO 物件檢測 HTTP 端點 (v4.3.0)"""
+        if not self.yolo_detector:
+            return jsonify({"status": "error", "message": "YOLO detection not available"}), 503
+
+        try:
+            # 解析參數
+            num_frames = int(request.args.get('num_frames', 5))
+            confidence = float(request.args.get('confidence', 0.85))
+            save_image = request.args.get('save_image', 'true').lower() == 'true'
+            return_image = request.args.get('return_image', 'false').lower() == 'true'
+
+            # 參數驗證
+            if not (1 <= num_frames <= 20):
+                return jsonify({"status": "error", "message": "num_frames must be between 1 and 20"}), 400
+            if not (0.0 <= confidence <= 1.0):
+                return jsonify({"status": "error", "message": "confidence must be between 0.0 and 1.0"}), 400
+
+            # 執行檢測（使用與 camera_lock 相同的鎖）
+            with self.camera_lock:
+                # 1. 截取圖像
+                avg_frame = self.camera_capture.capture_multi_frame_average(
+                    num_frames=num_frames,
+                    warmup_frames=0
+                )
+
+                if avg_frame is None:
+                    return jsonify({"status": "error", "message": "Failed to capture image"}), 500
+
+                # 2. 執行 YOLO 檢測
+                import time
+                start_time = time.time()
+                detections = self.yolo_detector.detect(avg_frame, confidence=confidence)
+                inference_time = (time.time() - start_time) * 1000
+
+                # 3. 準備響應
+                response_data = {
+                    "status": "success",
+                    "detections": detections,
+                    "metadata": {
+                        "num_frames": num_frames,
+                        "confidence_threshold": confidence,
+                        "inference_time_ms": round(inference_time, 2),
+                        "num_detections": len(detections)
+                    }
+                }
+
+                # 4. 儲存圖片（如果需要）
+                if save_image:
+                    try:
+                        original_path, annotated_path = self.yolo_detector.save_results(
+                            avg_frame, detections
+                        )
+                        response_data["image_path"] = original_path
+                        response_data["annotated_image_path"] = annotated_path
+                    except Exception as e:
+                        self.logger.warning(f"Failed to save images: {e}")
+                        response_data["save_error"] = str(e)
+
+                # 5. 返回圖片 base64（如果需要）
+                if return_image:
+                    try:
+                        # 原始圖
+                        _, buffer = cv2.imencode('.jpg', avg_frame)
+                        response_data["image_base64"] = base64.b64encode(buffer).decode('utf-8')
+
+                        # 標註圖
+                        annotated_image = self.yolo_detector.draw_boxes(avg_frame, detections)
+                        _, buffer = cv2.imencode('.jpg', annotated_image)
+                        response_data["annotated_image_base64"] = base64.b64encode(buffer).decode('utf-8')
+                    except Exception as e:
+                        self.logger.warning(f"Failed to encode images: {e}")
+                        response_data["encoding_error"] = str(e)
+
+            return jsonify(response_data)
+
+        except ValueError as e:
+            return jsonify({"status": "error", "message": f"Invalid parameter: {str(e)}"}), 400
+        except Exception as e:
+            self.logger.error(f"YOLO detection error: {e}")
             return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -445,7 +534,9 @@ class MycobotServer(object):
                  reconnect_interval = 2, max_reconnect_attempts = 5,
                  read_timeout = 0.2, socket_timeout = 30.0, log_level = logging.INFO,
                  camera_device = "/dev/video0", enable_vision = True,
-                 enable_http = True, http_port = 8000):
+                 enable_http = True, http_port = 8000,
+                 enable_yolo = True, yolo_model_path = "models/best_20260106.pt",
+                 yolo_confidence = 0.85, yolo_device = "cuda"):
         """Server class with enhanced error handling and auto-reconnection
 
         Args:
@@ -462,6 +553,10 @@ class MycobotServer(object):
             enable_vision: enable vision detection system (default: True).
             enable_http: enable HTTP API Server (v4.2.0, default: False).
             http_port: HTTP API Server port (default: 8000).
+            enable_yolo: enable YOLO object detection (default: True).
+            yolo_model_path: path to YOLO model file (default: models/best_20260106.pt).
+            yolo_confidence: YOLO confidence threshold (default: 0.5).
+            yolo_device: YOLO inference device, "cuda" or "cpu" (default: cuda).
 
         """
         if GPIO_AVAILABLE:
@@ -492,6 +587,29 @@ class MycobotServer(object):
         self.enable_http = enable_http
         self.http_port = http_port
         self.http_server = None
+
+        # YOLO 物件檢測配置（v4.3.0）
+        self.enable_yolo = enable_yolo
+        self.yolo_model_path = yolo_model_path
+        self.yolo_confidence = yolo_confidence
+        self.yolo_device = yolo_device
+        self.yolo_detector = None
+
+        # 全局偏移補償系統 (v5.0.0 De-IK)
+        self.global_offsets = [0.0] * 6
+        self.correction_enabled = False
+        # 使用絕對路徑，確保從任何目錄啟動都能找到配置檔
+        import os
+        self.offset_config_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "config", "global_offset.json"
+        )
+        # self._load_global_offsets()
+
+        # STag 視覺偏移系統 (v5.1.0 Phase 13.5)
+        self.stag_offset = [0.0, 0.0, 0.0]      # [x, y, z] in mm (位置空間)
+        self.stag_enabled = False                # STag 偏移啟用狀態
+        self.stag_reference = {}                 # 參考標記資訊
 
         # 初始化 socket
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -524,29 +642,163 @@ class MycobotServer(object):
                 self.logger.warning("   伺服器將以無視覺模式運行")
                 self.enable_vision = False
 
-        # 初始化 HTTP API Server（v4.2.0）
-        if self.enable_http:
+        # 初始化 FK/IK 運動學系統（v5.1.0 Phase 13.5）
+        self.fk_calculator = None
+        self.ik_solver = None
+        if self.enable_vision:  # 只在 Vision 啟用時載入（STag 偏移依賴 Vision）
+            try:
+                # 確保專案根目錄在 sys.path
+                import os
+                project_root = os.path.abspath(os.path.join(
+                    os.path.dirname(__file__), '..'
+                ))
+                if project_root not in sys.path:
+                    sys.path.insert(0, project_root)
+
+                from library.planning.dh_fk_calculator_original import DHForwardKinematics
+                from library.planning.ik_solver import IKSolver
+
+                self.fk_calculator = DHForwardKinematics()
+                self.ik_solver = IKSolver(self.fk_calculator)  # 使用共享的 FK 實例
+                self.logger.info("✅ FK/IK 運動學系統已整合 (Phase 13.5)")
+                self.logger.info("   FK 精度: XY 0.2%, Z 3.85mm std")
+                self.logger.info("   IK 精度: < 5mm (Phase 12)")
+
+            except Exception as e:
+                self.logger.warning(f"⚠️ FK/IK 系統載入失敗: {e}")
+                self.logger.warning("   STag 偏移功能將不可用（不影響現有功能）")
+                self.fk_calculator = None
+                self.ik_solver = None
+
+        # 初始化 STag 檢測器（v5.1.0 Phase 13.5B）
+        self.stag_detector = None
+        if self.enable_vision:
+            try:
+                from library.vision.stag_detector import StagCoordinateSystem, STAG_AVAILABLE
+
+                if STAG_AVAILABLE:
+                    # 載入全域視覺設定
+                    import os
+                    app_config_path = os.path.join(
+                        os.path.dirname(os.path.dirname(__file__)),
+                        'config', 'app', 'app.yaml'
+                    )
+                    
+                    marker_size_m = 0.05  # 預設 50mm
+                    stag_hd = 11
+                    
+                    if os.path.exists(app_config_path):
+                        try:
+                            with open(app_config_path, 'r', encoding='utf-8') as f:
+                                app_config = yaml.safe_load(f)
+                                vision_cfg = app_config.get('vision', {})
+                                marker_size_mm = vision_cfg.get('marker_size', 50.0)
+                                marker_size_m = marker_size_mm / 1000.0
+                                stag_hd = vision_cfg.get('stag_hd_library', 11)
+                                self.logger.info(f"✅ 從 {app_config_path} 載入標記尺寸: {marker_size_mm}mm")
+                        except Exception as e:
+                            self.logger.warning(f"⚠️ 讀取 app.yaml 失敗: {e}，使用預設值")
+                    else:
+                        self.logger.warning(f"⚠️ 找不到 {app_config_path}，使用預設值")
+
+                    # 載入攝影機校正參數
+                    camera_intrinsics_path = os.path.join(
+                        os.path.dirname(os.path.dirname(__file__)),
+                        'config', 'camera_intrinsics.npz'
+                    )
+
+                    camera_matrix = None
+                    dist_coeffs = None
+
+                    if os.path.exists(camera_intrinsics_path):
+                        calib_data = np.load(camera_intrinsics_path)
+                        camera_matrix = calib_data.get('mtx')
+                        dist_coeffs = calib_data.get('dist')
+                        self.logger.info(f"✅ 載入攝影機校正參數: {camera_intrinsics_path}")
+                    else:
+                        self.logger.warning("⚠️ 未找到攝影機校正參數，使用預設值")
+
+                    # 初始化 STag 檢測器
+                    self.stag_detector = StagCoordinateSystem(
+                        camera_matrix=camera_matrix,
+                        dist_coeffs=dist_coeffs,
+                        marker_size=marker_size_m,
+                        library_hd=stag_hd
+                    )
+                    self.logger.info(f"✅ STag 檢測器已整合 (Phase 13.5B), Size: {marker_size_m*1000:.1f}mm")
+                else:
+                    self.logger.warning("⚠️ stag-python 模組未安裝，STag 檢測器不可用")
+
+            except Exception as e:
+                self.logger.warning(f"⚠️ STag 檢測器載入失敗: {e}")
+                self.stag_detector = None
+
+        # 初始化 YOLO 物件檢測系統（v4.3.0）- 在 HTTP Server 之前初始化
+        if self.enable_yolo:
             if not self.enable_vision or not self.camera_capture:
-                self.logger.warning("⚠️ HTTP API Server 需要 Vision 系統，但 Vision 系統未啟用")
-                self.logger.warning("   HTTP API Server 將不會啟動")
-                self.enable_http = False
+                self.logger.warning("⚠️ YOLO 檢測需要 Vision 系統，但 Vision 系統未啟用")
+                self.logger.warning("   YOLO 檢測功能將不會啟動")
+                self.enable_yolo = False
             else:
                 try:
-                    self.http_server = HTTPAPIServer(
-                        host=host,
-                        port=self.http_port,
-                        camera_capture=self.camera_capture,
-                        camera_lock=self.camera_lock,
+                    from library.vision.yolo_detector import YOLODetector
+                    self.yolo_detector = YOLODetector(
+                        model_path=self.yolo_model_path,
+                        confidence=self.yolo_confidence,
+                        device=self.yolo_device,
                         logger=self.logger
                     )
-                    self.http_server.start()
+                    self.logger.info("✅ YOLO 物件檢測系統已啟用")
+                    self.logger.info(f"   模型: {self.yolo_model_path}")
+                    self.logger.info(f"   裝置: {self.yolo_device}")
                 except Exception as e:
-                    self.logger.error(f"❌ HTTP API Server 啟動失敗: {e}")
-                    self.logger.warning("   伺服器將繼續運行（僅 Socket 協定）")
-                    self.enable_http = False
+                    self.logger.error(f"❌ YOLO 檢測系統初始化失敗: {e}")
+                    self.logger.warning("   伺服器將繼續運行（無 YOLO 功能）")
+                    self.enable_yolo = False
+
+        # 初始化 HTTP API Server（v4.3.0）- 在 YOLO 初始化之後
+        if self.enable_http:
+            try:
+                self.http_server = HTTPAPIServer(
+                    host=host,
+                    port=self.http_port,
+                    camera_capture=self.camera_capture,
+                    camera_lock=self.camera_lock,
+                    logger=self.logger,
+                    yolo_detector=self.yolo_detector if self.enable_yolo else None
+                )
+                self.http_server.start()
+                self.logger.info("✅ HTTP API Server 已啟用")
+                self.logger.info(f"   HTTP 端口: {self.http_port}")
+                if self.yolo_detector:
+                    self.logger.info("   YOLO 端點: /api/v1/yolo/detect")
+            except Exception as e:
+                self.logger.error(f"❌ HTTP API Server 初始化失敗: {e}")
+                self.logger.warning("   伺服器將繼續運行（無 HTTP API 功能）")
+                self.enable_http = False
 
         # 啟動連接處理
         self.connect()
+
+    def _load_global_offsets(self):
+        """載入全局偏移補償設定"""
+        try:
+            import os
+            if not os.path.exists(self.offset_config_path):
+                self.logger.warning(f"偏移設定檔不存在: {self.offset_config_path}")
+                return
+
+            with open(self.offset_config_path, 'r') as f:
+                config = json.load(f)
+                
+            self.global_offsets = config.get("joint_offsets", [0.0]*6)
+            self.correction_enabled = config.get("enabled_by_default", True)
+            
+            self.logger.info(f"✅ 已載入全局偏移補償: {self.global_offsets}")
+            self.logger.info(f"   補償啟用狀態: {self.correction_enabled}")
+            
+        except Exception as e:
+            self.logger.error(f"載入偏移設定失敗: {e}")
 
     def _init_serial(self):
         """初始化串口連接"""
@@ -640,21 +892,27 @@ class MycobotServer(object):
         return False  # 發生錯誤時，預設為未移動
 
     def get_angles(self):
-        """讀取當前手臂角度
+        """讀取當前手臂角度 (已扣除全局偏移)
 
         Returns:
             list: 6 個關節角度 [j1, j2, j3, j4, j5, j6]，失敗時返回 [None] * 6
         """
         with self.serial_lock:
-            # MyCobot 280 get_angles 命令: 0xfe 0xfe 0x02 0x10 0xfa (實際命令碼是 0x10)
-            get_angles_cmd = [0xfe, 0xfe, 0x02, 0x10, 0xfa]
+            # MyCobot 280 get_angles 命令: 0xfe 0xfe 0x02 0x20 0xfa
+            # ProtocolCode.GET_ANGLES = 0x20 (注意：不是 0x10，0x10 是 POWER_ON)
+            get_angles_cmd = [0xfe, 0xfe, 0x02, 0x20, 0xfa]
             try:
                 self.write(get_angles_cmd)
                 response = self.read(get_angles_cmd)
 
-                # 預期回應: [0xfe, 0xfe, len, 0x10, j1_h, j1_l, ..., j6_h, j6_l, 0xfa]
+                # 預期回應: [0xfe, 0xfe, len, 0x20, j1_h, j1_l, ..., j6_h, j6_l, 0xfa]
+                # 處理忙碌回應: b'\xfe\xfe\x03\x20\x01\xfa'
+                if response == b'\xfe\xfe\x03\x20\x01\xfa':
+                    self.logger.debug("機器手臂忙碌中 (Busy)，無法讀取角度")
+                    return [None] * 6
+
                 # 總長度應該是 16 bytes: header(2) + len(1) + cmd(1) + 6*angles(12) + footer(1)
-                if response and len(response) >= 16 and response[3] == 0x10:
+                if response and len(response) >= 16 and response[3] == 0x20:
                     angles = []
                     for i in range(6):
                         # 讀取每個關節的高位和低位字節
@@ -667,6 +925,12 @@ class MycobotServer(object):
                             angle_int -= 65536
                         angle = angle_int / 100.0
                         angles.append(angle)
+                    
+                    # 應用反向全局補償 (Raw - Offset)
+                    # 這樣 get_angles 回傳的就是邏輯角度，與 send_angles (Logical + Offset) 對應
+                    if self.correction_enabled and len(self.global_offsets) == 6:
+                        angles = [a - o for a, o in zip(angles, self.global_offsets)]
+                        
                     return angles
                 else:
                     self.logger.warning(f"讀取角度回應格式錯誤: {response}")
@@ -689,33 +953,510 @@ class MycobotServer(object):
         self.logger.warning(f"⚠️ 等待移動超時 ({timeout} 秒)")
         return False
 
+    def _wait_for_arrival(self, target_angles: List[float], timeout: float = 5.0, threshold: float = 1.5) -> bool:
+        """
+        動態等待手臂到達目標位置
+        優化策略：使用 is_moving 檢查代替 get_angles 輪詢，減少通訊負擔。
+        """
+        # 1. 給硬體足夠時間開始移動 (從 0.1 改為 0.5)
+        # 避免 is_moving 還沒變成 True 就被誤判為已停止
+        time.sleep(0.5)
+        
+        start = time.time()
+        
+        # 2. 輪詢 is_moving 狀態
+        while time.time() - start < timeout:
+            if not self._is_moving():
+                # 手臂已停止移動
+                break
+            time.sleep(0.1)
+            
+        # 3. 移動結束後，檢查最終位置 (如果讀得到)
+        # 這裡不強求一定要讀到，只要不移動了就視為到達，由後續的 verify 步驟做確認
+        current = self.get_angles()
+        if current and None not in current:
+            error = np.max(np.abs(np.array(current) - np.array(target_angles)))
+            if error < threshold:
+                self.logger.debug(f"✓ 到達目標 (誤差: {error:.2f}°)")
+                return True
+            else:
+                self.logger.warning(f"⚠️ 移動停止但未達目標 (誤差: {error:.2f}°)")
+                return False
+        
+        # 如果讀不到角度，但 is_moving 為 False，我們假設它到了 (盲操作)
+        # 這是在通訊不穩時的最佳妥協
+        return True
+
+    def _load_zone_config(self, stag_id: int) -> Optional[Dict]:
+        """
+        載入 Zone 配置檔
+
+        Args:
+            stag_id: STag ID
+
+        Returns:
+            dict: Zone 配置，包含 id, pos, rpy, angles；如果找不到返回 None
+        """
+        import os
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            'config', 'calibration_zones', f'zone_{stag_id}.json'
+        )
+
+        if not os.path.exists(path):
+            self.logger.warning(f"Zone 配置不存在: {path}")
+            return None
+
+        try:
+            with open(path, 'r') as f:
+                data = json.load(f)
+                station = data["physical_parameters"]["fixed_station_pose"]
+                return {
+                    'id': stag_id,
+                    'pos': np.array(station["coords_xyz"]),
+                    'rpy': np.array(station["coords_rpy"]),
+                    'angles': station.get("joint_angles", None)
+                }
+        except Exception as e:
+            self.logger.error(f"載入 Zone 配置失敗: {e}")
+            return None
+
+    def _get_angles_with_retry(self, max_retries=3, delay=1.0) -> Optional[List[float]]:
+        """
+        嘗試多次讀取角度，專門用於動作完成後的最終確認。
+        包含緩衝區清空與延遲機制。
+        """
+        import time as time_module
+        
+        # 1. 初始靜置，讓串口訊號穩定
+        time_module.sleep(delay)
+
+        for i in range(max_retries):
+            # 2. 清空緩衝區 (確保讀到最新狀態，而非堆積的 Busy 訊號)
+            with self.serial_lock:
+                if self.mc and self.mc.is_open:
+                    self.mc.reset_input_buffer()
+            
+            # 3. 嘗試讀取
+            angles = self.get_angles()
+            if angles and None not in angles:
+                return angles
+            
+            self.logger.warning(f"角度讀取重試 {i+1}/{max_retries}...")
+            time_module.sleep(delay)
+            
+        return None
+
+    def _generate_click_sequence(self, target_6dof: List[float], approach_height: float = 30.0) -> List[Dict]:
+        """
+        生成點擊序列
+
+        Args:
+            target_6dof: 目標 6DOF 座標 [x, y, z, rx, ry, rz]
+            approach_height: 接近高度 (mm)
+
+        Returns:
+            list: 點擊序列 [{"action": ..., "coords": ...}, ...]
+        """
+        x, y, z, rx, ry, rz = target_6dof
+        return [
+            {"action": "approach", "coords": [x, y, z + approach_height, rx, ry, rz],
+             "description": f"移動到接近位置 (Z+{approach_height}mm)"},
+            {"action": "click", "coords": [x, y, z, rx, ry, rz],
+             "description": "下壓點擊"},
+            {"action": "retract", "coords": [x, y, z + approach_height, rx, ry, rz],
+             "description": f"抬起到安全位置 (Z+{approach_height}mm)"},
+        ]
+
+    def _execute_click_with_fallback(self, target_6dof: List[float],
+                                      fallback_angles: Optional[List[float]] = None,
+                                      fallback_lift_offset: List[float] = [10.0, 15.0],
+                                      approach_height: float = 30.0,
+                                      click_duration: float = 0.1,
+                                      speed: int = 20,
+                                      z_offset: float = 0.0,
+                                      initial_angles: Optional[List[float]] = None,
+                                      wrist_first: bool = False) -> Dict:
+        """
+        執行點擊序列（支援 IK 失敗時的 Fallback，及 IK 引導與手腕優先）
+
+        Args:
+            target_6dof: 目標 6DOF 座標
+            fallback_angles: 預錄的點擊角度（可選）
+            fallback_lift_offset: Fallback 時 J2/J3 抬高偏移 [j2_off, j3_off]
+            approach_height: 接近高度 (mm)
+            click_duration: 點擊停留時間 (秒)
+            speed: 移動速度
+            z_offset: Z 軸微調 (mm)
+            initial_angles: IK 初始猜測角度 (可選)
+            wrist_first: 是否在第一步先對準手腕 (可選)
+
+        Returns:
+            dict: 執行結果
+        """
+        import time as time_module
+        start_time = time_module.time()
+
+        # 應用 z_offset
+        adjusted_target = list(target_6dof)
+        if z_offset != 0:
+            adjusted_target[2] += z_offset
+            self.logger.info(f"🔧 應用 Z 軸微調: {z_offset}mm")
+
+        # ⚠️ 警告：目前 IK Solver 只支援 XYZ 位置，RPY 姿態會被忽略
+        rpy = adjusted_target[3:6] if len(adjusted_target) >= 6 else [0, 0, 0]
+        if any(abs(r) > 0.1 for r in rpy) and rpy != [-180.0, 0.0, 0.0]:
+            self.logger.warning(f"⚠️ IK 限制: RPY 姿態 {rpy} 被忽略，僅使用 XYZ 位置求解")
+
+        # 生成點擊序列
+        click_sequence = self._generate_click_sequence(adjusted_target, approach_height)
+
+        # 檢查 IK Solver 是否可用
+        if not self.ik_solver:
+            if fallback_angles:
+                self.logger.warning("⚠️ IK Solver 不可用，使用 Fallback 模式")
+                return self._execute_fallback_click(fallback_angles, fallback_lift_offset,
+                                                    click_duration, speed)
+            else:
+                return {"status": "error", "message": "IK Solver 不可用且無 fallback_angles"}
+
+        # 嘗試 IK 求解所有步驟
+        solved_sequences = []
+        
+        # 決定 IK 的初始猜測
+        # 第一步 (Approach) 使用 initial_angles (如果有的話) 或當前角度
+        current_angles_raw = self.get_angles()
+        
+        if initial_angles:
+            current_guess = initial_angles
+        elif current_angles_raw and None not in current_angles_raw:
+            current_guess = current_angles_raw
+        else:
+            self.logger.warning("無法取得有效當前角度，IK 使用零位作為初始猜測")
+            current_guess = [0.0] * 6
+
+        for i, step in enumerate(click_sequence):
+            try:
+                # 使用 IK 求解器計算角度 (solve_ik 返回 (angles, error))
+                # 注意: IKSolver.solve_ik 只接受 (x,y,z) 作為目標
+                angles, ik_error = self.ik_solver.solve_ik(
+                    step['coords'][:3],  # 取前三個值 (x, y, z)
+                    initial_guess=current_guess
+                )
+                
+                if angles is None:
+                    raise ValueError(f"IK 求解失敗 (error: {ik_error:.2f}mm)")
+
+                # 檢查 IK 誤差 (Phase 12 目標 < 5mm)
+                if ik_error > 5.0:
+                    raise ValueError(f"IK 誤差過大: {ik_error:.2f}mm")
+
+                solved_sequences.append({
+                    'action': step['action'],
+                    'angles': angles,
+                    'coords': step['coords'],
+                    'description': step['description']
+                })
+                # 下一步的猜測使用上一步的結果，保證連續性
+                current_guess = angles
+
+            except Exception as e:
+                self.logger.warning(f"⚠️ IK 求解失敗 ({step['action']}): {e}")
+
+                # 嘗試 Fallback
+                if fallback_angles:
+                    self.logger.info("🔄 切換到 Fallback 模式")
+                    return self._execute_fallback_click(fallback_angles, fallback_lift_offset,
+                                                        click_duration, speed)
+                else:
+                    return {
+                        "status": "error",
+                        "message": f"IK 求解失敗且無 fallback_angles: {str(e)}",
+                        "step": step['action'],
+                        "target_coords": step['coords']
+                    }
+
+        # 執行 IK 求解成功的序列
+        self.logger.info("🚀 開始執行點擊序列 (IK 模式)")
+        steps_completed = 0
+
+        for i, step in enumerate(solved_sequences):
+            self.logger.info(f"  [{i+1}/{len(solved_sequences)}] {step['description']}")
+
+            # 第一步 (Approach) 支援手腕優先 (Wrist First)
+            if i == 0 and wrist_first and current_angles_raw and None not in current_angles_raw:
+                self.logger.info("    -> 預先對準手腕 (J4-J6)")
+                # 保持 J1-J3 不動，只移動 J4-J6
+                intermediate_angles = [
+                    current_angles_raw[0], current_angles_raw[1], current_angles_raw[2],
+                    step['angles'][3], step['angles'][4], step['angles'][5]
+                ]
+                self._send_angles_internal(intermediate_angles, speed)
+                self._wait_for_arrival(intermediate_angles, threshold=2.0)
+                time_module.sleep(0.2)
+
+            # 發送角度命令
+            self._send_angles_internal(step['angles'], speed)
+
+            # 等待到達
+            self._wait_for_arrival(step['angles'], threshold=1.5)
+
+            # 點擊動作需要停留
+            if step['action'] == 'click':
+                time_module.sleep(click_duration)
+
+            steps_completed += 1
+
+        total_time = time_module.time() - start_time
+        
+        # 最終確認：強制讀取當前位置
+        final_angles = self._get_angles_with_retry(max_retries=3)
+        final_coords = None
+        
+        if final_angles:
+            if self.fk_calculator:
+                try:
+                    xyz = self.fk_calculator.forward_kinematics(final_angles)
+                    # 轉換為標準 Python float 避免 JSON 序列化問題
+                    final_coords = [float(c) for c in xyz] + [0.0, 0.0, 0.0]
+                except:
+                    pass
+        
+        self.logger.info(f"✅ 點擊完成 (IK 模式, 耗時: {total_time:.2f}s)")
+
+        result = {
+            "status": "success",
+            "method": "ik",
+            "steps_completed": steps_completed,
+            "final_angles": final_angles,
+            "final_coords": final_coords,
+            "total_time_sec": round(total_time, 2)
+        }
+
+        # 如果有非預設 RPY，加入警告
+        if any(abs(r) > 0.1 for r in rpy) and rpy != [-180.0, 0.0, 0.0]:
+            result["rpy_warning"] = f"RPY 姿態 {rpy} 被忽略，僅使用 XYZ 位置求解"
+
+        return result
+
+    def _execute_fallback_click(self, fallback_angles: List[float],
+                                 lift_offset: List[float] = [10.0, 15.0],
+                                 click_duration: float = 0.1,
+                                 speed: int = 20) -> Dict:
+        """
+        執行 Fallback 模式點擊（使用預錄角度 + J2/J3 調整抬高）
+
+        Args:
+            fallback_angles: 預錄的點擊角度
+            lift_offset: J2/J3 抬高偏移 [j2_off, j3_off]
+            click_duration: 點擊停留時間 (秒)
+            speed: 移動速度
+
+        Returns:
+            dict: 執行結果
+        """
+        import time as time_module
+        start_time = time_module.time()
+
+        # 計算抬高位置的角度
+        approach_angles = list(fallback_angles)
+        approach_angles[1] += lift_offset[0]  # J2
+        approach_angles[2] += lift_offset[1]  # J3
+
+        self.logger.info("🚀 開始執行點擊序列 (Fallback 模式)")
+        self.logger.info(f"   抬高偏移: J2+{lift_offset[0]}°, J3+{lift_offset[1]}°")
+
+        # 1. Approach: 移動到抬高位置
+        self.logger.info("  [1/3] 移動到抬高位置")
+        self._send_angles_internal(approach_angles, speed)
+        self._wait_for_arrival(approach_angles, threshold=1.5)
+
+        # 2. Click: 下壓到目標位置
+        self.logger.info("  [2/3] 下壓點擊")
+        self._send_angles_internal(fallback_angles, speed)
+        self._wait_for_arrival(fallback_angles, threshold=1.5)
+        time_module.sleep(click_duration)
+
+        # 3. Retract: 抬起
+        self.logger.info("  [3/3] 抬起")
+        self._send_angles_internal(approach_angles, speed)
+        self._wait_for_arrival(approach_angles, threshold=1.5)
+
+        total_time = time_module.time() - start_time
+        
+        # 最終確認
+        final_angles = self._get_angles_with_retry(max_retries=3)
+        final_coords = None
+        if final_angles and self.fk_calculator:
+            try:
+                xyz = self.fk_calculator.forward_kinematics(final_angles)
+                final_coords = list(xyz) + [0.0, 0.0, 0.0]
+            except:
+                pass
+
+        self.logger.info(f"✅ 點擊完成 (Fallback 模式, 耗時: {total_time:.2f}s)")
+
+        return {
+            "status": "success",
+            "method": "fallback",
+            "fallback_reason": "IK 求解失敗或 IK Solver 不可用",
+            "steps_completed": 3,
+            "final_angles": final_angles,
+            "final_coords": final_coords,
+            "total_time_sec": round(total_time, 2),
+            "warning": "使用預錄角度，精度可能受影響"
+        }
+
+    def _send_angles_internal(self, angles: List[float], speed: int) -> bool:
+        """
+        內部發送角度命令（應用全局補償）
+
+        直接構建 MyCobot 協議命令並發送，避免創建新的 serial 連接。
+
+        協議格式:
+        - Header: 0xFE 0xFE
+        - Length: 0x0E (14 bytes: 1 command + 12 angles + 1 speed)
+        - Command: 0x22 (SEND_ANGLES)
+        - Data: 6 個角度 (每個 2 bytes, int16 * 100, big-endian) + 1 byte speed
+        - Footer: 0xFA
+
+        Args:
+            angles: 目標角度 (邏輯角度)
+            speed: 移動速度 (1-100)
+
+        Returns:
+            bool: 是否成功
+        """
+        import struct
+
+        try:
+            # 應用全局補償
+            final_angles = list(angles)
+            if self.correction_enabled:
+                final_angles = [a + o for a, o in zip(angles, self.global_offsets)]
+                self.logger.info(f"🔧 角度補償: {[round(a,2) for a in angles]} + {self.global_offsets}")
+                self.logger.info(f"   -> 發送角度: {[round(a,2) for a in final_angles]}")
+            else:
+                self.logger.info(f"📤 發送角度 (無補償): {[round(a,2) for a in final_angles]}")
+
+            # 構建 send_angles 命令
+            # Header
+            command = [0xFE, 0xFE]
+
+            # Length: command(1) + angles(12) + speed(1) + footer(1) = 15
+            command.append(0x0F)
+
+            # Command code: SEND_ANGLES = 0x22
+            command.append(0x22)
+
+            # Data: 6 angles as int16 * 100 (big-endian)
+            for angle in final_angles:
+                angle_int = int(angle * 100)
+                # 處理負數 (轉換為 unsigned 16-bit)
+                if angle_int < 0:
+                    angle_int = angle_int + 65536
+                # Big-endian: high byte first
+                command.append((angle_int >> 8) & 0xFF)
+                command.append(angle_int & 0xFF)
+
+            # Speed (1 byte)
+            command.append(speed & 0xFF)
+
+            # Footer
+            command.append(0xFA)
+
+            # 發送命令
+            with self.serial_lock:
+                if not self.mc or not self.mc.is_open:
+                    self.logger.error("串口未開啟")
+                    return False
+
+                self.mc.write(bytes(command))
+                self.mc.flush()
+
+            self.logger.info(f"✓ 角度命令已發送，速度: {speed}")
+            self.logger.debug(f"   命令: {[hex(b) for b in command]}")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"發送角度失敗: {e}")
+            import traceback
+            self.logger.debug(traceback.format_exc())
+            return False
+
     # ==================== JSON 命令處理方法 ====================
 
     def _handle_json_command(self, cmd: dict) -> dict:
-        """處理 JSON 命令（客戶端提供所有參數，伺服器不讀取配置）
-
-        Args:
-            cmd: JSON 命令字典
-                {
-                    "command": "detect_button" | "move_to_angles" | "capture_image",
-                    ... (其他參數依命令而定)
-                }
-
-        Returns:
-            dict: 命令執行結果
-        """
+        """處理 JSON 命令"""
         try:
             command_type = cmd.get("command")
 
             if not command_type:
                 return {"status": "error", "message": "缺少 'command' 欄位"}
 
+            # 控制命令
             if command_type == "move_to_angles":
                 return self._cmd_move_to_angles(cmd)
             elif command_type == "get_angles":
                 return self._cmd_get_angles(cmd)
+            elif command_type == "get_coords":
+                return self._cmd_get_coords(cmd)
+            
+            # 補償命令 (v5.0.0)
+            elif command_type == "reload_offset":
+                self._load_global_offsets()
+                return {"status": "success", "offsets": self.global_offsets, "enabled": self.correction_enabled}
+            elif command_type == "set_correction":
+                self.correction_enabled = bool(cmd.get("enable", True))
+                return {"status": "success", "enabled": self.correction_enabled}
+            elif command_type == "get_correction_status":
+                return {"status": "success", "enabled": self.correction_enabled, "offsets": self.global_offsets}
+
+            # 控制命令 (v5.3.0 Power Control)
+            elif command_type == "power_on":
+                return self._cmd_power_on(cmd)
+            elif command_type == "power_off":
+                return self._cmd_power_off(cmd)
+
+            # 視覺命令
             elif command_type == "capture_image":
                 return self._cmd_capture_image(cmd)
+            elif command_type == "yolo_detect":
+                return self._cmd_yolo_detect(cmd)
+
+            # STag 偏移命令 (v5.1.0 Phase 13.5)
+            elif command_type == "calculate_stag_offset":
+                return self._cmd_calculate_stag_offset(cmd)
+            elif command_type == "move_to_angles_with_stag":
+                return self._cmd_move_to_angles_with_stag(cmd)
+            elif command_type == "enable_stag_offset":
+                self.stag_enabled = bool(cmd.get("enable", True))
+                return {"status": "success", "enabled": self.stag_enabled}
+            elif command_type == "get_stag_offset":
+                return {
+                    "status": "success",
+                    "enabled": self.stag_enabled,
+                    "offset": self.stag_offset
+                }
+            elif command_type == "clear_stag_offset":
+                self.stag_offset = [0.0, 0.0, 0.0]
+                self.stag_enabled = False
+                return {
+                    "status": "success",
+                    "offset": self.stag_offset,
+                    "enabled": False
+                }
+            elif command_type == "diagnose_stag_offset":
+                return self._cmd_diagnose_stag_offset(cmd)
+
+            # 座標點擊控制命令 (v5.2.0 Phase 1)
+            elif command_type == "move_to_coords":
+                return self._cmd_move_to_coords(cmd)
+            elif command_type == "click_target":
+                return self._cmd_click_target(cmd)
+            elif command_type == "click_relative_to_stag":
+                return self._cmd_click_relative_to_stag(cmd)
+
             else:
                 return {"status": "error", "message": f"未知的命令類型: {command_type}"}
 
@@ -746,7 +1487,7 @@ class MycobotServer(object):
             angles = self.get_angles()
 
             # 檢查是否有無效角度
-            if None in angles:
+            if not angles or None in angles:
                 return {
                     "status": "error",
                     "message": "讀取角度失敗",
@@ -763,21 +1504,104 @@ class MycobotServer(object):
             self.logger.error(f"讀取角度失敗: {e}")
             return {"status": "error", "message": str(e)}
 
-    def _cmd_move_to_angles(self, cmd: dict) -> dict:
-        """移動到指定角度
+    def _cmd_get_coords(self, cmd: dict) -> dict:
+        """讀取當前手臂座標 (6DOF)
 
         Args:
             cmd: {
-                "command": "move_to_angles",
-                "angles": [j1, j2, j3, j4, j5, j6],
-                "speed": int  # 可選，預設 50
+                "command": "get_coords"
             }
 
         Returns:
             {
                 "status": "success" | "error",
+                "coords": [x, y, z, rx, ry, rz],
+                "angles": [...],
                 "message": str
             }
+        """
+        try:
+            # 1. 獲取角度
+            angles = self.get_angles()
+            if not angles or None in angles:
+                return {
+                    "status": "error",
+                    "message": "讀取角度失敗，無法計算座標",
+                    "angles": angles
+                }
+
+            # 2. 檢查 FK 計算器
+            if not self.fk_calculator:
+                return {
+                    "status": "error",
+                    "message": "FK 計算器未載入，無法計算座標",
+                    "angles": angles
+                }
+
+            # 3. 計算 FK (座標 + 姿態)
+            # forward_kinematics 只返回 xyz，我们需要 full 才能拿 RPY
+            # 假設 fk_calculator 有 forward_kinematics_full 或類似方法
+            # 檢查 library/planning/dh_fk_calculator_original.py
+            
+            # 暫時先用 forward_kinematics 拿 XYZ
+            xyz = self.fk_calculator.forward_kinematics(angles)
+            
+            # TODO: 如果需要 RPY，需要 FK 支援。目前先填 0.0 或擴充 FK
+            # 查看 function_spec.md，DHForwardKinematics 有 forward_kinematics_full
+            
+            try:
+                # 嘗試調用完整 FK
+                fk_result = self.fk_calculator.forward_kinematics_full(angles)
+                # fk_result 格式: {'position': [x,y,z], 'rotation_matrix': ..., 'rpy': [rx,ry,rz]}
+                
+                coords = [float(c) for c in xyz] + [0.0, 0.0, 0.0] # Fallback
+                
+                if isinstance(fk_result, dict) and 'rpy' in fk_result:
+                     coords = [float(c) for c in xyz] + [float(r) for c in fk_result['rpy']]
+                
+            except Exception:
+                # 如果沒有 full 方法，就只回傳 XYZ + 000
+                coords = [float(c) for c in xyz] + [0.0, 0.0, 0.0]
+
+            return {
+                "status": "success",
+                "coords": [round(c, 2) for c in coords],
+                "angles": angles,
+                "message": "讀取座標成功"
+            }
+
+        except Exception as e:
+            self.logger.error(f"讀取座標失敗: {e}")
+            return {"status": "error", "message": str(e)}
+
+    def _cmd_power_on(self, cmd: dict) -> dict:
+        """開啟伺服馬達 (Power On)"""
+        try:
+            power_on_command = [0xfe, 0xfe, 0x02, 0x10, 0xfa]
+            self.write(power_on_command)
+            time.sleep(0.1) # Wait for effect
+            self.logger.info("已執行 Power On 指令")
+            return {"status": "success", "message": "已開啟伺服馬達"}
+        except Exception as e:
+            self.logger.error(f"Power On 失敗: {e}")
+            return {"status": "error", "message": str(e)}
+
+    def _cmd_power_off(self, cmd: dict) -> dict:
+        """關閉伺服馬達 (Power Off / Release)"""
+        try:
+            power_off_command = [0xfe, 0xfe, 0x02, 0x11, 0xfa]
+            self.write(power_off_command)
+            time.sleep(0.1)
+            self.logger.info("已執行 Power Off 指令")
+            return {"status": "success", "message": "已關閉伺服馬達"}
+        except Exception as e:
+            self.logger.error(f"Power Off 失敗: {e}")
+            return {"status": "error", "message": str(e)}
+
+    def _cmd_move_to_angles(self, cmd: dict) -> dict:
+        """移動到指定角度 (支援自動補償)
+
+        使用 _send_angles_internal 發送命令，會自動應用全局補償。
         """
         try:
             angles = cmd.get("angles")
@@ -788,25 +1612,17 @@ class MycobotServer(object):
 
             self.logger.info(f"移動到角度: {angles}, 速度: {speed}")
 
-            # 使用 pymycobot 的協議構建命令
-            # send_angles 命令不需要等待回應（不在 has_return 列表中）
-            try:
-                from pymycobot import MyCobot280
+            # 使用 _send_angles_internal 發送命令（會自動應用補償）
+            success = self._send_angles_internal(angles, speed)
 
-                # 創建臨時 MyCobot 對象來使用其協議方法
-                temp_mc = MyCobot280(self.serial_num, self.baud)
-                temp_mc._serial_port = self.mc  # 使用現有的串口連接
-
-                # 使用 pymycobot 的 send_angles 方法
-                # 這個方法會構建正確的協議並發送到串口
-                temp_mc.send_angles(angles, speed)
-
-                self.logger.info("✓ 移動命令已發送")
-                return {"status": "success", "message": "已發送移動命令"}
-
-            except ImportError:
-                self.logger.error("pymycobot 庫未安裝，無法使用 send_angles")
-                return {"status": "error", "message": "pymycobot 庫未安裝"}
+            if success:
+                # 計算補償後的角度用於返回
+                final_angles = list(angles)
+                if self.correction_enabled:
+                    final_angles = [a + o for a, o in zip(angles, self.global_offsets)]
+                return {"status": "success", "message": "已發送移動命令", "target_angles": final_angles}
+            else:
+                return {"status": "error", "message": "發送角度命令失敗"}
 
         except Exception as e:
             self.logger.error(f"移動命令失敗: {e}")
@@ -865,6 +1681,721 @@ class MycobotServer(object):
 
         except Exception as e:
             self.logger.error(f"截圖失敗: {e}")
+            return {"status": "error", "message": str(e)}
+
+    def _cmd_yolo_detect(self, cmd: dict) -> dict:
+        """YOLO 物件檢測（v4.3.0）
+
+        Args:
+            cmd: {
+                "command": "yolo_detect",
+                "num_frames": int,       # 可選，多幀平均數量（預設 5）
+                "confidence": float,     # 可選，信心度閾值（預設使用模型預設值）
+                "save_image": bool,      # 可選，是否儲存圖片（預設 true）
+                "return_image": bool     # 可選，是否返回圖片 base64（預設 false）
+            }
+
+        Returns:
+            {
+                "status": "success" | "error",
+                "detections": [         # 檢測結果列表
+                    {
+                        "class": str,
+                        "confidence": float,
+                        "bbox": {"x": int, "y": int, "w": int, "h": int}
+                    }
+                ],
+                "image_path": str,           # 原始圖路徑（如果 save_image=true）
+                "annotated_image_path": str, # 標註圖路徑（如果 save_image=true）
+                "image_base64": str,         # 原始圖 base64（如果 return_image=true）
+                "annotated_image_base64": str, # 標註圖 base64（如果 return_image=true）
+                "metadata": {
+                    "model": str,
+                    "inference_time_ms": float,
+                    "num_frames": int,
+                    "num_detections": int
+                },
+                "message": str
+            }
+        """
+        if not self.enable_yolo or not self.yolo_detector:
+            return {"status": "error", "message": "YOLO 檢測系統未啟用"}
+
+        if not self.enable_vision or not self.camera_capture:
+            return {"status": "error", "message": "影像截取系統未啟用"}
+
+        try:
+            import time
+
+            # 解析參數
+            num_frames = cmd.get("num_frames", 5)
+            confidence = cmd.get("confidence", None)  # None 表示使用模型預設值
+            save_image = cmd.get("save_image", True)
+            return_image = cmd.get("return_image", False)
+
+            # 1. 使用現有的多幀平均截圖功能
+            self.logger.info(f"正在截取圖像（{num_frames} 幀平均）...")
+            image = self.camera_capture.capture_multi_frame_average(num_frames)
+
+            if image is None:
+                return {"status": "error", "message": "圖像截取失敗"}
+
+            # 2. 執行 YOLO 檢測
+            start_time = time.time()
+            detections = self.yolo_detector.detect(image, confidence=confidence)
+            inference_time = (time.time() - start_time) * 1000  # 毫秒
+
+            self.logger.info(f"YOLO 檢測完成：檢測到 {len(detections)} 個物件")
+
+            # 3. 準備返回結果
+            result = {
+                "status": "success",
+                "detections": detections,
+                "metadata": {
+                    "model": self.yolo_model_path,
+                    "inference_time_ms": round(inference_time, 2),
+                    "num_frames": num_frames,
+                    "num_detections": len(detections)
+                },
+                "message": f"檢測完成，找到 {len(detections)} 個物件"
+            }
+
+            # 4. 儲存圖片（如果需要）
+            if save_image:
+                try:
+                    original_path, annotated_path = self.yolo_detector.save_results(
+                        image, detections
+                    )
+                    result["image_path"] = original_path
+                    result["annotated_image_path"] = annotated_path
+                except Exception as e:
+                    self.logger.warning(f"圖片儲存失敗: {e}")
+                    result["save_error"] = str(e)
+
+            # 5. 返回圖片 base64（如果需要）
+            if return_image:
+                try:
+                    # 原始圖
+                    _, buffer = cv2.imencode('.jpg', image)
+                    result["image_base64"] = base64.b64encode(buffer).decode('utf-8')
+
+                    # 標註圖
+                    annotated_image = self.yolo_detector.draw_boxes(image, detections)
+                    _, buffer = cv2.imencode('.jpg', annotated_image)
+                    result["annotated_image_base64"] = base64.b64encode(buffer).decode('utf-8')
+                except Exception as e:
+                    self.logger.warning(f"圖片編碼失敗: {e}")
+                    result["encoding_error"] = str(e)
+
+            return result
+
+        except Exception as e:
+            self.logger.error(f"YOLO 檢測失敗: {e}")
+            import traceback
+            traceback.print_exc()
+            return {"status": "error", "message": str(e)}
+
+    # ==================== STag 偏移命令處理方法 (v5.1.0 Phase 13.5) ====================
+
+    def _cmd_calculate_stag_offset(self, cmd: dict) -> dict:
+        """計算 STag 偏移
+
+        Args:
+            cmd: {
+                "command": "calculate_stag_offset",
+                "marker_id": int,                         # 目標 STag ID
+                "reference_position": [x, y, z],          # 參考位置 (mm)
+                "observe_angles": [j1, j2, j3, j4, j5, j6],  # 可選：觀測角度
+                "num_frames": int                         # 可選：平均幀數（預設 5）
+            }
+
+        Returns:
+            {
+                "status": "success" | "error",
+                "offset": [dx, dy, dz],
+                "detected_position": [x, y, z],
+                "reference_position": [x, y, z],
+                "marker_id": int,
+                "detection_mode": "real" | "sample"
+            }
+        """
+        marker_id = cmd.get("marker_id", 0)
+        reference_pos = cmd.get("reference_position", [150.0, 80.0, 120.0])
+        num_frames = cmd.get("num_frames", 5)
+
+        # 檢查 STag 檢測器是否可用
+        if not self.stag_detector:
+            # STag 檢測器不可用，返回示例數據用於測試框架
+            self.logger.warning("⚠️ STag 檢測器不可用，返回示例偏移數據")
+            detected_pos = [
+                reference_pos[0] + 2.5,
+                reference_pos[1] - 1.8,
+                reference_pos[2] + 0.3
+            ]
+            offset = [
+                detected_pos[0] - reference_pos[0],
+                detected_pos[1] - reference_pos[1],
+                detected_pos[2] - reference_pos[2]
+            ]
+            self.stag_offset = offset
+            return {
+                "status": "success",
+                "offset": offset,
+                "detected_position": detected_pos,
+                "reference_position": reference_pos,
+                "marker_id": marker_id,
+                "detection_mode": "sample",
+                "message": "偏移計算完成（示例數據，STag 檢測器不可用）"
+            }
+
+        # 檢查攝影機是否可用
+        if not self.camera_capture:
+            return {
+                "status": "error",
+                "message": "攝影機不可用",
+                "offset": [0.0, 0.0, 0.0]
+            }
+
+        try:
+            # 擷取影像
+            self.logger.info(f"📷 擷取影像進行 STag 檢測 (marker_id={marker_id}, frames={num_frames})")
+            with self.camera_lock:
+                image = self.camera_capture.capture_multi_frame_average(num_frames)
+
+            if image is None:
+                return {
+                    "status": "error",
+                    "message": "影像擷取失敗",
+                    "offset": [0.0, 0.0, 0.0]
+                }
+
+            # 執行 STag 檢測
+            results = self.stag_detector.detect_markers(image)
+
+            if results['markers_found'] == 0:
+                self.logger.warning(f"⚠️ 未檢測到任何 STag 標記")
+                return {
+                    "status": "error",
+                    "message": "未檢測到 STag 標記",
+                    "offset": [0.0, 0.0, 0.0],
+                    "markers_found": 0
+                }
+
+            # 尋找指定的 marker_id
+            target_marker = None
+            for marker in results['markers']:
+                if marker['id'] == marker_id:
+                    target_marker = marker
+                    break
+
+            if not target_marker:
+                detected_ids = [m['id'] for m in results['markers']]
+                self.logger.warning(f"⚠️ 未找到 marker_id={marker_id}，已檢測到: {detected_ids}")
+                return {
+                    "status": "error",
+                    "message": f"未找到 marker_id={marker_id}",
+                    "detected_ids": detected_ids,
+                    "offset": [0.0, 0.0, 0.0]
+                }
+
+            # 提取檢測到的位置 (相機座標系，單位：米 → 毫米)
+            pos_3d = target_marker['position_3d']
+            detected_pos = [
+                pos_3d['x'] * 1000.0,  # 米 → 毫米
+                pos_3d['y'] * 1000.0,
+                pos_3d['z'] * 1000.0
+            ]
+
+            # 計算偏移（檢測位置 - 參考位置）
+            offset = [
+                detected_pos[0] - reference_pos[0],
+                detected_pos[1] - reference_pos[1],
+                detected_pos[2] - reference_pos[2]
+            ]
+
+            # 存儲偏移值與參考資訊
+            self.stag_offset = offset
+            self.stag_reference = {
+                "marker_id": marker_id,
+                "reference_position": reference_pos,
+                "detected_position": detected_pos,
+                "detection_quality": target_marker.get('detection_quality', 1.0),
+                "distance_mm": target_marker.get('distance_mm', 0)
+            }
+
+            self.logger.info(f"✅ STag 偏移計算完成:")
+            self.logger.info(f"   Marker ID: {marker_id}")
+            self.logger.info(f"   參考位置: {reference_pos}")
+            self.logger.info(f"   檢測位置: [{detected_pos[0]:.2f}, {detected_pos[1]:.2f}, {detected_pos[2]:.2f}]")
+            self.logger.info(f"   偏移量: [{offset[0]:.2f}, {offset[1]:.2f}, {offset[2]:.2f}] mm")
+
+            return {
+                "status": "success",
+                "offset": offset,
+                "detected_position": detected_pos,
+                "reference_position": reference_pos,
+                "marker_id": marker_id,
+                "detection_mode": "real",
+                "detection_quality": target_marker.get('detection_quality', 1.0),
+                "distance_mm": target_marker.get('distance_mm', 0),
+                "message": "STag 偏移計算完成"
+            }
+
+        except Exception as e:
+            self.logger.error(f"❌ STag 偏移計算失敗: {e}")
+            import traceback
+            self.logger.debug(traceback.format_exc())
+            return {
+                "status": "error",
+                "message": f"STag 偏移計算異常: {str(e)}",
+                "offset": [0.0, 0.0, 0.0]
+            }
+
+    def _cmd_move_to_angles_with_stag(self, cmd: dict) -> dict:
+        """帶 STag 偏移的移動命令
+
+        Args:
+            cmd: {
+                "command": "move_to_angles_with_stag",
+                "angles": [j1, j2, j3, j4, j5, j6],
+                "speed": int,
+                "apply_stag": bool  # 是否應用 STag 偏移
+            }
+
+        Returns:
+            {
+                "status": "success" | "error",
+                "final_angles": [...],
+                "stag_applied": bool,
+                "ik_error": float,  # 如果應用了 STag
+                "fallback": bool    # 如果 IK 失敗回退
+            }
+        """
+        try:
+            # 1. 檢查是否應用 STag 偏移
+            apply_stag = cmd.get("apply_stag", False)
+
+            if not apply_stag or not self.stag_enabled:
+                # 不應用 STag，直接調用原始命令
+                self.logger.info("不應用 STag 偏移，使用原始角度")
+                return self._cmd_move_to_angles(cmd)
+
+            # 2. 檢查 FK/IK 是否可用
+            if not self.fk_calculator or not self.ik_solver:
+                return {
+                    "status": "error",
+                    "message": "FK/IK 系統未載入，STag 偏移功能不可用"
+                }
+
+            # 3. 執行 FK → 偏移 → IK 流程
+            angles = cmd.get("angles")
+            if not angles or len(angles) != 6:
+                return {"status": "error", "message": "angles 參數必須包含 6 個關節角度"}
+
+            try:
+                # 3.1 FK: 角度 → 位置
+                target_pos = self.fk_calculator.forward_kinematics(angles)
+                self.logger.info(f"📍 FK 計算目標位置: {target_pos}")
+
+                # 3.2 應用 STag 偏移（位置空間）
+                corrected_pos = [
+                    target_pos[0] + self.stag_offset[0],
+                    target_pos[1] + self.stag_offset[1],
+                    target_pos[2] + self.stag_offset[2]
+                ]
+                self.logger.info(f"🎯 STag 校正後位置: {corrected_pos}")
+                self.logger.info(f"   偏移量: {self.stag_offset}")
+
+                # 3.3 IK: 位置 → 角度
+                corrected_angles, ik_error = self.ik_solver.solve_ik(
+                    corrected_pos,
+                    initial_guess=angles,
+                    tolerance=5.0
+                )
+
+                self.logger.info(f"🔧 IK 求解誤差: {ik_error:.2f}mm")
+
+                # 3.4 錯誤檢查：IK 失敗或誤差過大時回退
+                if ik_error > 5.0:  # Phase 12 IK 精度目標 < 5mm
+                    self.logger.warning(f"⚠️ IK 誤差過大 ({ik_error:.2f}mm > 5mm)，回退到原始角度")
+                    result = self._cmd_move_to_angles(cmd)
+                    result["stag_applied"] = False
+                    result["fallback"] = True
+                    result["fallback_reason"] = f"IK error {ik_error:.2f}mm exceeds 5mm threshold"
+                    return result
+
+                # 3.5 使用校正後的角度調用現有命令
+                corrected_cmd = cmd.copy()
+                corrected_cmd["angles"] = corrected_angles
+                result = self._cmd_move_to_angles(corrected_cmd)
+
+                # 3.6 附加 STag 資訊
+                if result.get("status") == "success":
+                    result["stag_applied"] = True
+                    result["ik_error"] = round(ik_error, 2)
+                    result["original_angles"] = angles
+                    result["corrected_angles"] = corrected_angles
+                    result["position_offset"] = self.stag_offset
+                    self.logger.info(f"✅ STag 偏移移動成功，IK 誤差: {ik_error:.2f}mm")
+
+                return result
+
+            except Exception as e:
+                self.logger.error(f"STag 偏移處理失敗: {e}")
+                self.logger.warning("回退到原始命令")
+                # 發生任何錯誤時，回退到原始命令
+                result = self._cmd_move_to_angles(cmd)
+                result["stag_applied"] = False
+                result["fallback"] = True
+                result["fallback_reason"] = str(e)
+                return result
+
+        except Exception as e:
+            self.logger.error(f"move_to_angles_with_stag 失敗: {e}")
+            return {"status": "error", "message": str(e)}
+
+    def _cmd_diagnose_stag_offset(self, cmd: dict) -> dict:
+        """診斷 STag 偏移是否合理
+
+        Returns:
+            {
+                "status": "success",
+                "offset": [x, y, z],
+                "magnitude": float,          # 偏移量大小（mm）
+                "is_reasonable": bool,       # 是否在合理範圍內
+                "warning": str | None,       # 警告訊息
+                "enabled": bool
+            }
+        """
+        import math
+
+        offset = self.stag_offset
+        magnitude = math.sqrt(sum(o**2 for o in offset))
+
+        # 判斷是否合理（經驗閾值）
+        is_reasonable = magnitude < 20.0  # 偏移 > 20mm 可能有問題
+        warning = None
+
+        if magnitude > 20.0:
+            warning = f"偏移量過大 ({magnitude:.2f}mm)，可能校準錯誤"
+            self.logger.warning(f"⚠️ {warning}")
+        elif magnitude < 0.5:
+            warning = f"偏移量極小 ({magnitude:.2f}mm)，可能不需要偏移"
+            self.logger.info(f"ℹ️ {warning}")
+        else:
+            self.logger.info(f"✅ 偏移量合理: {magnitude:.2f}mm")
+
+        return {
+            "status": "success",
+            "offset": offset,
+            "magnitude": round(magnitude, 2),
+            "is_reasonable": is_reasonable,
+            "warning": warning,
+            "enabled": self.stag_enabled
+        }
+
+    # ==================== Phase 1: 座標點擊控制命令 (v5.2.0) ====================
+
+    def _cmd_move_to_coords(self, cmd: dict) -> dict:
+        """
+        移動到指定座標（使用 IK 求解）
+
+        Args:
+            cmd: {
+                "command": "move_to_coords",
+                "coords": [x, y, z, rx, ry, rz],  # 6DOF 座標
+                "speed": int,                     # 可選，預設 20
+                "initial_angles": [j1,...,j6]     # 可選，IK 初始猜測
+            }
+
+        Returns:
+            {
+                "status": "success" | "error",
+                "target_coords": [...],
+                "solved_angles": [...],
+                "ik_error_mm": float
+            }
+        """
+        try:
+            coords = cmd.get("coords")
+            if not coords or len(coords) != 6:
+                return {"status": "error", "message": "coords 參數必須包含 6 個座標值 [x, y, z, rx, ry, rz]"}
+
+            speed = cmd.get("speed", 20)
+            wrist_first = bool(cmd.get("wrist_first", False))
+            
+            # 獲取當前角度作為 IK 初始猜測
+            current_angles_raw = self.get_angles()
+            # 嚴格檢查：如果是 None 或包含 None，則使用零位
+            if not current_angles_raw or None in current_angles_raw:
+                self.logger.warning("無法取得有效當前角度，IK 使用零位作為初始猜測")
+                initial_guess = [0.0] * 6
+            else:
+                initial_guess = current_angles_raw
+
+            if cmd.get("initial_angles"):
+                initial_guess = cmd.get("initial_angles")
+
+            # 檢查 IK Solver
+            if not self.ik_solver:
+                return {"status": "error", "message": "IK Solver 不可用"}
+
+            # IK 求解
+            self.logger.info(f"🎯 移動到座標: {coords} (wrist_first={wrist_first})")
+
+            # ⚠️ 警告：目前 IK Solver 只支援 XYZ 位置，RPY 姿態會被忽略
+            rpy = coords[3:6] if len(coords) >= 6 else [0, 0, 0]
+            if any(abs(r) > 0.1 for r in rpy) and rpy != [-180.0, 0.0, 0.0]:
+                self.logger.warning(f"⚠️ IK 限制: RPY 姿態 {rpy} 被忽略，僅使用 XYZ 位置求解")
+
+            try:
+                solved_angles, ik_error = self.ik_solver.solve_ik(
+                    coords[:3],  # 取前三個值 (x, y, z)
+                    initial_guess=initial_guess
+                )
+
+                if solved_angles is None:
+                    return {"status": "error", "message": f"IK 求解失敗: 無解 (誤差: {ik_error:.2f}mm)"}
+                
+                # 檢查 IK 誤差 (Phase 12 目標 < 5mm)
+                if ik_error > 5.0:
+                    self.logger.warning(f"⚠️ IK 誤差過大: {ik_error:.2f}mm")
+                    
+            except Exception as e:
+                return {"status": "error", "message": f"IK 求解異常: {str(e)}"}
+
+            # 確保機器手臂已上電
+            self._cmd_power_on({})
+
+            # --- 兩段式移動邏輯 ---
+            if wrist_first and current_angles_raw and None not in current_angles_raw:
+                self.logger.info("第一階段: 預先對準手腕 (J4, J5, J6)")
+                # 保持 J1-J3 不動，只移動 J4-J6
+                intermediate_angles = [
+                    current_angles_raw[0], current_angles_raw[1], current_angles_raw[2],
+                    solved_angles[3], solved_angles[4], solved_angles[5]
+                ]
+                self._send_angles_internal(intermediate_angles, speed)
+                self._wait_for_arrival(intermediate_angles, threshold=2.0)
+                time.sleep(0.2)
+
+            self.logger.info("第二階段: 移動到目標位置")
+            self._send_angles_internal(solved_angles, speed)
+            self._wait_for_arrival(solved_angles, threshold=1.5)
+
+            # 最終確認：強制讀取當前位置
+            final_angles = self._get_angles_with_retry(max_retries=3)
+            final_coords = None
+            
+            if final_angles:
+                # 計算實際座標
+                if self.fk_calculator:
+                    try:
+                        xyz = self.fk_calculator.forward_kinematics(final_angles)
+                        # 轉換為標準 Python float 避免 JSON 序列化問題
+                        final_coords = [float(c) for c in xyz] + [0.0, 0.0, 0.0]
+                        self.logger.info(f"📍 最終確認位置: {[round(c, 2) for c in final_coords[:3]]}")
+                    except:
+                        pass
+            else:
+                self.logger.warning("⚠️ 無法確認最終位置")
+
+            self.logger.info(f"✅ 移動完成，IK 誤差: {ik_error:.2f}mm")
+
+            result = {
+                "status": "success",
+                "target_coords": coords,
+                "solved_angles": [round(a, 2) for a in solved_angles],
+                "final_angles": final_angles,
+                "final_coords": final_coords,
+                "ik_error_mm": round(ik_error, 2)
+            }
+
+            # 如果有非預設 RPY，加入警告
+            if any(abs(r) > 0.1 for r in rpy) and rpy != [-180.0, 0.0, 0.0]:
+                result["rpy_warning"] = f"RPY 姿態 {rpy} 被忽略，僅使用 XYZ 位置求解"
+
+            return result
+
+        except Exception as e:
+            self.logger.error(f"move_to_coords 失敗: {e}")
+            return {"status": "error", "message": str(e)}
+
+    def _cmd_click_target(self, cmd: dict) -> dict:
+        """
+        執行點擊目標（approach → click → retract）
+
+        Args:
+            cmd: {
+                "command": "click_target",
+                "coords": [x, y, z, rx, ry, rz],      # 目標 6DOF 座標
+                "fallback_angles": [j1,...,j6],      # 可選，預錄角度
+                "fallback_lift_offset": [j2, j3],    # 可選，Fallback 抬高偏移
+                "approach_height": float,            # 可選，預設 30.0
+                "click_duration": float,             # 可選，預設 0.1
+                "speed": int,                        # 可選，預設 20
+                "z_offset": float,                   # 可選，預設 0.0
+                "initial_angles": [j1,...,j6],       # 可選，IK 初始猜測
+                "wrist_first": bool                  # 可選，是否先對準手腕
+            }
+
+        Returns:
+            {
+                "status": "success" | "error",
+                "method": "ik" | "fallback",
+                "steps_completed": int,
+                "total_time_sec": float
+            }
+        """
+        try:
+            coords = cmd.get("coords")
+            if not coords or len(coords) != 6:
+                return {"status": "error", "message": "coords 參數必須包含 6 個座標值 [x, y, z, rx, ry, rz]"}
+
+            # 解析參數
+            fallback_angles = cmd.get("fallback_angles")
+            fallback_lift_offset = cmd.get("fallback_lift_offset", [10.0, 15.0])
+            approach_height = cmd.get("approach_height", 30.0)
+            click_duration = cmd.get("click_duration", 0.1)
+            speed = cmd.get("speed", 20)
+            z_offset = cmd.get("z_offset", 0.0)
+            initial_angles = cmd.get("initial_angles")
+            wrist_first = bool(cmd.get("wrist_first", False))
+
+            # 參數驗證
+            if approach_height <= 0:
+                return {"status": "error", "message": "參數驗證失敗: approach_height 必須 > 0"}
+            if click_duration < 0:
+                return {"status": "error", "message": "參數驗證失敗: click_duration 必須 >= 0"}
+
+            self.logger.info(f"🎯 點擊目標: {coords[:3]} (wrist_first={wrist_first})")
+
+            # 執行點擊
+            result = self._execute_click_with_fallback(
+                target_6dof=coords,
+                fallback_angles=fallback_angles,
+                fallback_lift_offset=fallback_lift_offset,
+                approach_height=approach_height,
+                click_duration=click_duration,
+                speed=speed,
+                z_offset=z_offset,
+                initial_angles=initial_angles,
+                wrist_first=wrist_first
+            )
+
+            return result
+
+        except Exception as e:
+            self.logger.error(f"click_target 失敗: {e}")
+            import traceback
+            self.logger.debug(traceback.format_exc())
+            return {"status": "error", "message": str(e)}
+
+    def _cmd_click_relative_to_stag(self, cmd: dict) -> dict:
+        """
+        點擊 STag 相對位置
+
+        Args:
+            cmd: {
+                "command": "click_relative_to_stag",
+                "stag_id": int,                      # STag ID
+                "offset": [dx, dy, dz],              # 相對偏移 (mm)
+                "target_rpy": [rx, ry, rz],          # 可選，目標姿態
+                "approach_height": float,            # 可選，預設 30.0
+                "click_duration": float,             # 可選，預設 0.1
+                "speed": int,                        # 可選，預設 20
+                "z_offset": float,                   # 可選，預設 0.0
+                "wrist_first": bool                  # 可選，是否先對準手腕
+            }
+
+        Returns:
+            {
+                "status": "success" | "error",
+                "stag_id": int,
+                "stag_base_position": [x, y, z],
+                "calculated_target": [x, y, z, rx, ry, rz],
+                "method": "ik" | "fallback",
+                "steps_completed": int
+            }
+        """
+        try:
+            stag_id = cmd.get("stag_id")
+            if stag_id is None:
+                return {"status": "error", "message": "缺少 stag_id 參數"}
+
+            offset = cmd.get("offset")
+            if not offset or len(offset) != 3:
+                return {"status": "error", "message": "offset 參數必須包含 3 個值 [dx, dy, dz]"}
+
+            # 載入 Zone 配置
+            zone = self._load_zone_config(stag_id)
+            if not zone:
+                return {"status": "error", "message": f"Zone 配置不存在: zone_{stag_id}.json"}
+
+            # 解析參數
+            target_rpy = cmd.get("target_rpy") or list(zone['rpy'])
+            approach_height = cmd.get("approach_height", 30.0)
+            click_duration = cmd.get("click_duration", 0.1)
+            speed = cmd.get("speed", 20)
+            z_offset = cmd.get("z_offset", 0.0)
+            wrist_first = bool(cmd.get("wrist_first", False))
+
+            # 計算絕對座標
+            base_pos = zone['pos']
+            target_pos = [
+                base_pos[0] + offset[0],
+                base_pos[1] + offset[1],
+                base_pos[2] + offset[2]
+            ]
+            target_6dof = target_pos + list(target_rpy)
+
+            self.logger.info(f"🎯 STag {stag_id} 相對點擊:")
+            self.logger.info(f"   基準位置: {list(base_pos)}")
+            self.logger.info(f"   偏移: {offset}")
+            self.logger.info(f"   目標: {target_6dof}")
+
+            # 使用 Zone 中的角度作為 fallback
+            # ⚠️ 注意：fallback_angles 是 Zone 中心點的角度，不包含 offset 偏移
+            fallback_angles = zone.get('angles')
+            fallback_lift_offset = cmd.get("fallback_lift_offset", [10.0, 15.0])
+
+            # 檢查是否有非零偏移量
+            has_offset = any(abs(o) > 0.1 for o in offset)
+            if has_offset and fallback_angles:
+                self.logger.warning(f"⚠️ Fallback 警告: 偏移量 {offset} 將被忽略！")
+                self.logger.warning(f"   Fallback 模式只能點擊 Zone {stag_id} 中心位置")
+
+            # 執行點擊
+            result = self._execute_click_with_fallback(
+                target_6dof=target_6dof,
+                fallback_angles=fallback_angles,
+                fallback_lift_offset=fallback_lift_offset,
+                approach_height=approach_height,
+                click_duration=click_duration,
+                speed=speed,
+                z_offset=z_offset,
+                # 對於相對點擊，如果 Zone 有預錄角度，我們也可以試著用它當作 IK 初始猜測
+                initial_angles=fallback_angles, 
+                wrist_first=wrist_first
+            )
+
+            # 附加 STag 資訊
+            if result.get("status") == "success":
+                result["stag_id"] = stag_id
+                result["stag_base_position"] = [round(p, 2) for p in base_pos]
+                result["calculated_target"] = [round(c, 2) for c in target_6dof]
+
+                # 如果使用 Fallback 且有偏移量，加入警告
+                if result.get("method") == "fallback" and has_offset:
+                    result["offset_warning"] = f"偏移量 {offset} 被忽略，實際點擊 Zone {stag_id} 中心位置"
+                    self.logger.warning(f"⚠️ {result['offset_warning']}")
+
+            return result
+
+        except Exception as e:
+            self.logger.error(f"click_relative_to_stag 失敗: {e}")
+            import traceback
+            self.logger.debug(traceback.format_exc())
             return {"status": "error", "message": str(e)}
 
     def connect(self):

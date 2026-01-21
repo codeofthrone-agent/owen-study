@@ -1,7 +1,7 @@
 environment: {name: taipei_lab, display_name: 台北實驗室, panel_type: 3611a, description: 台北實驗室控制面板，包含
     8 個燈光按鈕和 5 個控制按鈕}
 connection:
-  socket: {host: 10.42.0.180, port: 9000}
+  socket: {host: 192.168.165.100, port: 9000}
   serial: {port: /dev/ttyTHS1, baudrate: 1000000}
 defaults: {speed: 100, press_duration: 1.0, lift_duration: 0.1, count: 1}
 buttons:
@@ -10,8 +10,8 @@ buttons:
     description: 燈光控制 1
     type: panel_light
     panel_section: 3611a
-    down_angles: [3.5, -60, -82, 25, 0, 0]
-    up_angles: [3.5, -35, -82, 25, 0, 0]
+    down_angles: [2.5, -55, -84, 24.5, 0, 0]
+    up_angles: [2.5, -35, -84, 24.5, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.01
@@ -126,8 +126,8 @@ buttons:
     description: 燈光控制 5
     type: panel_light
     panel_section: 3611a
-    down_angles: [-1.7, -66, -70, 20, 0, 0]
-    up_angles: [-1.7, -35, -70, 20, 0, 0]
+    down_angles: [-2.5, -66, -70, 20, 0, 0]
+    up_angles: [-2.5, -35, -70, 20, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.01
@@ -140,8 +140,8 @@ buttons:
     description: 燈光控制 6
     type: panel_light
     panel_section: 3611a
-    down_angles: [3.3, -59, -77, 25, 0, 0]
-    up_angles: [3.3, -35, -77, 25, 0, 0]
+    down_angles: [2.8, -59, -77, 25, 0, 0]
+    up_angles: [2.8, -35, -77, 25, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.01
@@ -210,8 +210,8 @@ buttons:
     description: 輔助控制按鈕 1
     type: control
     panel_section: 3611a
-    down_angles: [8, -59, -92, 25, 0, 0]
-    up_angles: [8, -35, -92, 25, 0, 0]
+    down_angles: [8, -55, -92, 25, 0, 0]
+    up_angles: [8, -15, -92, 25, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.01
@@ -238,8 +238,106 @@ buttons:
     description: 門鎖控制
     type: control
     panel_section: 3611a
-    down_angles: [3.5, -58, -90, 25, 0, 0]
-    up_angles: [3.5, -35, -90, 25, 0, 0]
+    down_angles: [2.8, -58, -90, 25, 0, 0]
+    up_angles: [2.8, -15, -90, 25, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 368, y: 209, width: 70, height: 62}
+  tank_heater:
+    name: Tank Heater 按鈕
+    description: 沖水加熱控制
+    type: control
+    panel_section: 3611a
+    down_angles: [-2.9, -59, -89, 25, 0, 0]
+    up_angles: [-2.9, -15, -89, 25, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 368, y: 209, width: 70, height: 62}
+  water_pump:
+    name: Water Pump 按鈕
+    description: 水幫浦控制
+    type: control
+    panel_section: 3611a
+    down_angles: [-9.1, -60, -90, 31.5, 0, 0]
+    up_angles: [-9.1, -15, -90, 31.5, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 368, y: 209, width: 70, height: 62}
+  water_heater_electric:
+    name: Water Heater Electric 按鈕
+    description: 水加熱控制
+    type: control
+    panel_section: 3611a
+    down_angles: [-7.8, -60.9, -73.7, 17.9, 0, 0]
+    up_angles: [-7.8, -15, -73.7, 17.9, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 368, y: 209, width: 70, height: 62}
+  water_heater_gas:
+    name: Water Heater Gas 按鈕
+    description: 水加熱控制
+    type: control
+    panel_section: 3611a
+    down_angles: [-2.5, -61, -72.9, 13.8, 0, 0]
+    up_angles: [-2.5, -15, -72.9, 13.8, 0, 0]
+    speed: 100
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 368, y: 209, width: 70, height: 62}
+  climate_control:
+    name: Climate Control 按鈕
+    description: 氣候控制按鈕
+    type: control
+    panel_section: 3611a
+    down_angles: [-7.2, -63.5, -68.9, 33.2 , 0, 0]
+    up_angles: [-7.2, -35, -68.9, 33.2 , 0, 0]
+    speed: 50
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 368, y: 209, width: 70, height: 62}
+  extend:
+    name: Extend 按鈕
+    description: 延長按鈕
+    type: control
+    panel_section: 3611a
+    down_angles: [-2.5, -64, -67.5, 26.2, 0, 0]
+    up_angles: [-2.5, -15, -67.5, 26.2, 0, 0]
+    speed: 50
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
+      roi: {x: 368, y: 209, width: 70, height: 62}
+  retract:
+    name: Retract 按鈕
+    description: 收縮按鈕
+    type: control
+    panel_section: 3611a
+    down_angles: [2.4, -63, -69, 26, 0, 0]
+    up_angles: [2.4, -15, -69, 26, 0, 0]
     speed: 100
     count: 1
     lift_duration: 0.01
