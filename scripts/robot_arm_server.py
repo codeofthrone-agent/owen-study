@@ -3087,10 +3087,18 @@ class MycobotServer(object):
                     
                     filepath = os.path.join(debug_dir, filename)
                     
+                    # Also save raw image
+                    filename_raw = filename.replace(".jpg", "_raw.jpg")
+                    filepath_raw = os.path.join(debug_dir, filename_raw)
+                    
                     # Use the appropriate image (rotated if applicable)
                     save_img = rotated_image if (rotated and 'rotated_image' in locals()) else image
                     
-                    # Draw detections on image
+                    # Save raw image first
+                    cv2.imwrite(filepath_raw, save_img)
+                    self.logger.info(f"💾 儲存原始影像: {filepath_raw}")
+                    
+                    # Draw detections on image for annotated version
                     debug_img = save_img.copy()
                     for det in formatted_detections:
                         box = det.get("box")

@@ -372,6 +372,47 @@ class MyCobotSocketController:
             raise RuntimeError(f"檢查電源狀態失敗: {e}") from e
 
 
+    def _flush_socket_buffer(self, max_passes: int = 3):
+        """
+        清空 Socket 接收緩衝區，避免殘留數據影響後續指令
+
+        Args:
+            max_passes: 最多嘗試清空的次數，用於處理網路延遲導致的分批到達數據
+        """
+        total_flushed = 0
+        try:
+            self.socket.setblocking(False)
+            for pass_num in range(max_passes):
+                flushed_this_pass = 0
+                try:
+                    while True:
+                        data = self.socket.recv(4096)
+                        if not data:
+                            break
+                        flushed_this_pass += len(data)
+                        logger.debug(f"清出 Socket 殘留數據 (pass {pass_num + 1}): {len(data)} bytes, 首字節: 0x{data[0]:02x}")
+                except BlockingIOError:
+                    # 緩衝區已空
+                    pass
+
+                total_flushed += flushed_this_pass
+
+                # 如果這一輪沒有清出數據，且已經清空過至少一次，則結束
+                if flushed_this_pass == 0 and pass_num > 0:
+                    break
+
+                # 短暫等待，讓可能延遲到達的數據有機會進入緩衝區
+                if pass_num < max_passes - 1:
+                    time.sleep(0.01)
+
+        except Exception as e:
+            logger.warning(f"清空 Socket 緩衝區時發生錯誤: {e}")
+        finally:
+            self.socket.setblocking(True)
+
+        if total_flushed > 0:
+            logger.debug(f"Socket 緩衝區清空完成，共清出 {total_flushed} bytes")
+
     def send_json_command(self, cmd: Dict[str, Any]) -> Dict[str, Any]:
         """
         發送 JSON 指令到伺服器
@@ -389,6 +430,11 @@ class MyCobotSocketController:
             raise RuntimeError("機器手臂未連接，無法發送 JSON 指令")
             
         try:
+            # 1. 發送前先等待並清空緩衝區，避免讀到之前 Raw Command 的殘留回應 (e.g. 0xfe...)
+            # 等待一小段時間確保 in-flight 的二進制回應已經到達
+            time.sleep(0.05)
+            self._flush_socket_buffer()
+            
             # 暫時增加 Timeout 以防止原子操作超時
             # 原子操作可能包含長時間的移動和等待
             original_timeout = self.socket.gettimeout()

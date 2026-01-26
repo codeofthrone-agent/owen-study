@@ -1243,6 +1243,11 @@ class RobotArmKeywords:
         try:
             import socket as sock_module
 
+            # 發送前先等待並清空緩衝區，避免讀到之前 Raw Command 的殘留回應 (e.g. 0xfe...)
+            # 等待一小段時間確保 in-flight 的二進制回應已經到達
+            time.sleep(0.05)
+            self.controller._flush_socket_buffer()
+
             # 設定 socket timeout
             original_timeout = self.controller.socket.gettimeout()
             self.controller.socket.settimeout(timeout)
