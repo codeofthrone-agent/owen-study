@@ -223,24 +223,18 @@ class RobotArmKeywords:
         self.controller.send_angles(config['up_angles'], config['speed'])
         self.controller.wait_for_movement(check_interval=0.02)
 
-        # 移動到按下位置
-        logger.debug(f"下壓按鈕: {config['down_angles']}")
-        self.controller.send_angles(config['down_angles'], config['speed'])
-        self.controller.wait_for_movement(check_interval=0.02)
-
-        # 保持按壓
+        # 2. 呼叫原子化按壓指令 (Server Side 執行 Down -> Press -> Up)
         duration = custom_duration if custom_duration is not None else config['press_duration']
-        logger.debug(f"保持按壓 {duration} 秒")
-        time.sleep(duration)
-
-        # 移動到抬起位置
-        logger.debug(f"抬起手臂: {config['up_angles']}")
-        self.controller.send_angles(config['up_angles'], config['speed'])
-        self.controller.wait_for_movement(check_interval=0.02)
-
-        # 抬起後等待
-        time.sleep(config['lift_duration'])
-
+        logger.debug(f"執行原子按壓: press={duration}s, lift={config['lift_duration']}s")
+        
+        self.controller.press_button_atomic(
+            down_angles=config['down_angles'],
+            up_angles=config['up_angles'],
+            press_duration=duration,
+            lift_duration=config['lift_duration'],
+            speed=config['speed']
+        )
+        
         logger.info(f"✅ 完成按壓按鈕: {button_name}")
         
         # 標記操作成功

@@ -1893,6 +1893,8 @@ class MycobotServer(object):
             # 控制命令
             if command_type == "move_to_angles":
                 return self._cmd_move_to_angles(cmd)
+            elif command_type == "press_button_angles": # v5.4.0 Atomic Press
+                return self._cmd_press_button_angles(cmd)
             elif command_type == "get_angles":
                 return self._cmd_get_angles(cmd)
             elif command_type == "get_coords":
@@ -2124,6 +2126,60 @@ class MycobotServer(object):
 
         except Exception as e:
             self.logger.error(f"移動命令失敗: {e}")
+            return {"status": "error", "message": str(e)}
+
+    def _cmd_press_button_angles(self, cmd: dict) -> dict:
+        """原子化按壓按鈕指令 (v5.4.0)
+        
+        執行序列: down -> wait -> up -> wait
+        全部在 Server 端執行以確保時間精確度。
+        """
+        try:
+            down_angles = cmd.get("down_angles")
+            up_angles = cmd.get("up_angles")
+            
+            if not down_angles or len(down_angles) != 6:
+                return {"status": "error", "message": "down_angles 參數錯誤"}
+            if not up_angles or len(up_angles) != 6:
+                return {"status": "error", "message": "up_angles 參數錯誤"}
+                
+            speed = cmd.get("speed", 50)
+            press_duration = float(cmd.get("press_duration", 0.1))
+            lift_duration = float(cmd.get("lift_duration", 0.1))
+            
+            self.logger.info(f"執行原子按壓: speed={speed}, press={press_duration}s, lift={lift_duration}s")
+            
+            # 1. Move Down
+            self.logger.info("  [1/4] 下壓...")
+            if not self._send_angles_internal(down_angles, speed):
+                return {"status": "error", "message": "發送下壓指令失敗"}
+            
+            # 等待到達 (嚴格模式)
+            if not self._wait_for_arrival(down_angles, threshold=2.0):
+                self.logger.warning("  ⚠️ 下壓未準確到達，但繼續執行")
+                
+            # 2. Press Wait
+            self.logger.info(f"  [2/4] 按壓保持 ({press_duration}s)...")
+            time.sleep(press_duration)
+            
+            # 3. Move Up
+            self.logger.info("  [3/4] 抬起...")
+            if not self._send_angles_internal(up_angles, speed):
+                return {"status": "error", "message": "發送抬起指令失敗"}
+                
+            # 等待到達
+            if not self._wait_for_arrival(up_angles, threshold=2.0):
+                self.logger.warning("  ⚠️ 抬起未準確到達")
+                
+            # 4. Lift Wait
+            self.logger.info(f"  [4/4] 抬起冷卻 ({lift_duration}s)...")
+            time.sleep(lift_duration)
+            
+            self.logger.info("✅ 原子按壓完成")
+            return {"status": "success", "message": "按壓完成"}
+            
+        except Exception as e:
+            self.logger.error(f"原子按壓失敗: {e}")
             return {"status": "error", "message": str(e)}
 
     def _cmd_capture_image(self, cmd: dict) -> dict:

@@ -4,7 +4,8 @@ MyCobot Socket Controller - MyCobot 280 Socket 控制核心
 """
 
 import time
-from typing import List, Optional
+import json
+from typing import List, Optional, Dict, Any
 from loguru import logger
 
 from pymycobot import MyCobot280Socket
@@ -370,6 +371,83 @@ class MyCobotSocketController:
             logger.error(f"檢查電源狀態失敗: {e}")
             raise RuntimeError(f"檢查電源狀態失敗: {e}") from e
 
+
+    def send_json_command(self, cmd: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        發送 JSON 指令到伺服器
+        
+        Args:
+            cmd: 指令字典
+            
+        Returns:
+            Dict: 伺服器回應
+            
+        Raises:
+            RuntimeError: 發送或接收失敗
+        """
+        if not self.is_connected():
+            raise RuntimeError("機器手臂未連接，無法發送 JSON 指令")
+            
+        try:
+            # 暫時增加 Timeout 以防止原子操作超時
+            # 原子操作可能包含長時間的移動和等待
+            original_timeout = self.socket.gettimeout()
+            self.socket.settimeout(20.0)
+            
+            cmd_str = json.dumps(cmd)
+            self.socket.sendall(cmd_str.encode('utf-8'))
+            
+            # 接收回應
+            # 簡單實作：假設回應不會過長
+            data = self.socket.recv(4096)
+            
+            # 恢復 Timeout
+            self.socket.settimeout(original_timeout)
+            
+            if not data:
+                raise RuntimeError("伺服器未回傳數據")
+                
+            return json.loads(data.decode('utf-8'))
+            
+        except Exception as e:
+            logger.error(f"JSON 指令錯誤: {e}")
+            raise RuntimeError(f"JSON 指令錯誤: {e}") from e
+
+    def press_button_atomic(self, down_angles: List[float], up_angles: List[float], 
+                          press_duration: float = 0.1, lift_duration: float = 0.1, 
+                          speed: int = 50) -> bool:
+        """
+        原子化按壓按鈕 (Server Side 執行)
+        
+        Args:
+            down_angles: 下壓角度
+            up_angles: 抬起角度
+            press_duration: 按壓停留時間 (秒)
+            lift_duration: 抬起冷卻時間 (秒)
+            speed: 移動速度
+            
+        Returns:
+            bool: 是否成功
+        """
+        cmd = {
+            "command": "press_button_angles",
+            "down_angles": down_angles,
+            "up_angles": up_angles,
+            "press_duration": press_duration,
+            "lift_duration": lift_duration,
+            "speed": speed
+        }
+        
+        logger.info(f"發送原子按壓指令: press={press_duration}s")
+        response = self.send_json_command(cmd)
+        
+        if response.get("status") == "success":
+            logger.info("✅ 原子按壓成功")
+            return True
+        else:
+            error_msg = response.get("message", "未知錯誤")
+            logger.error(f"原子按壓失敗: {error_msg}")
+            raise RuntimeError(f"原子按壓失敗: {error_msg}")
 
 # 簡單的使用範例和測試
 if __name__ == "__main__":
