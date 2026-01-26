@@ -666,6 +666,23 @@ Then 控制面板應該顯示 "燈光開啟" 狀態
 Then 控制面板應該顯示 "藍牙連接" 狀態
 ```
 
+#### 3. Then 按鈕 "${button_id}" 的狀態應為 "${expected_state}"
+
+```robot
+Then 按鈕 "${button_id}" 的狀態應為 "${expected_state}"
+```
+
+**說明**: 驗證按鈕狀態符合預期（YOLO 視覺檢測）。
+
+**參數**:
+- `button_id`: 按鈕 ID (例如 "light1")
+- `expected_state`: 預期狀態 ("on" 或 "off")
+
+**範例**:
+```robot
+Then 按鈕 "light1" 的狀態應為 "on"
+```
+
 #### And 關鍵字（附加驗證）
 
 #### 1. And 機器手臂應該返回待命位置

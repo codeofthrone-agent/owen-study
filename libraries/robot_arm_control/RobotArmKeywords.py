@@ -49,13 +49,13 @@ class RobotArmKeywords:
     - 連接管理（連接、斷開、回到初始位置）
     - BDD Given 關鍵字（3 個）- 前置條件驗證
     - BDD When 關鍵字（4 個）- 執行動作
-    - BDD Then 關鍵字（2 個）- 預期結果驗證
+    - BDD Then 關鍵字（3 個）- 預期結果驗證
     - BDD And 關鍵字（3 個）- 附加驗證
 
     📊 關鍵字統計：
     - 傳統關鍵字: 3 個（連接管理）
-    - BDD 關鍵字: 12 個（Given 3 + When 4 + Then 2 + And 3）
-    - 總計: 15 個關鍵字
+    - BDD 關鍵字: 13 個（Given 3 + When 4 + Then 3 + And 3）
+    - 總計: 16 個關鍵字
 
     🔄 v2.0.0 更新日誌（2025-11-12）：
     - ✅ 全面改用 BDD 風格關鍵字
@@ -1108,6 +1108,41 @@ class RobotArmKeywords:
             f"(預期: {expected_level}%, 誤差: {error}%, 信心度: {confidence:.2f})"
         )
 
+    @keyword('按鈕 "${button_id}" 的狀態應為 "${expected_state}"')
+    def button_state_should_be(self, button_id: str, expected_state: str):
+        """
+        驗證按鈕狀態 (on/off)
+        此關鍵字自動支援 Given/When/Then/And 前綴
+
+        v4.3.0 更新: 使用 dwell_time=1.0 確保穩定
+
+        Args:
+            button_id: 按鈕 ID (例如 "light1")
+            expected_state: 預期狀態 ("on" 或 "off")
+        
+        Examples:
+            | Given | 按鈕 "light1" 的狀態應為 "off" |
+            | Then  | 按鈕 "light1" 的狀態應為 "on" |
+            | And   | 按鈕 "light1" 的狀態應為 "on" |
+        """
+        logger.info(f"驗證按鈕 '{button_id}' 狀態應為 '{expected_state}'")
+        
+        # 執行檢測 (使用 dwell_time=1.0)
+        result = self.when_user_detects_button_light_state(button_id, dwell_time=1.0)
+        actual_state = result.get('light_state')
+        
+        if actual_state != expected_state:
+            # 輔助除錯資訊
+            color = result.get('color')
+            confidence = result.get('confidence')
+            raise AssertionError(
+                f"按鈕 {button_id} 狀態不符！\n"
+                f"預期: {expected_state}\n"
+                f"實際: {actual_state} (顏色: {color}, 信心度: {confidence})"
+            )
+            
+        logger.info(f"✓ 按鈕 {button_id} 狀態正確: {actual_state}")
+
     # ==================== BDD And 關鍵字 ====================
 
     @keyword("And 機器手臂應該返回待命位置")
@@ -1284,15 +1319,18 @@ class RobotArmKeywords:
             raise RuntimeError(f"視覺命令執行失敗: {e}")
 
     @keyword('When 用戶檢測第 "${button_id}" 按鈕的燈光狀態')
-    def when_user_detects_button_light_state(self, button_id: str, save_debug_image: bool = False) -> dict:
+    def when_user_detects_button_light_state(self, button_id: str, save_debug_image: bool = False, dwell_time: float = 1.0) -> dict:
         """
         When: 用戶檢測指定按鈕的燈光狀態（本機化視覺檢測）
 
         執行動作：透過本機 LocalVisionAnalyzer 檢測按鈕的 LED 狀態
+        
+        v4.3.0 更新: 新增 dwell_time 參數，確保手臂移動後穩定再拍照
 
         Args:
             button_id: 按鈕 ID（例如：light1, bluetooth, door_lock）
             save_debug_image: 是否儲存除錯影像（預設：False）
+            dwell_time: 拍照前等待時間（秒）（預設：1.0）
 
         Returns:
             dict: 檢測結果
@@ -1305,7 +1343,7 @@ class RobotArmKeywords:
 
         Examples:
             | When | 用戶檢測第 "light1" 按鈕的燈光狀態 |
-            | When | 用戶檢測第 "light1" 按鈕的燈光狀態 | save_debug_image=True |
+            | When | 用戶檢測第 "light1" 按鈕的燈光狀態 | save_debug_image=True | dwell_time=2.0 |
 
         Raises:
             RuntimeError: 如果檢測失敗
@@ -1319,6 +1357,11 @@ class RobotArmKeywords:
             # 確保本機視覺分析器已初始化
             if not self.local_vision:
                 raise RuntimeError("本機視覺分析器未初始化")
+            
+            # [新增] 拍照前等待 (Dwell Time)
+            if dwell_time > 0:
+                logger.info(f"等待手臂穩定... ({dwell_time}秒)")
+                time.sleep(dwell_time)
 
             # 從環境配置載入按鈕 ROI
             try:
@@ -1338,6 +1381,17 @@ class RobotArmKeywords:
             if not button_config or 'vision' not in button_config:
                 raise ValueError(f"按鈕 '{button_id}' 未校準視覺檢測 ROI")
 
+            # 移動機器手臂到觀測角度（如果需要且已連接機器手臂）
+            if "observe_angles" in button_config["vision"] and self.controller is not None:
+                try:
+                    observe_angles = button_config["vision"]["observe_angles"]
+                    logger.debug(f"移動到觀測角度: {observe_angles}")
+                    self.controller.send_angles(observe_angles, 30)
+                    # dwell_time 已在前面處理，但移動後仍需等待穩定
+                    time.sleep(2)  
+                except Exception as e:
+                    logger.warning(f"移動到觀測角度失敗: {e}，繼續使用當前角度檢測")
+
             # 🔧 BUGFIX v4.2.0: 傳入完整的vision配置,而不只是roi字典
             # 完整vision配置包含: roi, aruco_markers, observe_angles等
             # detect_single_button需要aruco_markers來進行runtime offset校正
@@ -1345,7 +1399,7 @@ class RobotArmKeywords:
             roi_config = button_config['vision']  # 完整vision配置
 
             # 檢測按鈕狀態(使用 LocalVisionAnalyzer.detect_single_button)
-            detection_result = self.local_vision.detect_single_button(
+            detection_result, _, _ = self.local_vision.detect_single_button(
                 button_id=button_id,
                 roi_config=roi_config,  # 現在傳入完整vision配置,包含aruco_markers
                 image_source_config=self.image_source_config,
@@ -1413,6 +1467,105 @@ class RobotArmKeywords:
 
         logger.info(f"✓ 按鈕顏色驗證通過: {expected_color} (信心度: {result['confidence']:.2f})")
         return True
+
+    @keyword('YOLO 應該檢測到按鈕 "${button_id}" 為 "${expected_state}"')
+    def then_yolo_should_detect_button_state(self, button_id: str, expected_state: str, confidence_threshold: float = 0.5):
+        """
+        YOLO 應該檢測到按鈕為指定狀態
+        (支援 Given/When/Then/And 前綴)
+
+        執行動作：
+        1. 移動手臂到該按鈕的觀測位置
+        2. 執行 Server 端 YOLO 偵測 (包含自動 180 度翻轉重試)
+        3. 驗證偵測結果中是否包含符合預期的物件
+
+        Args:
+            button_id: 按鈕 ID (例如 "light1")
+            expected_state: 預期狀態 ("on", "off", "x")
+            confidence_threshold: 信心度閾值 (預設 0.5)
+
+        Examples:
+            | Given | YOLO 應該檢測到按鈕 "light1" 為 "x" |
+            | Then  | YOLO 應該檢測到按鈕 "light1" 為 "on" |
+
+        Raises:
+            AssertionError: 如果未檢測到符合的物件
+            RuntimeError: 如果執行失敗
+        """
+        self._ensure_connected()
+
+        # 1. 取得按鈕配置與觀測角度
+        config = self._get_button_config(button_id)
+        if "vision" not in config or "observe_angles" not in config["vision"]:
+            raise ValueError(f"按鈕 '{button_id}' 未配置觀測角度 (vision.observe_angles)")
+        
+        observe_angles = config["vision"]["observe_angles"]
+        logger.info(f"YOLO 驗證: 移動到觀測角度 {observe_angles} 並執行偵測...")
+
+        # 2. 發送 scan_and_detect 指令
+        cmd = {
+            "command": "scan_and_detect",
+            "angles": observe_angles,
+            "timeout": 20.0,
+            "filename_tags": {
+                "exp": expected_state,
+                "tag": button_id
+            }
+        }
+        
+        result = self._send_vision_command(cmd, timeout=30.0)
+        
+        if result.get("status") != "success":
+            raise RuntimeError(f"YOLO 偵測指令失敗: {result.get('message')}")
+    @keyword('YOLO 僅檢測並儲存按鈕影像 "${button_id}" 預期狀態 "${expected_state}"')
+    def then_yolo_only_detect_and_save_image(self, button_id: str, expected_state: str):
+        """
+        YOLO 僅偵測並儲存影像，不進行通過/失敗驗證 (用於蒐集資料或除錯)
+        
+        Server 將儲存影像為: exp-[expected]_act-[actual]_timestamp.jpg
+        
+        Args:
+            button_id: 按鈕 ID (例如 "light1")
+            expected_state: 預期狀態標籤 (用於檔名標示，例如 "on")
+        """
+        self._ensure_connected()
+
+        # 1. 取得按鈕配置與觀測角度
+        config = self._get_button_config(button_id)
+        if "vision" not in config or "observe_angles" not in config["vision"]:
+            raise ValueError(f"按鈕 '{button_id}' 未配置觀測角度 (vision.observe_angles)")
+        
+        observe_angles = config["vision"]["observe_angles"]
+        logger.info(f"YOLO 採集: 移動到觀測角度 {observe_angles} 並執行偵測 (不驗證)...")
+
+        # 2. 發送 scan_and_detect 指令 (帶 filename_tags)
+        cmd = {
+            "command": "scan_and_detect",
+            "angles": observe_angles,
+            "timeout": 20.0,
+            "filename_tags": {
+                "exp": expected_state,
+                "tag": button_id
+            }
+        }
+        
+        result = self._send_vision_command(cmd, timeout=30.0)
+        
+        if result.get("status") != "success":
+            logger.warning(f"YOLO 偵測指令回傳失敗: {result.get('message')}")
+            return
+
+        server_image_path = result.get("image_path", "")
+        detections = result.get("detections", [])
+        
+        if server_image_path:
+            logger.info(f"💾 已儲存除錯/採集影像: {server_image_path}")
+        
+        # 僅印出偵測結果供參考
+        det_strs = [f"{d['class']}({d['confidence']:.2f})" for d in detections]
+        logger.info(f"📋 偵測結果: {det_strs}")
+
+
 
     # ========== 已棄用的驗證 Keyword（v4.0.0 移除） ==========
     # Then 按鈕燈光應該為 "${expected_state}" 狀態（改用 Then 按鈕燈光應該為 "${expected_color}" 色）
@@ -1888,3 +2041,70 @@ if __name__ == "__main__":
     print("  狀態: on, off")
     print()
     print("=" * 70)
+
+    @keyword('Then 按鈕 "${button_id}" 的狀態應為 "${expected_state}"')
+    def then_button_state_should_be(self, button_id: str, expected_state: str):
+        """
+        Then: 驗證按鈕狀態
+        Then: Verify button state using YOLO
+
+        此關鍵字會移動手臂到該按鈕的觀測位置，並使用 YOLO 辨識按鈕狀態。
+
+        Args:
+            button_id: 按鈕 ID (例如 "light1")
+            expected_state: 預期狀態 (例如 "on" 或 "off")
+
+        Examples:
+        | Then | 按鈕 "light1" 的狀態應為 "on" |
+        """
+        self._ensure_controller_connected()
+        
+        # 1. 獲取按鈕配置
+        config = self._get_button_config(button_id)
+        vision_config = config.get("vision")
+        
+        if not vision_config:
+            raise ValueError(f"按鈕 {button_id} 未配置視覺資訊 (vision)")
+            
+        observe_angles = vision_config.get("observe_angles")
+        if not observe_angles:
+            raise ValueError(f"按鈕 {button_id} 未配置觀測角度 (vision.observe_angles)")
+            
+        # 2. 執行掃描與偵測
+        logger.info(f"正在驗證按鈕 {button_id} 狀態，預期為: {expected_state}")
+        detections = self.controller.scan_and_detect(observe_angles)
+        
+        # 3. 分析結果
+        # 預期的標籤名稱通常是 button_id + "_" + state，例如 "light1_on"
+        # 但有時可能是其他名稱，這裡假設標準命名慣例
+        expected_label_suffix = f"_{expected_state}"
+        
+        found = False
+        detected_labels = []
+        
+        for det in detections:
+            label = det.get("class", "")
+            detected_labels.append(label)
+            
+            # 檢查標籤是否包含按鈕ID且結尾符合預期狀態
+            # 例如 label="light1_on" 符合 button_id="light1", expected_state="on"
+            if button_id in label and label.endswith(expected_label_suffix):
+                found = True
+                confidence = det.get("confidence", 0.0)
+                logger.info(f"✅ 驗證成功: 發現 {label} (信賴度: {confidence:.2f})")
+                break
+                
+        if not found:
+            error_message = f"驗證失敗: 在按鈕 {button_id} 觀測點未發現狀態為 {expected_state} 的物件。偵測到的物件: {detected_labels}"
+            logger.error(error_message)
+            raise AssertionError(error_message)
+
+    @keyword('And 按鈕 "${button_id}" 的狀態應為 "${expected_state}"')
+    def and_button_state_should_be(self, button_id: str, expected_state: str):
+        """And: 驗證按鈕狀態 (同 Then)"""
+        self.then_button_state_should_be(button_id, expected_state)
+
+    @keyword('Given 按鈕 "${button_id}" 的狀態應為 "${expected_state}"')
+    def given_button_state_should_be(self, button_id: str, expected_state: str):
+        """Given: 驗證按鈕狀態 (同 Then，用於前置條件檢查)"""
+        self.then_button_state_should_be(button_id, expected_state)

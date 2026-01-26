@@ -103,10 +103,10 @@ class EnvironmentConfig:
 
             # 機器手臂配置（使用 Socket 影像源）
             "image_source": "mixed",  # ✨ 修改：混合模式（RTSP + Socket）
-            "robot_arm_host": "10.42.0.180",
+            "robot_arm_host": "192.168.165.100",
             "robot_arm_port": 9000,
             "robot_arm_http_port": 8000,  # ✨ 新增：HTTP API Port
-            "robot_arm_image_source": "socket",  # Temporarily switched to socket as HTTP server is unreachable
+            "robot_arm_image_source": "http",  # Switched to http per user request
 
             "panel_types": ["3510a", "3611a", "3611c"],
             "button_config_path": "config/robot_arm/taipei_lab_buttons.yaml",

@@ -2,6 +2,7 @@
 # coding:utf-8
 import socket
 import sys
+import os
 import serial
 import time
 import logging
@@ -58,6 +59,8 @@ Enhanced features:
 
 has_return = [0x01,0x02,0x03,0x04,0x09,0x12, 0x14, 0x15, 0x17,0x1B, 0x20,0x23, 0x27, 0x2A,0x2B,0x2D,0x2E, 0x3B,0x3D, 0x40,0x42,0x43,0x44,0x4A, 0x4B,0x50,0x51,0x53,0x62,0x65,0x69,0x90,0x91,0x92,0xC0, 0xC3,0x82,0x84,0x86,0x88,0x8A,0xD0,0xD1,0xD5,0xE1,0xE2,0xE3,0xE4,0xE5,0XE6, 0xB0]
 
+SERVER_VERSION = "v4.3.0"
+
 
 # ==================== HTTP API Server (v4.2.0) ====================
 # 職責分離架構：Socket (控制) + HTTP (影像)
@@ -68,15 +71,16 @@ has_return = [0x01,0x02,0x03,0x04,0x09,0x12, 0x14, 0x15, 0x17,0x1B, 0x20,0x23, 0
 # - GET  /api/v1/capture/multiple     - 多張影像截取
 
 class HTTPAPIServer:
-    """HTTP API Server (v4.3.0) - Flask Implementation with YOLO support"""
+    """HTTP API Server (v4.4.0) - Flask Implementation with YOLO + STag ROI support"""
 
-    def __init__(self, host, port, camera_capture, camera_lock, logger, yolo_detector=None):
+    def __init__(self, host, port, camera_capture, camera_lock, logger, yolo_detector=None, stag_detector=None):
         self.host = host
         self.port = port
         self.camera_capture = camera_capture
         self.camera_lock = camera_lock
         self.logger = logger
         self.yolo_detector = yolo_detector
+        self.stag_detector = stag_detector
         self.app = Flask(__name__)
         self.server = None
         self.server_thread = None
@@ -96,6 +100,10 @@ class HTTPAPIServer:
         if yolo_detector:
             self.app.add_url_rule('/api/v1/yolo/detect', 'yolo_detect', self.yolo_detect, methods=['GET'])
 
+        # STag ROI + YOLO endpoint (v4.4.0)
+        if yolo_detector and stag_detector:
+            self.app.add_url_rule('/api/v1/stag_roi/yolo_detect', 'stag_roi_yolo_detect', self.stag_roi_yolo_detect, methods=['GET'])
+
     def start(self):
         """Start HTTP API Server in a separate thread"""
         self.server_thread = threading.Thread(target=self._run, daemon=True)
@@ -107,6 +115,8 @@ class HTTPAPIServer:
         self.logger.info(f"   - GET /api/v1/capture/multiple?count=5&num_frames=5&format=jpeg")
         if self.yolo_detector:
             self.logger.info(f"   - GET /api/v1/yolo/detect?num_frames=5&confidence=0.5&save_image=true")
+        if self.yolo_detector and self.stag_detector:
+            self.logger.info(f"   - GET /api/v1/stag_roi/yolo_detect?num_frames=5&confidence=0.5&padding=20")
 
     def _run(self):
         try:
@@ -127,7 +137,7 @@ class HTTPAPIServer:
     def health(self):
         return jsonify({
             "status": "healthy",
-            "version": "4.2.0",
+            "version": "4.4.0",
             "services": {
                 "vision": self.camera_capture is not None
             }
@@ -222,6 +232,27 @@ class HTTPAPIServer:
             self.logger.error(f"Multiple capture error: {e}")
             return jsonify({"status": "error", "message": str(e)}), 500
 
+    def _detect_with_retry(self, image, confidence=0.5):
+        """Helper for robust detection: retries with 180 rotation if needed"""
+        # 1. First attempt
+        detections = self.yolo_detector.detect(image, confidence=confidence)
+        
+        # 2. If valid detections found, return immediately
+        if len(detections) > 0:
+            return detections, image, False
+
+        # 3. If failed, try 180 degree rotation (upside down)
+        self.logger.info("⚠️ 初次檢測未發現物件，嘗試旋轉 180 度重試...")
+        rotated_image = cv2.rotate(image, cv2.ROTATE_180)
+        rotated_detections = self.yolo_detector.detect(rotated_image, confidence=confidence)
+        
+        if len(rotated_detections) > 0:
+            self.logger.info(f"✅ 旋轉後檢測成功: 找到 {len(rotated_detections)} 個物件")
+            # Note: We return the rotated image so bounding boxes match the visual
+            return rotated_detections, rotated_image, True
+            
+        return detections, image, False
+
     def yolo_detect(self):
         """YOLO 物件檢測 HTTP 端點 (v4.3.0)"""
         if not self.yolo_detector:
@@ -251,10 +282,12 @@ class HTTPAPIServer:
                 if avg_frame is None:
                     return jsonify({"status": "error", "message": "Failed to capture image"}), 500
 
-                # 2. 執行 YOLO 檢測
+                # 2. 執行 YOLO 檢測 (Robust Mode)
                 import time
                 start_time = time.time()
-                detections = self.yolo_detector.detect(avg_frame, confidence=confidence)
+                
+                detections, final_image, rotated = self._detect_with_retry(avg_frame, confidence=confidence)
+                
                 inference_time = (time.time() - start_time) * 1000
 
                 # 3. 準備響應
@@ -265,15 +298,16 @@ class HTTPAPIServer:
                         "num_frames": num_frames,
                         "confidence_threshold": confidence,
                         "inference_time_ms": round(inference_time, 2),
-                        "num_detections": len(detections)
+                        "num_detections": len(detections),
+                        "rotated_180": rotated
                     }
                 }
 
-                # 4. 儲存圖片（如果需要）
+                # 4. 儲存圖片（使用最終用於檢測的圖片）
                 if save_image:
                     try:
                         original_path, annotated_path = self.yolo_detector.save_results(
-                            avg_frame, detections
+                            final_image, detections
                         )
                         response_data["image_path"] = original_path
                         response_data["annotated_image_path"] = annotated_path
@@ -281,15 +315,15 @@ class HTTPAPIServer:
                         self.logger.warning(f"Failed to save images: {e}")
                         response_data["save_error"] = str(e)
 
-                # 5. 返回圖片 base64（如果需要）
+                # 5. 返回圖片 base64
                 if return_image:
                     try:
-                        # 原始圖
-                        _, buffer = cv2.imencode('.jpg', avg_frame)
+                        # 原始圖 (可能是旋轉過的)
+                        _, buffer = cv2.imencode('.jpg', final_image)
                         response_data["image_base64"] = base64.b64encode(buffer).decode('utf-8')
 
                         # 標註圖
-                        annotated_image = self.yolo_detector.draw_boxes(avg_frame, detections)
+                        annotated_image = self.yolo_detector.draw_boxes(final_image, detections)
                         _, buffer = cv2.imencode('.jpg', annotated_image)
                         response_data["annotated_image_base64"] = base64.b64encode(buffer).decode('utf-8')
                     except Exception as e:
@@ -304,6 +338,309 @@ class HTTPAPIServer:
             self.logger.error(f"YOLO detection error: {e}")
             return jsonify({"status": "error", "message": str(e)}), 500
 
+    def _extract_roi_between_stags(self, img, markers, padding=20):
+        """擷取兩個 STag 標記之間的 ROI 區域 (v4.4.0)
+
+        以兩個 STag 的角點為基準，擷取中間的矩形區域。
+
+        Args:
+            img: 輸入影像 (numpy array)
+            markers: STag 標記列表（至少 2 個）
+            padding: 向內縮進的像素（排除 STag 本身）
+
+        Returns:
+            tuple: (roi_img, roi_coords, marker_info)
+                   roi_coords = (x1, y1, x2, y2)
+                   marker_info = {'left': {...}, 'right': {...}}
+                   失敗時返回 (None, None, None)
+        """
+        if len(markers) < 2:
+            self.logger.warning("ROI 擷取需要至少 2 個 STag 標記")
+            return None, None, None
+
+        # 收集所有標記的角點
+        all_corners = []
+        for m in markers:
+            corners = np.array(m['corners_pixel'])
+            all_corners.extend(corners.reshape(-1, 2).tolist())
+
+        all_corners = np.array(all_corners)
+
+        # 計算邊界框
+        y_min = int(np.min(all_corners[:, 1]))
+        y_max = int(np.max(all_corners[:, 1]))
+
+        # 獲取兩個標記的中心位置
+        centers = []
+        for m in markers:
+            center = np.array(m['center_pixel']).flatten()
+            centers.append({
+                'x': float(center[0]),
+                'y': float(center[1]),
+                'id': m['id'],
+                'corners': np.array(m['corners_pixel']).reshape(-1, 2)
+            })
+
+        # 按 x 座標排序找出左右標記
+        centers_sorted = sorted(centers, key=lambda c: c['x'])
+        left_marker = centers_sorted[0]
+        right_marker = centers_sorted[-1]
+
+        # 計算 ROI：從左標記右邊到右標記左邊
+        roi_x1 = int(np.max(left_marker['corners'][:, 0])) + padding
+        roi_x2 = int(np.min(right_marker['corners'][:, 0])) - padding
+
+        # Y 範圍：兩個標記的最小/最大 Y，加上一些擴展
+        roi_y1 = max(0, y_min - padding)
+        roi_y2 = min(img.shape[0], y_max + padding)
+
+        # 確保座標有效
+        h, w = img.shape[:2]
+        roi_x1 = max(0, roi_x1)
+        roi_x2 = min(w, roi_x2)
+        roi_y1 = max(0, roi_y1)
+        roi_y2 = min(h, roi_y2)
+
+        if roi_x2 <= roi_x1 or roi_y2 <= roi_y1:
+            self.logger.warning("ROI 區域無效（座標重疊或負數）")
+            return None, None, None
+
+        roi_img = img[roi_y1:roi_y2, roi_x1:roi_x2].copy()
+
+        marker_info = {
+            'left': {'id': left_marker['id'], 'center': (left_marker['x'], left_marker['y'])},
+            'right': {'id': right_marker['id'], 'center': (right_marker['x'], right_marker['y'])}
+        }
+
+        return roi_img, (roi_x1, roi_y1, roi_x2, roi_y2), marker_info
+
+    def stag_roi_yolo_detect(self):
+        """STag ROI + YOLO 物件檢測 HTTP 端點 (v4.4.0)
+
+        流程：
+        1. 拍攝影像
+        2. 執行 STag 標記檢測
+        3. 擷取兩個 STag 之間的 ROI 區域
+        4. 對 ROI 執行 YOLO 檢測
+        5. 將座標映射回原圖
+
+        參數：
+            num_frames: 拍照幀數（預設 5）
+            confidence: YOLO 信心度閾值（預設 0.5）
+            padding: ROI 邊界內縮像素（預設 20）
+            save_image: 是否儲存圖片（預設 true）
+            return_image: 是否返回 base64 圖片（預設 false）
+
+        返回：
+            {
+                "status": "success",
+                "stag_markers": [...],
+                "roi_coords": [x1, y1, x2, y2],
+                "detections": [...],  // 座標已映射到原圖
+                "metadata": {...}
+            }
+        """
+        if not self.yolo_detector:
+            return jsonify({"status": "error", "message": "YOLO detection not available"}), 503
+        if not self.stag_detector:
+            return jsonify({"status": "error", "message": "STag detection not available"}), 503
+
+        try:
+            import time
+
+            # 解析參數
+            num_frames = int(request.args.get('num_frames', 5))
+            confidence = float(request.args.get('confidence', 0.5))
+            padding = int(request.args.get('padding', 20))
+            save_image = request.args.get('save_image', 'true').lower() == 'true'
+            return_image = request.args.get('return_image', 'false').lower() == 'true'
+
+            # 參數驗證
+            if not (1 <= num_frames <= 20):
+                return jsonify({"status": "error", "message": "num_frames must be between 1 and 20"}), 400
+            if not (0.0 <= confidence <= 1.0):
+                return jsonify({"status": "error", "message": "confidence must be between 0.0 and 1.0"}), 400
+            if not (0 <= padding <= 100):
+                return jsonify({"status": "error", "message": "padding must be between 0 and 100"}), 400
+
+            with self.camera_lock:
+                total_start = time.time()
+
+                # 1. 截取圖像
+                avg_frame = self.camera_capture.capture_multi_frame_average(
+                    num_frames=num_frames,
+                    warmup_frames=0
+                )
+
+                if avg_frame is None:
+                    return jsonify({"status": "error", "message": "Failed to capture image"}), 500
+
+                capture_time = (time.time() - total_start) * 1000
+
+                # 2. 執行 STag 檢測
+                stag_start = time.time()
+                stag_result = self.stag_detector.detect_markers(avg_frame)
+                markers = stag_result.get('markers', [])
+                stag_time = (time.time() - stag_start) * 1000
+
+                self.logger.info(f"STag 檢測: 找到 {len(markers)} 個標記")
+
+                # 格式化 STag 結果（處理 numpy 類型）
+                stag_markers = []
+                for m in markers:
+                    center = np.array(m['center_pixel']).flatten()
+                    dist = float(np.array(m['distance_mm']).flatten()[0]) if isinstance(m['distance_mm'], np.ndarray) else float(m['distance_mm'])
+                    stag_markers.append({
+                        'id': int(m['id']),
+                        'center_pixel': [float(center[0]), float(center[1])],
+                        'distance_mm': dist
+                    })
+
+                if len(markers) < 2:
+                    return jsonify({
+                        "status": "error",
+                        "message": f"需要至少 2 個 STag 標記來定義 ROI，目前只檢測到 {len(markers)} 個",
+                        "stag_markers": stag_markers
+                    }), 400
+
+                # 3. 擷取 ROI
+                roi_start = time.time()
+                roi_img, roi_coords, marker_info = self._extract_roi_between_stags(avg_frame, markers, padding)
+                roi_time = (time.time() - roi_start) * 1000
+
+                if roi_img is None:
+                    return jsonify({
+                        "status": "error",
+                        "message": "無法擷取有效的 ROI 區域",
+                        "stag_markers": stag_markers
+                    }), 400
+
+                x1, y1, x2, y2 = roi_coords
+                self.logger.info(f"ROI 擷取: ({x1}, {y1}) -> ({x2}, {y2}), 尺寸: {roi_img.shape[1]}x{roi_img.shape[0]}")
+
+                # 4. 對 ROI 執行 YOLO 檢測
+                yolo_start = time.time()
+                roi_detections = self.yolo_detector.detect(roi_img, confidence=confidence)
+                yolo_time = (time.time() - yolo_start) * 1000
+
+                self.logger.info(f"YOLO 檢測: 在 ROI 中找到 {len(roi_detections)} 個物件")
+
+                # 5. 將座標映射回原圖
+                mapped_detections = []
+                for det in roi_detections:
+                    bbox = det.get('bbox', {})
+                    mapped_det = {
+                        'class': det.get('class', 'unknown'),
+                        'confidence': det.get('confidence', 0),
+                        'bbox': {
+                            'x': bbox.get('x', 0) + x1,  # 映射到原圖 x
+                            'y': bbox.get('y', 0) + y1,  # 映射到原圖 y
+                            'w': bbox.get('w', 0),
+                            'h': bbox.get('h', 0)
+                        },
+                        'bbox_roi': bbox  # 保留 ROI 內的原始座標
+                    }
+                    mapped_detections.append(mapped_det)
+
+                total_time = (time.time() - total_start) * 1000
+
+                # 6. 準備響應
+                response_data = {
+                    "status": "success",
+                    "stag_markers": stag_markers,
+                    "roi_coords": [x1, y1, x2, y2],
+                    "roi_size": [roi_img.shape[1], roi_img.shape[0]],
+                    "marker_info": marker_info,
+                    "detections": mapped_detections,
+                    "metadata": {
+                        "num_frames": num_frames,
+                        "confidence_threshold": confidence,
+                        "padding": padding,
+                        "num_stags": len(markers),
+                        "num_detections": len(mapped_detections),
+                        "timing_ms": {
+                            "capture": round(capture_time, 2),
+                            "stag_detection": round(stag_time, 2),
+                            "roi_extraction": round(roi_time, 2),
+                            "yolo_detection": round(yolo_time, 2),
+                            "total": round(total_time, 2)
+                        }
+                    }
+                }
+
+                # 7. 儲存圖片
+                if save_image:
+                    try:
+                        from datetime import datetime
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        save_dir = "images/stag_roi_yolo"
+                        import os
+                        os.makedirs(save_dir, exist_ok=True)
+
+                        # 儲存 ROI
+                        roi_path = f"{save_dir}/roi_{timestamp}.jpg"
+                        cv2.imwrite(roi_path, roi_img)
+
+                        # 儲存標註後的原圖
+                        annotated = avg_frame.copy()
+                        # 繪製 STag
+                        for m in markers:
+                            pts = np.array(m['corners_pixel'], np.int32).reshape((-1, 1, 2))
+                            cv2.polylines(annotated, [pts], True, (0, 255, 0), 2)
+                        # 繪製 ROI 區域
+                        cv2.rectangle(annotated, (x1, y1), (x2, y2), (255, 0, 255), 2)
+                        # 繪製 YOLO 檢測
+                        for det in mapped_detections:
+                            bbox = det['bbox']
+                            bx, by, bw, bh = bbox['x'], bbox['y'], bbox['w'], bbox['h']
+                            cv2.rectangle(annotated, (bx, by), (bx+bw, by+bh), (0, 0, 255), 2)
+                            cv2.putText(annotated, f"{det['class']} {det['confidence']:.2f}",
+                                       (bx, by-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+
+                        annotated_path = f"{save_dir}/annotated_{timestamp}.jpg"
+                        cv2.imwrite(annotated_path, annotated)
+
+                        response_data["image_paths"] = {
+                            "roi": roi_path,
+                            "annotated": annotated_path
+                        }
+                    except Exception as e:
+                        self.logger.warning(f"Failed to save images: {e}")
+                        response_data["save_error"] = str(e)
+
+                # 8. 返回圖片 base64
+                if return_image:
+                    try:
+                        # ROI 圖片
+                        _, buffer = cv2.imencode('.jpg', roi_img)
+                        response_data["roi_image_base64"] = base64.b64encode(buffer).decode('utf-8')
+
+                        # 標註後的原圖
+                        annotated = avg_frame.copy()
+                        for m in markers:
+                            pts = np.array(m['corners_pixel'], np.int32).reshape((-1, 1, 2))
+                            cv2.polylines(annotated, [pts], True, (0, 255, 0), 2)
+                        cv2.rectangle(annotated, (x1, y1), (x2, y2), (255, 0, 255), 2)
+                        for det in mapped_detections:
+                            bbox = det['bbox']
+                            bx, by, bw, bh = bbox['x'], bbox['y'], bbox['w'], bbox['h']
+                            cv2.rectangle(annotated, (bx, by), (bx+bw, by+bh), (0, 0, 255), 2)
+
+                        _, buffer = cv2.imencode('.jpg', annotated)
+                        response_data["annotated_image_base64"] = base64.b64encode(buffer).decode('utf-8')
+                    except Exception as e:
+                        self.logger.warning(f"Failed to encode images: {e}")
+                        response_data["encoding_error"] = str(e)
+
+            return jsonify(response_data)
+
+        except ValueError as e:
+            return jsonify({"status": "error", "message": f"Invalid parameter: {str(e)}"}), 400
+        except Exception as e:
+            self.logger.error(f"STag ROI YOLO detection error: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==================== CameraCapture 類別 ====================
 # v4.0.0 更新：移除影像判定邏輯，只保留影像截取功能
@@ -327,60 +664,106 @@ class CameraCapture:
         self.camera_device = camera_device
         self.logger = logger or logging.getLogger("CameraCapture")
         self.camera_lock = threading.Lock()
+        self.cap = None  # Persistent VideoCapture object
 
         self.logger.info(f"CameraCapture 初始化完成，攝影機: {camera_device}")
 
-    def capture_multi_frame_average(self, num_frames=5, warmup_frames=20) -> np.ndarray:
-        """多幀平均截圖（解決 LED 掃描頻率與自動曝光問題）
+    def open(self):
+        """開啟攝影機 (用於建立持續連線)"""
+        with self.camera_lock:
+            if self.cap is not None and self.cap.isOpened():
+                return
+            
+            try:
+                self.cap = cv2.VideoCapture(self.camera_device)
+                if not self.cap.isOpened():
+                    self.logger.error(f"無法開啟攝影機: {self.camera_device}")
+                    self.cap = None
+                    return
 
-        - LED PWM 調光頻率與攝影機幀率不同步會導致亮度不穩定。
-        - 攝影機啟動時需要時間穩定自動曝光。
+                # 設定攝影機參數
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+                self.cap.set(cv2.CAP_PROP_FPS, 30)
+                
+                # 初始預熱，讓自動曝光穩定 (僅在開啟時執行一次)
+                self.logger.info("攝影機開啟中，進行初始預熱 (20幀)...")
+                for _ in range(20):
+                    self.cap.read()
+                self.logger.info("攝影機已開啟並就緒")
+            except Exception as e:
+                self.logger.error(f"開啟攝影機發生異常: {e}")
+                if self.cap:
+                    self.cap.release()
+                self.cap = None
 
+    def close(self):
+        """關閉攝影機"""
+        with self.camera_lock:
+            if self.cap:
+                self.cap.release()
+                self.cap = None
+                self.logger.info("攝影機已關閉")
+
+    def capture_multi_frame_average(self, num_frames=3, warmup_frames=0) -> Optional[np.ndarray]:
+        """多幀平均截圖
+        
         Args:
-            num_frames: 用於平均的幀數（預設 5 幀）。
-            warmup_frames: 用於預熱的幀數（預設 10 幀），讓自動曝光穩定。
-
-        Returns:
-            平均後的圖像 (numpy.ndarray)
-
-        Raises:
-            RuntimeError: 無法截取圖像
+            num_frames: 用於平均的幀數
+            warmup_frames: 預熱幀數 (若使用持續連線，通常設為 0)
         """
         with self.camera_lock:
-            cap = cv2.VideoCapture(self.camera_device)
+            # 檢查是否已有開啟的相機
+            local_cap = False
+            cap = self.cap
 
-            if not cap.isOpened():
-                raise RuntimeError(f"無法開啟攝影機: {self.camera_device}")
+            # 如果沒有持續連線，嘗試臨時開啟 (Fallback)
+            if cap is None or not cap.isOpened():
+                self.logger.warning("攝影機未處於開啟狀態，嘗試臨時開啟截取...")
+                cap = cv2.VideoCapture(self.camera_device)
+                if not cap.isOpened():
+                    raise RuntimeError(f"無法開啟攝影機: {self.camera_device}")
+                
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+                cap.set(cv2.CAP_PROP_FPS, 30)
+                local_cap = True
+                # 臨時開啟需要較長的預熱
+                warmup_frames = max(warmup_frames, 20)
 
-            # 設定攝影機參數
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-            cap.set(cv2.CAP_PROP_FPS, 30)
+            try:
+                # 預熱 (如果需要)
+                if warmup_frames > 0:
+                    for _ in range(warmup_frames):
+                        cap.read()
 
-            # 新增：相機預熱階段，讓自動曝光穩定
-            self.logger.debug(f"相機預熱中，讀取並捨棄 {warmup_frames} 幀...")
-            for _ in range(warmup_frames):
-                cap.read()
-            self.logger.debug("相機預熱完成。")
+                # 清空 Buffer (讀取最新幀)
+                # 即使不需要預熱，也建議至少讀取一幀以確保不是舊的 buffer
+                if not local_cap and warmup_frames == 0:
+                    cap.read()
 
-            # 讀取幀用於平均
-            frames = []
-            for i in range(num_frames):
-                ret, frame = cap.read()
-                if ret and frame is not None:
-                    frames.append(frame.astype(np.float32))
-                time.sleep(0.01)  # 短暫延遲避免連續讀取同一幀
+                # 讀取幀用於平均
+                frames = []
+                for i in range(num_frames):
+                    ret, frame = cap.read()
+                    if ret and frame is not None:
+                        frames.append(frame.astype(np.float32))
+                    # 對於持續連線，不需要 sleep，因為讀取操作本身會等待下一幀
+                    # 但為了保險起見，如果是快速循環，可以微小延遲
+                    # time.sleep(0.01) 
 
-            cap.release()
+                if not frames:
+                     self.logger.error("無法截取任何圖像幀")
+                     return None
 
-            if not frames:
-                raise RuntimeError("無法截取任何圖像幀")
+                # 平均所有幀
+                avg_frame = np.mean(frames, axis=0).astype(np.uint8)
+                return avg_frame
 
-            # 平均所有幀
-            avg_frame = np.mean(frames, axis=0).astype(np.uint8)
-            self.logger.debug(f"多幀平均截圖完成 ({len(frames)}/{num_frames} 幀)")
-
-            return avg_frame
+            finally:
+                # 只有臨時開啟的相機才需要在此關閉
+                if local_cap and cap:
+                    cap.release()
 
     # ========== v4.0.0 已移除的方法 ==========
     # 以下影像判定方法已遷移至本機端 LocalVisionAnalyzer：
@@ -500,6 +883,98 @@ class CameraCapture:
             self.logger.error(f"❌ 計算位置校正失敗: {e}")
             return None
 
+# ==================== DiskManager 類別 ====================
+class DiskManager:
+    """磁碟空間管理工具 (v1.0.0)
+    
+    功能：
+    - 檢查磁碟剩餘空間
+    - 自動清理過舊檔案以維持目錄大小限制
+    """
+    def __init__(self, logger=None):
+        self.logger = logger or logging.getLogger("DiskManager")
+
+    def check_disk_space(self, path: str, min_free_mb: float = 500.0) -> bool:
+        """檢查指定路徑的磁碟剩餘空間是否足夠
+        
+        Args:
+            path: 檢查路徑
+            min_free_mb: 最小剩餘空間 (MB)
+            
+        Returns:
+            bool: 空間是否足夠
+        """
+        try:
+            if not os.path.exists(path):
+                return True
+                
+            stat = os.statvfs(path)
+            free_mb = (stat.f_bavail * stat.f_frsize) / (1024 * 1024)
+            
+            if free_mb < min_free_mb:
+                self.logger.warning(f"⚠️ 磁碟空間不足! 剩餘: {free_mb:.1f}MB (要求: {min_free_mb}MB)")
+                return False
+            return True
+        except Exception as e:
+            self.logger.error(f"檢查磁碟空間失敗: {e}")
+            return True # 發生錯誤時預設允許，避免阻擋流程
+
+    def cleanup_old_files(self, directory: str, max_size_mb: float = 1000.0, max_files: int = 5000):
+        """清理目錄中過舊的檔案
+        
+        Args:
+            directory: 目標目錄
+            max_size_mb: 最大允許容量 (MB)
+            max_files: 最大允許檔案數
+        """
+        if not os.path.exists(directory):
+            return
+
+        try:
+            # 獲取所有檔案及其修改時間
+            files = []
+            total_size = 0
+            
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    if entry.is_file():
+                        stat = entry.stat()
+                        files.append((entry.path, stat.st_mtime, stat.st_size))
+                        total_size += stat.st_size
+            
+            total_size_mb = total_size / (1024 * 1024)
+            num_files = len(files)
+            
+            # 檢查是否需要清理
+            if total_size_mb <= max_size_mb and num_files <= max_files:
+                return
+
+            self.logger.info(f"執行磁碟清理... (目前: {total_size_mb:.1f}MB, {num_files} 檔案)")
+            
+            # 依時間排序 (舊到新)
+            files.sort(key=lambda x: x[1])
+            
+            deleted_count = 0
+            deleted_size = 0
+            
+            for file_path, _, size in files:
+                # 如果已降至限制之下，停止刪除 (保留 10% 緩衝空間)
+                if (total_size_mb - (deleted_size / (1024*1024))) < (max_size_mb * 0.9) and \
+                   (num_files - deleted_count) < (max_files * 0.9):
+                    break
+                    
+                try:
+                    os.remove(file_path)
+                    deleted_count += 1
+                    deleted_size += size
+                except OSError as e:
+                    self.logger.warning(f"刪除檔案失敗 {file_path}: {e}")
+            
+            self.logger.info(f"清理完成: 刪除了 {deleted_count} 個檔案 ({deleted_size/1024/1024:.1f}MB)")
+
+        except Exception as e:
+            self.logger.error(f"磁碟清理過程發生錯誤: {e}")
+
 # ==================== get_logger 函數 ====================
 
 def get_logger(name, log_level=logging.INFO):
@@ -511,20 +986,22 @@ def get_logger(name, log_level=logging.INFO):
     """
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
+    logger.propagate = False  # Prevent propagation to root logger (avoid double logging)
 
-    LOG_FORMAT = "%(asctime)s - %(levelname)s - [%(funcName)s] - %(message)s"
-    #DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
+    if not logger.handlers:
+        LOG_FORMAT = "%(asctime)s - %(levelname)s - [%(funcName)s] - %(message)s"
+        #DATE_FORMAT = "%m/%d/%Y %H:%M:%S %p"
 
-    formatter = logging.Formatter(LOG_FORMAT)
-    console = logging.StreamHandler()
-    console.setFormatter(formatter)
+        formatter = logging.Formatter(LOG_FORMAT)
+        console = logging.StreamHandler()
+        console.setFormatter(formatter)
 
-    save = logging.handlers.RotatingFileHandler(
-        "server.log", maxBytes=10485760, backupCount=3)
-    save.setFormatter(formatter)
+        save = logging.handlers.RotatingFileHandler(
+            "server.log", maxBytes=10485760, backupCount=3)
+        save.setFormatter(formatter)
 
-    logger.addHandler(save)
-    logger.addHandler(console)
+        logger.addHandler(save)
+        logger.addHandler(console)
     return logger
 
 
@@ -536,7 +1013,7 @@ class MycobotServer(object):
                  camera_device = "/dev/video0", enable_vision = True,
                  enable_http = True, http_port = 8000,
                  enable_yolo = True, yolo_model_path = "models/best_20260106.pt",
-                 yolo_confidence = 0.85, yolo_device = "cuda"):
+                 yolo_confidence = 0.85, yolo_device = "cpu"):
         """Server class with enhanced error handling and auto-reconnection
 
         Args:
@@ -752,11 +1229,13 @@ class MycobotServer(object):
                     self.logger.info(f"   模型: {self.yolo_model_path}")
                     self.logger.info(f"   裝置: {self.yolo_device}")
                 except Exception as e:
-                    self.logger.error(f"❌ YOLO 檢測系統初始化失敗: {e}")
                     self.logger.warning("   伺服器將繼續運行（無 YOLO 功能）")
                     self.enable_yolo = False
 
-        # 初始化 HTTP API Server（v4.3.0）- 在 YOLO 初始化之後
+        # 初始化磁碟管理器 (v5.1.1)
+        self.disk_manager = DiskManager(logger=self.logger)
+
+        # 初始化 HTTP API Server（v4.4.0）- 在 YOLO 初始化之後
         if self.enable_http:
             try:
                 self.http_server = HTTPAPIServer(
@@ -765,13 +1244,16 @@ class MycobotServer(object):
                     camera_capture=self.camera_capture,
                     camera_lock=self.camera_lock,
                     logger=self.logger,
-                    yolo_detector=self.yolo_detector if self.enable_yolo else None
+                    yolo_detector=self.yolo_detector if self.enable_yolo else None,
+                    stag_detector=self.stag_detector  # v4.4.0: 添加 STag 檢測器
                 )
                 self.http_server.start()
                 self.logger.info("✅ HTTP API Server 已啟用")
                 self.logger.info(f"   HTTP 端口: {self.http_port}")
                 if self.yolo_detector:
                     self.logger.info("   YOLO 端點: /api/v1/yolo/detect")
+                if self.yolo_detector and self.stag_detector:
+                    self.logger.info("   STag ROI YOLO 端點: /api/v1/stag_roi/yolo_detect")
             except Exception as e:
                 self.logger.error(f"❌ HTTP API Server 初始化失敗: {e}")
                 self.logger.warning("   伺服器將繼續運行（無 HTTP API 功能）")
@@ -882,6 +1364,9 @@ class MycobotServer(object):
         with self.serial_lock:
             is_moving_cmd = [0xfe, 0xfe, 0x02, 0x2b, 0xfa]
             try:
+                # 清空輸入緩衝區，避免讀到上一條指令的殘留回應
+                self.mc.reset_input_buffer()
+                
                 self.write(is_moving_cmd)
                 # is_moving 指令有回應
                 response = self.read(is_moving_cmd)
@@ -1374,6 +1859,17 @@ class MycobotServer(object):
                 self.mc.write(bytes(command))
                 self.mc.flush()
 
+                # 讀取回應，避免殘留在 buffer 影響後續指令 (如 is_moving)
+                # SEND_ANGLES 的回應通常包含本次指令的執行狀態
+                if command[3] in has_return:
+                   try:
+                       response = self.read(command)
+                       # 不需要特別處理回應內容，只要讀取出來即可
+                       if response:
+                           self.logger.debug(f"   回應: {[hex(b) for b in response]}")
+                   except Exception as e:
+                       self.logger.warning(f"讀取發送角度回應失敗: {e}")
+
             self.logger.info(f"✓ 角度命令已發送，速度: {speed}")
             self.logger.debug(f"   命令: {[hex(b) for b in command]}")
             return True
@@ -1423,6 +1919,8 @@ class MycobotServer(object):
                 return self._cmd_capture_image(cmd)
             elif command_type == "yolo_detect":
                 return self._cmd_yolo_detect(cmd)
+            elif command_type == "scan_and_detect":
+                return self._cmd_scan_and_detect(cmd)
 
             # STag 偏移命令 (v5.1.0 Phase 13.5)
             elif command_type == "calculate_stag_offset":
@@ -2398,6 +2896,189 @@ class MycobotServer(object):
             self.logger.debug(traceback.format_exc())
             return {"status": "error", "message": str(e)}
 
+    def _cmd_scan_and_detect(self, cmd: dict) -> dict:
+        """
+        移動到觀測角度並執行 YOLO 偵測
+
+        Args:
+            cmd: {
+                "command": "scan_and_detect",
+                "angles": [j1, j2, j3, j4, j5, j6],  # 觀測角度
+                "speed": int,                        # 可選，預設 50
+                "timeout": float                     # 可選，等待移動超時
+            }
+
+        Returns:
+            {
+                "status": "success",
+                "detections": [...],  # YOLO 偵測結果
+                "moved": bool         # 是否有執行移動
+            }
+        """
+        try:
+            angles = cmd.get("angles")
+            if not angles or len(angles) != 6:
+                return {"status": "error", "message": "angles 參數必須包含 6 個角度值"}
+
+            speed = cmd.get("speed", 50)
+            timeout = cmd.get("timeout", 15.0)
+
+            self.logger.info(f"🔍 執行掃描與偵測，目標角度: {[round(a, 2) for a in angles]}")
+
+            # 1. 移動到觀測角度
+            # 建構移动命令
+            move_cmd = {
+                "command": "move_to_angles",
+                "angles": angles,
+                "speed": speed
+            }
+            
+            # 使用現有的移動邏輯
+            move_result = self._cmd_move_to_angles(move_cmd)
+            if move_result.get("status") != "success":
+                return {"status": "error", "message": f"移動失敗: {move_result.get('message')}"}
+
+            # 2. 等待移動穩定
+            # _cmd_move_to_angles 已經包含了 wait_for_arrival，但為了視覺穩定，這裡額外等待一小段時間
+            # 由於移除了相機預熱 (約0.7s)，需要增加此等待時間以避免手臂晃動導致影像模糊
+            time.sleep(1.5)
+
+            # 3. 確保相機可用
+            if not self.camera_capture:
+                return {"status": "error", "message": "相機未啟用"}
+            
+            if not self.yolo_detector:
+                return {"status": "error", "message": "YOLO 檢測器未啟用"}
+
+            # 4. 擷取影像 (使用多幀平均以減少噪點)
+            self.logger.info("📸 擷取影像中...")
+            image = self.camera_capture.capture_multi_frame_average(num_frames=3)
+            if image is None:
+                return {"status": "error", "message": "影像擷取失敗"}
+
+            # 5. 執行 YOLO 偵測
+            self.logger.info("🧠 執行 YOLO 偵測...")
+            detections = self.yolo_detector.detect(image)
+            rotated = False
+            
+            # Robust Check: If no detections, try rotating 180
+            if not detections:
+                 self.logger.info("⚠️ 初次檢測未發現物件，嘗試旋轉 180 度重試...")
+                 rotated_image = cv2.rotate(image, cv2.ROTATE_180)
+                 rotated_detections = self.yolo_detector.detect(rotated_image)
+                 
+                 if rotated_detections:
+                      self.logger.info(f"✅ 旋轉後檢測成功: 找到 {len(rotated_detections)} 個物件")
+                      detections = rotated_detections
+                      rotated = True
+            
+            # 格式化偵測結果
+            formatted_detections = []
+            for det in detections:
+                # 嘗試多種可能的 key 來獲取類別名稱
+                class_name = (
+                    det.get("class_name") or 
+                    det.get("label") or 
+                    det.get("name") or 
+                    det.get("class") or 
+                    det.get("text") or
+                    "unknown"
+                )
+                
+                formatted_detections.append({
+                    "class": class_name,
+                    "confidence": float(det.get("confidence", 0.0)),
+                    "box": det.get("box") or det.get("bbox")
+                })
+
+            self.logger.info(f"✅ 偵測完成，發現 {len(formatted_detections)} 個物件")
+            if formatted_detections:
+                det_details = ", ".join([f"{d['class']}({d['confidence']:.2f})" for d in formatted_detections])
+                self.logger.info(f"📋 偵測詳細結果: [{det_details}]")
+            
+            # Save debug image for verification
+            try:
+                debug_dir = os.path.join(os.getcwd(), "logs", "yolo_debug")
+                os.makedirs(debug_dir, exist_ok=True)
+                
+                # Check disk space before saving
+                if not self.disk_manager.check_disk_space(debug_dir, min_free_mb=500.0):
+                    self.logger.warning("⚠️ 磁碟空間不足，跳過儲存除錯影像")
+                    filepath = ""
+                else:
+                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                    
+                    # Custom filename logic if tags provided
+                    filename_tags = cmd.get("filename_tags")
+                    if filename_tags:
+                        exp = filename_tags.get("exp", "unknown")
+                        tag = filename_tags.get("tag", "")
+                        
+                        # Find actual status using tag (simple substring match)
+                        act = "none"
+                        if tag:
+                            # Search for tag in detection classes (e.g. "light1" in "light1_on")
+                            for d in formatted_detections:
+                                if tag.lower() in d['class'].lower():
+                                    act = d['class']
+                                    break
+                        
+                        # Requested format: scan_TIMESTAMP_[tag]_exp-[status]_act-[status].jpg
+                        # e.g. scan_20260122_144852_light1_exp-on_act-off.jpg
+                        filename = f"scan_{timestamp}_{tag}_exp-{exp}_act-{act}.jpg"
+                    else:
+                        filename = f"scan_{timestamp}.jpg"
+                    
+                    filepath = os.path.join(debug_dir, filename)
+                    
+                    # Use the appropriate image (rotated if applicable)
+                    save_img = rotated_image if (rotated and 'rotated_image' in locals()) else image
+                    
+                    # Draw detections on image
+                    debug_img = save_img.copy()
+                    for det in formatted_detections:
+                        box = det.get("box")
+                        label = f"{det['class']} {det['confidence']:.2f}"
+                        if box:
+                            try:
+                                if isinstance(box, dict):
+                                    x = int(box.get('x', 0))
+                                    y = int(box.get('y', 0))
+                                    w = int(box.get('w', 0) or box.get('width', 0))
+                                    h = int(box.get('h', 0) or box.get('height', 0))
+                                else:
+                                    x, y, w, h = [int(float(v)) for v in box] # Use float then int to be safe
+                                
+                                cv2.rectangle(debug_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                                cv2.putText(debug_img, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                            except Exception as e:
+                                self.logger.warning(f"⚠️ 無法繪製邊框: {e}, box data: {box}")
+                    
+                    cv2.imwrite(filepath, debug_img)
+                    
+                    # Log detection details (Requested by user)
+                    det_str = ", ".join([f"{d['class']}({d['confidence']:.2f})" for d in formatted_detections])
+                    self.logger.info(f"💾 儲存偵測除錯影像: {filepath} | 偵測結果: [{det_str}]")
+                    
+                    # Trigger disk cleanup after successful save
+                    # Max 1GB (1000MB) or 5000 files
+                    self.disk_manager.cleanup_old_files(debug_dir, max_size_mb=1000.0, max_files=5000)
+
+            except Exception as e:
+                self.logger.error(f"⚠️ 儲存除錯影像失敗: {e}")
+                filepath = ""
+
+            return {
+                "status": "success",
+                "detections": formatted_detections,
+                "moved": True,
+                "image_path": filepath
+            }
+
+        except Exception as e:
+            self.logger.error(f"scan_and_detect 失敗: {e}")
+            return {"status": "error", "message": str(e)}
+
     def connect(self):
         """主連接循環，處理客戶端請求"""
         while self.is_running:
@@ -2415,125 +3096,136 @@ class MycobotServer(object):
                 self.logger.info(f"客戶端已連接，來自 {addr}")
                 conn.settimeout(self.socket_timeout)  # 使用可配置的超時時間
 
-                while self.is_running:
-                    try:
-                        print("waiting data--------")
-                        data = conn.recv(1024)
+                # 客戶端連接後，開啟相機 (持續連線)
+                if self.camera_capture:
+                    self.logger.info("正在開啟相機（與客戶端連線生命週期綁定）...")
+                    threading.Thread(target=self.camera_capture.open, daemon=True).start()
 
-                        if not data:
-                            self.logger.info("客戶端斷開連接（無數據）")
-                            print("close disconnect!")
-                            break
-
-                        # 嘗試解析為 JSON 命令
+                try:
+                    while self.is_running:
                         try:
-                            data_str = data.decode('utf-8')
-                            json_cmd = json.loads(data_str)
+                            print("waiting data--------")
+                            data = conn.recv(1024)
 
-                            # 如果是 JSON 且包含 "command" 欄位，則處理為 JSON 命令
-                            if isinstance(json_cmd, dict) and "command" in json_cmd:
-                                self.logger.info(f"收到 JSON 命令: {json_cmd['command']}")
-                                result = self._handle_json_command(json_cmd)
-
-                                # 返回 JSON 結果
-                                result_str = json.dumps(result, ensure_ascii=False)
-                                conn.sendall(result_str.encode('utf-8'))
-                                continue
-
-                        except (UnicodeDecodeError, json.JSONDecodeError):
-                            # 不是 JSON 格式，按原有二進制命令處理
-                            pass
-
-                        command = list(data)
-
-                        # 驗證命令長度
-                        if len(command) < 4:
-                            self.logger.warning(f"命令長度不足（{len(command)} bytes），忽略此命令")
-                            continue
-
-                        # 檢查串口健康狀態
-                        if not self._check_serial_health():
-                            self.logger.warning("串口不健康，嘗試重新連接")
-                            if not self._reconnect_serial():
-                                error_msg = "串口不可用"
-                                conn.sendall(str.encode(error_msg))
+                            if not data:
+                                self.logger.info("客戶端斷開連接（無數據）")
+                                print("close disconnect!")
                                 break
 
-                        # 確保串口開啟
-                        with self.serial_lock:
-                            if self.mc and not self.mc.is_open:
-                                try:
-                                    self.mc.open()
-                                    self.logger.info("串口已重新開啟")
-                                except Exception as e:
-                                    self.logger.error(f"無法重新開啟串口: {e}")
-                                    if not self._reconnect_serial():
-                                        error_msg = f"串口錯誤: {str(e)}"
-                                        conn.sendall(str.encode(error_msg))
-                                        break
-
-                            self.logger.info("收到命令: {}".format([hex(v) for v in command]))
-
-                            # 處理 GPIO 命令（如果可用）
-                            if GPIO_AVAILABLE and len(command) > 3:
-                                try:
-                                    if command[3] == 170:
-                                        if command[4] == 0:
-                                            GPIO.setmode(GPIO.BCM)
-                                        else:
-                                            GPIO.setmode(GPIO.BOARD)
-                                    elif command[3] == 171:
-                                        if command[5]:
-                                            GPIO.setup(command[4], GPIO.OUT)
-                                        else:
-                                            GPIO.setup(command[4], GPIO.IN)
-                                    elif command[3] == 172:
-                                        GPIO.output(command[4], command[5])
-                                    elif command[3] == 173:
-                                        res = bytes([GPIO.input(command[4])])
-                                        conn.sendall(res)
-                                        continue
-                                except Exception as e:
-                                    self.logger.error(f"GPIO 命令錯誤: {e}")
-
-                            # 寫入串口命令
+                            # 嘗試解析為 JSON 命令
                             try:
-                                self.write(command)
-                            except serial.SerialException as e:
-                                self.logger.error(f"串口寫入錯誤: {e}")
+                                data_str = data.decode('utf-8')
+                                json_cmd = json.loads(data_str)
+
+                                # 如果是 JSON 且包含 "command" 欄位，則處理為 JSON 命令
+                                if isinstance(json_cmd, dict) and "command" in json_cmd:
+                                    self.logger.info(f"收到 JSON 命令: {json_cmd['command']}")
+                                    result = self._handle_json_command(json_cmd)
+
+                                    # 返回 JSON 結果
+                                    result_str = json.dumps(result, ensure_ascii=False)
+                                    conn.sendall(result_str.encode('utf-8'))
+                                    continue
+
+                            except (UnicodeDecodeError, json.JSONDecodeError):
+                                # 不是 JSON 格式，按原有二進制命令處理
+                                pass
+
+                            command = list(data)
+
+                            # 驗證命令長度
+                            if len(command) < 4:
+                                self.logger.warning(f"命令長度不足（{len(command)} bytes），忽略此命令")
+                                continue
+
+                            # 檢查串口健康狀態
+                            if not self._check_serial_health():
+                                self.logger.warning("串口不健康，嘗試重新連接")
                                 if not self._reconnect_serial():
-                                    error_msg = f"串口寫入失敗: {str(e)}"
+                                    error_msg = "串口不可用"
                                     conn.sendall(str.encode(error_msg))
                                     break
-                                # 重試寫入
-                                self.write(command)
 
-                            # 讀取回應
-                            if len(command) > 3 and command[3] in has_return:
+                            # 確保串口開啟
+                            with self.serial_lock:
+                                if self.mc and not self.mc.is_open:
+                                    try:
+                                        self.mc.open()
+                                        self.logger.info("串口已重新開啟")
+                                    except Exception as e:
+                                        self.logger.error(f"無法重新開啟串口: {e}")
+                                        if not self._reconnect_serial():
+                                            error_msg = f"串口錯誤: {str(e)}"
+                                            conn.sendall(str.encode(error_msg))
+                                            break
+
+                                self.logger.info("收到命令: {}".format([hex(v) for v in command]))
+
+                                # 處理 GPIO 命令（如果可用）
+                                if GPIO_AVAILABLE and len(command) > 3:
+                                    try:
+                                        if command[3] == 170:
+                                            if command[4] == 0:
+                                                GPIO.setmode(GPIO.BCM)
+                                            else:
+                                                GPIO.setmode(GPIO.BOARD)
+                                        elif command[3] == 171:
+                                            if command[5]:
+                                                GPIO.setup(command[4], GPIO.OUT)
+                                            else:
+                                                GPIO.setup(command[4], GPIO.IN)
+                                        elif command[3] == 172:
+                                            GPIO.output(command[4], command[5])
+                                        elif command[3] == 173:
+                                            res = bytes([GPIO.input(command[4])])
+                                            conn.sendall(res)
+                                            continue
+                                    except Exception as e:
+                                        self.logger.error(f"GPIO 命令錯誤: {e}")
+
+                                # 寫入串口命令
                                 try:
-                                    res = self.read(command)
-                                    if res:
-                                        self.logger.info("回應數據: {}".format([hex(v) for v in res]))
-                                        conn.sendall(res)
-                                    else:
-                                        self.logger.warning("未收到回應數據")
+                                    self.write(command)
                                 except serial.SerialException as e:
-                                    self.logger.error(f"串口讀取錯誤: {e}")
+                                    self.logger.error(f"串口寫入錯誤: {e}")
                                     if not self._reconnect_serial():
-                                        error_msg = f"串口讀取失敗: {str(e)}"
+                                        error_msg = f"串口寫入失敗: {str(e)}"
                                         conn.sendall(str.encode(error_msg))
                                         break
+                                    # 重試寫入
+                                    self.write(command)
 
-                    except socket.timeout:
-                        self.logger.warning("Socket 接收超時")
-                        continue
-                    except Exception as e:
-                        self.logger.error(f"命令處理錯誤: {traceback.format_exc()}")
-                        try:
-                            conn.sendall(str.encode(f"錯誤: {str(e)}"))
-                        except:
-                            pass
-                        break
+                                # 讀取回應
+                                if len(command) > 3 and command[3] in has_return:
+                                    try:
+                                        res = self.read(command)
+                                        if res:
+                                            self.logger.info("回應數據: {}".format([hex(v) for v in res]))
+                                            conn.sendall(res)
+                                        else:
+                                            self.logger.warning("未收到回應數據")
+                                    except serial.SerialException as e:
+                                        self.logger.error(f"串口讀取錯誤: {e}")
+                                        if not self._reconnect_serial():
+                                            error_msg = f"串口讀取失敗: {str(e)}"
+                                            conn.sendall(str.encode(error_msg))
+                                            break
+
+                        except socket.timeout:
+                            self.logger.warning("Socket 接收超時")
+                            continue
+                        except Exception as e:
+                            self.logger.error(f"命令處理錯誤: {traceback.format_exc()}")
+                            try:
+                                conn.sendall(str.encode(f"錯誤: {str(e)}"))
+                            except:
+                                pass
+                            break
+                finally: # This finally block ensures camera is closed when client disconnects
+                    # 客戶端斷開後，關閉相機
+                    if self.camera_capture:
+                        self.logger.info("客戶端斷開，正在關閉相機...")
+                        self.camera_capture.close()
 
             except KeyboardInterrupt:
                 self.logger.info("伺服器被使用者中斷")

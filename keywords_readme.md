@@ -45,6 +45,7 @@ v4.0.0（新版）: Client（本機影像判定）+ Server（僅提供影像截�
 |---------|----------|---------|------|
 | **面板按鈕 LED** | Socket | `buttons` → `type: "panel_light"` | 機器手臂 USB Camera |
 | **環境實體燈光** | RTSP | `environment_lights` → `camera_id` | IP Camera (level2) |
+| **YOLO 狀態驗證** | Socket/Server | `buttons` → `vision.observe_angles` | 伺服器端 YOLO 模型 |
 
 **新增 BDD 關鍵字（32+）:**
 
@@ -69,10 +70,12 @@ v4.0.0（新版）: Client（本機影像判定）+ Server（僅提供影像截�
 
 **Then 關鍵字（驗證結果）- 12 個:**
 - `Then 機器手臂操作應該成功完成` - 驗證操作成功
-- `Then 按鈕燈光應該為 "${expected_color}" 色` - 驗證顏色
+- `Then 按鈕燈光應該為 "${expected_color}" 色` - 驗證顏色 (HSV)
+- `Then YOLO 應該檢測到按鈕 "${button_id}" 為 "${expected_state}"` - 驗證物件狀態 (YOLO + 180°翻轉)
 - `Then 按鈕亮度應該為 "${expected_level}" %` - 驗證亮度
 - `Then 檢測信心度應該大於 ${min_confidence}` - 驗證信心度
 - `Then 實體燈光亮度應該為 "${expected_level}" %` - 驗證環境燈光
+- `Given/When/Then/And 按鈕 "${button_id}" 的狀態應為 "${expected_state}"` - 視覺狀態驗證 (v4.3.0)
 - `Then 回應狀態碼應該為 "${status_code}"` - API 驗證
 - `Then 回應內容應該包含 "${expected_content}"` - 內容驗證
 - 以及其他 5 個驗證關鍵字...
@@ -100,7 +103,8 @@ v4.0.0（新版）: Client（本機影像判定）+ Server（僅提供影像截�
 - v1.0.0 (2025-11-05): 基礎 Socket 控制
 - v2.0.0 (2025-11-10): ArUco 標記檢測
 - v3.0.0 (2025-11-13): Server-side 視覺檢測
-- **v4.0.0 (2025-11-18): 本機化視覺檢測 ← 當前版本**
+- v4.0.0 (2025-11-18): 本機化視覺檢測
+- **v4.1.0 (2025-01-21): 伺服器端 YOLO 狀態驗證 ← 當前版本**
 
 ---
 

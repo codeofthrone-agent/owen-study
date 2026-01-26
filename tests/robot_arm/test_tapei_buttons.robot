@@ -1,151 +1,195 @@
 *** Settings ***
-Documentation    RV Car 按鈕測試套件
-...              測試 config/robot_arm/rv_car_buttons.yaml 中定義的所有按鈕
-...              環境: RV Car
+Documentation    Taipei Lab 按鈕完整循環測試套件
+...              測試所有按鈕的 ON -> OFF 循環
+...              環境: taipei_lab
 ...              面板: 3611a
 
 Library          ../../libraries/robot_arm_control/RobotArmKeywords.py
 Library          DateTime
+Library          Collections
 
-Test Setup       Setup Test Environment
-Test Teardown    Teardown Test Environment
+Suite Setup      Setup Suite Environment
+Suite Teardown   Teardown Suite Environment
+
+*** Variables ***
+${SUITE_START_TIME}    ${EMPTY}
+${SUITE_END_TIME}      ${EMPTY}
 
 *** Keywords ***
-Setup Test Environment
-    # 1. 設定環境為 RV Car
+Setup Suite Environment
+    [Documentation]    Suite 初始化：連接機器手臂並記錄開始時間
+    # 記錄開始時間
+    ${start}=    Get Current Date    result_format=%Y-%m-%d %H:%M:%S
+    Set Suite Variable    ${SUITE_START_TIME}    ${start}
+    Log    ========== 測試開始時間: ${start} ==========    console=yes
+    # 設定環境（只執行一次）
     Given 測試環境設定為 "taipei_lab"
-    # 2. 設定面板類型
     Given 面板類型設定為 "3611a"
-    # 3. 連接機器手臂 (如果尚未連接)
     Given 機器手臂已正確連接到控制面板
 
-Teardown Test Environment
-    # 測試結束後返回待命位置
+Teardown Suite Environment
+    [Documentation]    Suite 結束：返回待命位置並顯示總耗時
+    # 返回待命位置
     Run Keyword And Ignore Error    And 機器手臂應該返回待命位置
+    # 計算耗時
+    ${end}=    Get Current Date    result_format=%Y-%m-%d %H:%M:%S
+    Set Suite Variable    ${SUITE_END_TIME}    ${end}
+    ${start_dt}=    Convert Date    ${SUITE_START_TIME}    date_format=%Y-%m-%d %H:%M:%S
+    ${end_dt}=      Convert Date    ${SUITE_END_TIME}      date_format=%Y-%m-%d %H:%M:%S
+    ${elapsed}=     Subtract Date From Date    ${end_dt}    ${start_dt}
+    ${minutes}=     Evaluate    int(${elapsed} // 60)
+    ${seconds}=     Evaluate    int(${elapsed} % 60)
+    Log    ========== 測試結束時間: ${end} ==========    console=yes
+    Log    ========== 總耗時: ${minutes} 分 ${seconds} 秒 (${elapsed} 秒) ==========    console=yes
+
+按壓按鈕並驗證狀態變化
+    [Documentation]    通用關鍵字：按壓按鈕並驗證 off -> on -> off -> on -> off 循環
+    [Arguments]    ${button_id}
+    # 步驟 1: 驗證初始狀態為 off
+    Given YOLO 應該檢測到按鈕 "${button_id}" 為 "off"
+    # 步驟 2: 按壓按鈕開啟
+    When 用戶按壓第 "${button_id}" 按鈕
+    Then 機器手臂操作應該成功完成
+    # 步驟 3: 驗證狀態變為 on
+    And YOLO 應該檢測到按鈕 "${button_id}" 為 "on"
+    # 步驟 4: 再次按壓按鈕關閉
+    When 用戶按壓第 "${button_id}" 按鈕
+    Then 機器手臂操作應該成功完成
+    # 步驟 5: 驗證狀態變回 off
+    And YOLO 應該檢測到按鈕 "${button_id}" 為 "off"
+    # 步驟 6: 再次按壓按鈕開啟
+    When 用戶按壓第 "${button_id}" 按鈕
+    Then 機器手臂操作應該成功完成
+    # 步驟 7: 驗證狀態變為 on
+    And YOLO 應該檢測到按鈕 "${button_id}" 為 "on"
+    # 步驟 8: 再次按壓按鈕關閉
+    When 用戶按壓第 "${button_id}" 按鈕
+    Then 機器手臂操作應該成功完成
+    # 步驟 9: 驗證狀態變回 off
+    And YOLO 應該檢測到按鈕 "${button_id}" 為 "off"
+
+連續按壓按鈕並拍照
+    [Documentation]    連續按壓按鈕 N 次，每次按壓後拍照記錄
+    [Arguments]    ${button_id}    ${times}=7
+    FOR    ${i}    IN RANGE    1    ${times}+1
+        Log    ===== 第 ${i}/${times} 次按壓 ${button_id} =====    console=yes
+        When 用戶按壓第 "${button_id}" 按鈕
+        Then 機器手臂操作應該成功完成
+        # 每次按壓後拍照記錄狀態
+        YOLO 僅檢測並儲存按鈕影像 "${button_id}" 預期狀態 "click_${i}"
+    END
+
+長按按鈕
+    [Documentation]    長按按鈕指定秒數
+    [Arguments]    ${button_id}    ${duration}=4
+    Log    ===== 長按 ${button_id} ${duration} 秒 =====    console=yes
+    When 用戶按壓第 "${button_id}" 按鈕持續 "${duration}" 秒
+    Then 機器手臂操作應該成功完成
+    # 長按後拍照記錄
+    YOLO 僅檢測並儲存按鈕影像 "${button_id}" 預期狀態 "long_press"
 
 *** Test Cases ***
-測試 Light1 按鈕
-    [Documentation]    測試按壓 Light1 按鈕
-    [Tags]    rv_car    light1    button
-    When 用戶按壓第 "light1" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Light1 按鈕 ON-OFF 循環
+    [Documentation]    測試 Light1 按鈕: off -> on -> off
+    [Tags]    taipei_lab    light1    button    cycle
+    按壓按鈕並驗證狀態變化    light1
 
-測試 Light2 按鈕
-    [Documentation]    測試按壓 Light2 按鈕
-    [Tags]    rv_car    light2    button
-    When 用戶按壓第 "light2" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Light2 按鈕 ON-OFF 循環
+    [Documentation]    測試 Light2 按鈕: off -> on -> off
+    [Tags]    taipei_lab    light2    button    cycle
+    按壓按鈕並驗證狀態變化    light2
 
-測試 Light3 按鈕
-    [Documentation]    測試按壓 Light3 按鈕
-    [Tags]    rv_car    light3    button
-    When 用戶按壓第 "light3" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Light3 按鈕 ON-OFF 循環
+    [Documentation]    測試 Light3 按鈕: off -> on -> off
+    [Tags]    taipei_lab    light3    button    cycle
+    按壓按鈕並驗證狀態變化    light3
 
-測試 Light4 按鈕
-    [Documentation]    測試按壓 Light4 按鈕
-    [Tags]    rv_car    light4    button
-    When 用戶按壓第 "light4" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Light4 按鈕 ON-OFF 循環
+    [Documentation]    測試 Light4 按鈕: off -> on -> off
+    [Tags]    taipei_lab    light4    button    cycle
+    按壓按鈕並驗證狀態變化    light4
 
-測試 Light5 按鈕
-    [Documentation]    測試按壓 Light5 按鈕
-    [Tags]    rv_car    light5    button
-    When 用戶按壓第 "light5" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Light5 按鈕 ON-OFF 循環
+    [Documentation]    測試 Light5 按鈕: off -> on -> off
+    [Tags]    taipei_lab    light5    button    cycle
+    按壓按鈕並驗證狀態變化    light5
 
-測試 Light6 按鈕
-    [Documentation]    測試按壓 Light6 按鈕 FIX
-    [Tags]    rv_car    light6    button
-    When 用戶按壓第 "light6" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Light6 按鈕 ON-OFF 循環
+    [Documentation]    測試 Light6 按鈕: off -> on -> off
+    [Tags]    taipei_lab    light6    button    cycle
+    按壓按鈕並驗證狀態變化    light6
 
-測試 Light7 按鈕
-    [Documentation]    測試按壓 Light7 按鈕
-    [Tags]    rv_car    light7    button
-    When 用戶按壓第 "light7" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Light7 按鈕 ON-OFF 循環
+    [Documentation]    測試 Light7 按鈕: off -> on -> off
+    [Tags]    taipei_lab    light7    button    cycle
+    按壓按鈕並驗證狀態變化    light7
 
-測試 Light8 按鈕
-    [Documentation]    測試按壓 Light8 按鈕
-    [Tags]    rv_car    light8    button
-    When 用戶按壓第 "light8" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Light8 按鈕 ON-OFF 循環
+    [Documentation]    測試 Light8 按鈕: off -> on -> off
+    [Tags]    taipei_lab    light8    button    cycle
+    按壓按鈕並驗證狀態變化    light8
 
-測試 Bluetooth 按鈕
-    [Documentation]    測試按壓 Bluetooth 按鈕
-    [Tags]    rv_car    bluetooth    button
-    When 用戶按壓第 "bluetooth" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Bluetooth 按鈕 ON-OFF 循環
+    [Documentation]    測試 Bluetooth 按鈕: off -> on -> off
+    [Tags]    taipei_lab    bluetooth    button    cycle
+    按壓按鈕並驗證狀態變化    bluetooth
 
-測試 Select 按鈕
-    [Documentation]    測試按壓 Select 按鈕
-    [Tags]    rv_car    select    button
-    When 用戶按壓第 "select" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 AUX1 按鈕 ON-OFF 循環
+    [Documentation]    測試 AUX1 按鈕: off -> on -> off
+    [Tags]    taipei_lab    aux1    button    cycle
+    按壓按鈕並驗證狀態變化    aux1
 
-測試 AUX1 按鈕
-    [Documentation]    測試按壓 AUX1 按鈕
-    [Tags]    rv_car    aux1    button
-    When 用戶按壓第 "aux1" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 AUX2 按鈕 ON-OFF 循環
+    [Documentation]    測試 AUX2 按鈕: off -> on -> off
+    [Tags]    taipei_lab    aux2    button    cycle
+    按壓按鈕並驗證狀態變化    aux2
 
-測試 AUX2 按鈕
-    [Documentation]    測試按壓 AUX2 按鈕
-    [Tags]    rv_car    aux2    button
-    When 用戶按壓第 "aux2" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Door Lock 按鈕 ON-OFF 循環
+    [Documentation]    測試 Door Lock 按鈕: off -> on -> off
+    [Tags]    taipei_lab    door_lock    button    cycle
+    按壓按鈕並驗證狀態變化    door_lock
 
-測試 Door Lock 按鈕
-    [Documentation]    測試按壓 Door Lock 按鈕
-    [Tags]    rv_car    door_lock    button
-    When 用戶按壓第 "door_lock" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Tank Heater 按鈕 ON-OFF 循環
+    [Documentation]    測試 Tank Heater 按鈕: off -> on -> off
+    [Tags]    taipei_lab    tank_heater    button    cycle
+    按壓按鈕並驗證狀態變化    tank_heater
 
-測試 Tank Heater 按鈕
-    [Documentation]    測試按壓 Tank Heater 按鈕
-    [Tags]    rv_car    tank_heater    button
-    When 用戶按壓第 "tank_heater" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Water Pump 按鈕 ON-OFF 循環
+    [Documentation]    測試 Water Pump 按鈕: off -> on -> off
+    [Tags]    taipei_lab    water_pump    button    cycle
+    按壓按鈕並驗證狀態變化    water_pump
 
-測試 Water Pump 按鈕
-    [Documentation]    測試按壓 Water Pump 按鈕
-    [Tags]    rv_car    water_pump    button
-    When 用戶按壓第 "water_pump" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Water Heater Electric 按鈕 ON-OFF 循環
+    [Documentation]    測試 Water Heater Electric 按鈕: off -> on -> off
+    [Tags]    taipei_lab    water_heater_electric    button    cycle
+    按壓按鈕並驗證狀態變化    water_heater_electric
 
-測試 Water Heater Electric 按鈕
-    [Documentation]    測試按壓 Water Heater Electric 按鈕
-    [Tags]    rv_car    water_heater_electric    button
-    When 用戶按壓第 "water_heater_electric" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Water Heater Gas 按鈕 ON-OFF 循環
+    [Documentation]    測試 Water Heater Gas 按鈕: off -> on -> off
+    [Tags]    taipei_lab    water_heater_gas    button    cycle
+    按壓按鈕並驗證狀態變化    water_heater_gas
 
-測試 Water Heater Gas 按鈕
-    [Documentation]    測試按壓 Water Heater Gas 按鈕
-    [Tags]    rv_car    water_heater_gas    button
-    When 用戶按壓第 "water_heater_gas" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Climate Control 按鈕 ON-OFF 循環
+    [Documentation]    測試 Climate Control 按鈕: off -> on -> off
+    [Tags]    taipei_lab    climate_control    button    cycle
+    按壓按鈕並驗證狀態變化    climate_control
 
-測試 Climate control 按鈕
-    [Documentation]    測試按壓 Climate control 按鈕
-    [Tags]    rv_car    climate_control    button
-    When 用戶按壓第 "climate_control" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Fridge 按鈕 ON-OFF 循環
+    [Documentation]    測試 Fridge 按鈕: off -> on -> off
+    [Tags]    taipei_lab    fridge    button    cycle
+    按壓按鈕並驗證狀態變化    fridge
 
-測試 Extend 按鈕
-    [Documentation]    測試按壓 Extend 按鈕
-    [Tags]    rv_car    extend    button
-    When 用戶按壓第 "extend" 按鈕持續 "4" 秒
-    Then 機器手臂操作應該成功完成
+測試 Select 按鈕連點7次
+    [Documentation]    測試 Select 按鈕連續按壓 7 次，每次拍照記錄
+    [Tags]    taipei_lab    select    button    loop
+    連續按壓按鈕並拍照    select    7
 
-測試 Retract 按鈕
-    [Documentation]    測試按壓 Retract 按鈕
-    [Tags]    rv_car    retract    button
-    When 用戶按壓第 "retract" 按鈕持續 "4" 秒
-    Then 機器手臂操作應該成功完成
+測試 Extend 長按按鈕
+    [Documentation]    測試 Extend 按鈕長按 4 秒
+    [Tags]    taipei_lab    extend    button    long_press
+    長按按鈕    extend    4
 
-測試 Fridge 按鈕
-    [Documentation]    測試按壓 Fridge 按鈕
-    [Tags]    rv_car    fridge    button
-    When 用戶按壓第 "fridge" 按鈕
-    Then 機器手臂操作應該成功完成
+測試 Retract 長按按鈕
+    [Documentation]    測試 Retract 按鈕長按 4 秒
+    [Tags]    taipei_lab    retract    button    long_press
+    長按按鈕    retract    4

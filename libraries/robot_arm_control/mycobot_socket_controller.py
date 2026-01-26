@@ -257,6 +257,9 @@ class MyCobotSocketController:
         if not self.is_connected():
             raise RuntimeError("機器手臂未連接，無法等待移動完成")
 
+        # 增加初始等待，避免指令剛發送但 is_moving 尚未變更為 True 的情況
+        time.sleep(0.2)
+        
         start_time = time.time()
         logger.debug(f"等待機器手臂移動完成（超時: {timeout} 秒）...")
 
@@ -425,3 +428,34 @@ if __name__ == "__main__":
         print(f"❌ 未預期的錯誤: {e}")
         import traceback
         traceback.print_exc()
+    def scan_and_detect(self, angles: List[float], speed: int = 50) -> List[Dict[str, Any]]:
+        """
+        發送指令：移動到指定角度並執行 YOLO 偵測
+
+        Args:
+            angles: 6 個關節角度 [j1, j2, j3, j4, j5, j6]
+            speed: 移動速度 (1-100)
+
+        Returns:
+            List[Dict]: 偵測到的物件列表，每個物件包含 class, confidence, box 等資訊
+            
+        Raises:
+            RuntimeError: 如果執行失敗
+        """
+        cmd = {
+            "command": "scan_and_detect",
+            "angles": angles,
+            "speed": speed
+        }
+        
+        logger.info(f"發送掃描與偵測指令，目標角度: {angles}")
+        response = self.send_json_command(cmd)
+        
+        if response.get("status") == "success":
+            detections = response.get("detections", [])
+            logger.info(f"掃描完成，偵測到 {len(detections)} 個物件")
+            return detections
+        else:
+            error_msg = response.get("message", "未知錯誤")
+            logger.error(f"掃描與偵測失敗: {error_msg}")
+            raise RuntimeError(f"掃描與偵測失敗: {error_msg}")

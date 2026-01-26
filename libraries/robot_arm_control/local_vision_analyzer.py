@@ -834,56 +834,76 @@ class LocalVisionAnalyzer:
         self, 
         image: np.ndarray, 
         reference_markers: List[Dict],
-        min_common_markers: int = 2
+        min_common_markers: int = 1  # 修改預設值為 1，提高容錯
     ) -> Tuple[float, float]:
-        """計算ArUco markers的位置偏移量
+        """計算 ArUco markers 的位置偏移量
         
-        比對當前檢測到的markers與參考markers,計算平均偏移量。
+        功能強化 (v4.3.0):
+        1. 支援雙 STag 中心定位邏輯 (自動計算兩點平均偏移)
+        2. 增加 STag 正向檢查 (Orientation Check)
         
         Args:
-            image: BGR格式的輸入影像
-            reference_markers: 參考markers列表 (來自配置檔案)
-                [{'id': int, 'center': [x, y], ...}, ...]
-            min_common_markers: 最小共同markers數量 (預設: 2)
+            image: BGR 格式的輸入影像
+            reference_markers: 參考 markers 列表
+            min_common_markers: 最小共同 markers 數量
             
         Returns:
-            Tuple[float, float]: (offset_x, offset_y) 偏移量(像素)
-                如果無法計算offset,返回 (0.0, 0.0)
-        
-        Example:
-            >>> ref_markers = [{'id': 1, 'center': [100, 100]}, ...]
-            >>> offset_x, offset_y = analyzer._calculate_aruco_offset(image, ref_markers)
-            >>> print(f"偏移量: ({offset_x:.1f}, {offset_y:.1f})")
+            Tuple[float, float]: (offset_x, offset_y)
         """
         try:
-            # 1. 檢測當前影像中的markers
+            # 1. 檢測當前影像中的 markers
             current_markers = self._detect_aruco_markers(image)
             
             if not current_markers:
-                logger.debug("當前影像未檢測到ArUco markers,使用原始ROI座標")
+                logger.debug("當前影像未檢測到 ArUco markers, 使用原始 ROI 座標")
                 return 0.0, 0.0
             
-            # 2. 建立marker ID到中心點的映射
-            current_dict = {m['id']: m['center'] for m in current_markers}
-            reference_dict = {m['id']: m['center'] for m in reference_markers}
+            # 2. 建立映射
+            current_dict = {m['id']: m for m in current_markers}
+            reference_dict = {m['id']: m for m in reference_markers}
             
-            # 3. 找出共同的marker IDs
+            # 3. 找出共同 ID
             common_ids = set(current_dict.keys()) & set(reference_dict.keys())
             
             if len(common_ids) < min_common_markers:
                 logger.warning(
-                    f"共同markers數量不足 ({len(common_ids)}/{min_common_markers}), "
-                    f"使用原始ROI座標"
+                    f"共同 markers 數量不足 ({len(common_ids)}/{min_common_markers}), "
+                    f"使用原始 ROI 座標"
                 )
                 return 0.0, 0.0
             
-            # 4. 計算每個共同marker的偏移量
+            # 4. [新增] STag 正向檢查 (Orientation Check)
+            # 檢查每個 marker 的旋轉角度
+            for marker_id in common_ids:
+                marker = current_dict[marker_id]
+                corners = marker['corners'] # [TL, TR, BR, BL]
+                
+                # 計算頂邊向量 (TL -> TR)
+                tl, tr = corners[0], corners[1]
+                vector_x = tr[0] - tl[0]
+                vector_y = tr[1] - tl[1]
+                
+                # 計算角度 (與水平軸夾角)
+                angle_deg = np.degrees(np.arctan2(vector_y, vector_x))
+                
+                # 判斷是否"正向" (容許 ±30 度傾斜)
+                # 假設相機與面板應該是大致水平對齊的
+                if abs(angle_deg) > 30:
+                    logger.warning(f"⚠️ Marker {marker_id} 方向異常: {angle_deg:.1f} 度 (非正向)")
+                else:
+                    logger.debug(f"Marker {marker_id} 方向正常: {angle_deg:.1f} 度")
+
+            # 5. 計算偏移量
+            # 對於雙 STag (Light1 等)，計算平均偏移量等同於計算中點的偏移量
+            # Mean(Current) - Mean(Ref) = Mean(Offset)
             offsets_x = []
             offsets_y = []
             
+            log_msg = "ArUco Offset 詳細資訊:\n"
+            
             for marker_id in common_ids:
-                curr_center = current_dict[marker_id]
-                ref_center = reference_dict[marker_id]
+                curr_center = current_dict[marker_id]['center']
+                ref_center = reference_dict[marker_id]['center']
                 
                 offset_x = curr_center[0] - ref_center[0]
                 offset_y = curr_center[1] - ref_center[1]
@@ -891,26 +911,26 @@ class LocalVisionAnalyzer:
                 offsets_x.append(offset_x)
                 offsets_y.append(offset_y)
                 
-                logger.debug(
-                    f"Marker {marker_id}: 當前={curr_center}, 參考={ref_center}, "
-                    f"偏移=({offset_x:.1f}, {offset_y:.1f})"
-                )
-            
-            # 5. 計算平均偏移量
+                log_msg += f"  - Marker {marker_id}: 偏移 ({offset_x:.1f}, {offset_y:.1f})\n"
+                
             avg_offset_x = float(np.mean(offsets_x))
             avg_offset_y = float(np.mean(offsets_y))
             
-            offset_distance = np.sqrt(avg_offset_x**2 + avg_offset_y**2)
+            # [新增] 針對雙 STag 的特殊 Log
+            if len(common_ids) == 2:
+                logger.info(f"✅ 檢測到雙 STag (ID: {list(common_ids)})，使用雙點幾何中心定位")
+                
+            logger.debug(log_msg)
             
             logger.info(
-                f"ArUco offset計算完成: ({avg_offset_x:.1f}, {avg_offset_y:.1f}) 像素, "
-                f"距離={offset_distance:.1f}, 共同markers={len(common_ids)}"
+                f"ArUco 校正結果: 平均偏移 ({avg_offset_x:.1f}, {avg_offset_y:.1f}) px, "
+                f"參考點數量: {len(common_ids)}"
             )
             
             return avg_offset_x, avg_offset_y
             
         except Exception as e:
-            logger.error(f"計算ArUco offset失敗: {e}")
+            logger.error(f"計算 ArUco offset 失敗: {e}")
             import traceback
             traceback.print_exc()
             return 0.0, 0.0
