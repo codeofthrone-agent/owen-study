@@ -440,7 +440,7 @@ class LocalVisionAnalyzer:
             logger.error(f"面板燈光檢測失敗: {e}")
             raise RuntimeError(f"檢測失敗: {e}")
 
-    def detect_physical_light_brightness(
+    def detect_environment_light_brightness(
         self,
         roi_config: dict,
         image_source_config: dict,
@@ -448,9 +448,11 @@ class LocalVisionAnalyzer:
         warmup_frames: int = 20,
         save_debug_images: bool = False,
         step_prefix: str = "",
-        annotate_full_image: bool = True
+        annotate_full_image: bool = True,
+        bright_threshold: Optional[int] = None,
+        dark_threshold: Optional[int] = None
     ) -> Tuple[dict, np.ndarray, np.ndarray]:
-        """檢測實體燈光亮度
+        """檢測環境燈光亮度
 
         Args:
             roi_config: ROI 配置字典 (單一 ROI 或多個 ROI)
@@ -466,6 +468,8 @@ class LocalVisionAnalyzer:
             save_debug_images: 是否儲存除錯影像（預設 False）
             step_prefix: 步驟命名前綴 (例如: "step3_before", "step6_after")。無呼叫的話不加
             annotate_full_image: 是否在 full image 標註 ROI 框（預設 True）
+            bright_threshold: 亮度閾值（>=此值判定為 ON），預設 None 使用 50
+            dark_threshold: 暗度閾值（<=此值判定為 OFF），預設 None 使用 50
 
         Returns:
             Tuple[dict, np.ndarray, np.ndarray]: 檢測結果、完整影像、ROI影像
@@ -487,7 +491,7 @@ class LocalVisionAnalyzer:
             >>> analyzer = LocalVisionAnalyzer(image_source_manager)
             >>> config = {"type": "rtsp", "url": "rtsp://..."}
             >>> roi = {'x': 100, 'y': 100, 'width': 50, 'height': 50}
-            >>> result, full_img, roi_img = analyzer.detect_physical_light_brightness(roi, config)
+            >>> result, full_img, roi_img = analyzer.detect_environment_light_brightness(roi, config)
             >>> print(result['brightness_level'])
             50
         """
@@ -519,8 +523,19 @@ class LocalVisionAnalyzer:
             # 5. 檢測亮度
             brightness_level, brightness_value = self._detect_brightness(roi_image)
 
-            # 6. 判定燈光狀態
-            light_state = "on" if brightness_value > 50 else "off"
+            # 6. 判定燈光狀態（使用配置的閾值或預設值）
+            # bright_threshold: 亮度 >= 此值判定為 ON
+            # dark_threshold: 亮度 <= 此值判定為 OFF
+            effective_bright = bright_threshold if bright_threshold is not None else 50
+            effective_dark = dark_threshold if dark_threshold is not None else 50
+
+            if brightness_value >= effective_bright:
+                light_state = "on"
+            elif brightness_value <= effective_dark:
+                light_state = "off"
+            else:
+                # 介於兩者之間，使用較接近的狀態
+                light_state = "on" if brightness_value > (effective_bright + effective_dark) / 2 else "off"
 
             # 7. 計算信心度（基於亮度值的穩定性）
             # 簡單方式：如果亮度值在門檻範圍內，信心度高
@@ -564,12 +579,12 @@ class LocalVisionAnalyzer:
                     logger.debug("已在 full image 標註 ROI")
 
                 # 儲存完整影像 (含標註)
-                full_debug_path = debug_dir / f"{prefix}physical_light_full_{timestamp}.jpg"
+                full_debug_path = debug_dir / f"{prefix}environment_light_full_{timestamp}.jpg"
                 cv2.imwrite(str(full_debug_path), image_to_save)
                 logger.debug(f"完整影像已儲存: {full_debug_path}")
 
                 # 儲存 ROI 影像
-                roi_debug_path = debug_dir / f"{prefix}physical_light_roi_{timestamp}.jpg"
+                roi_debug_path = debug_dir / f"{prefix}environment_light_roi_{timestamp}.jpg"
                 cv2.imwrite(str(roi_debug_path), roi_image)
                 logger.debug(f"ROI 影像已儲存: {roi_debug_path}")
 
@@ -580,11 +595,11 @@ class LocalVisionAnalyzer:
                 "confidence": confidence
             }
 
-            logger.info(f"實體燈光檢測完成: {light_state}, 亮度: {brightness_level}%")
+            logger.info(f"環境燈光檢測完成: {light_state}, 亮度: {brightness_level}%")
             return result, avg_frame, roi_image
 
         except Exception as e:
-            logger.error(f"實體燈光亮度檢測失敗: {e}")
+            logger.error(f"環境燈光亮度檢測失敗: {e}")
             raise RuntimeError(f"檢測失敗: {e}")
 
     def detect_single_button(

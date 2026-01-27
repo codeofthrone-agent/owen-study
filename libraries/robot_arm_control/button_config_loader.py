@@ -77,6 +77,20 @@ class ButtonConfigLoader:
         button_count = len(self.config['buttons'])
         logger.info(f"配置驗證通過，共 {button_count} 個按鈕")
 
+        # 驗證 environment_light 引用 (v4.3.0 新增)
+        # 確保所有按鈕參照的環境燈光 ID 都實際存在於 environment_lights 區塊中
+        env_lights = self.config.get('environment_lights', {})
+        for btn_id, btn_config in self.config['buttons'].items():
+            env_light_ref = btn_config.get('environment_light')
+            if env_light_ref:
+                if env_light_ref not in env_lights:
+                    raise ValueError(
+                        f"按鈕 '{btn_id}' 引用了不存在的環境燈光: '{env_light_ref}'\n"
+                        f"請檢查 environment_lights 區塊中的定義。"
+                    )
+        
+        logger.info("環境燈光引用驗證通過")
+
     def get_button_config(self, button_id: str) -> Dict:
         """
         獲取指定按鈕的配置

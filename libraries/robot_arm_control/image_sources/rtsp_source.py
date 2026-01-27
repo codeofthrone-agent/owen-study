@@ -9,7 +9,7 @@ RTSP 影像源 (RTSP Image Source)
 
 作者: Robot Automation Team
 日期: 2025-11-17
-版本: v4.0.0
+版本: v5.5.0 (RTSP 效能優化)
 
 參考: libraries/ipcam_light_detection/IPCamLightDetection.py
 """
@@ -98,6 +98,62 @@ class RTSPImageSource:
             self.capture = None
             logger.debug("VideoCapture 資源已釋放")
 
+    def flush_buffer(self, max_frames: int = 150) -> int:
+        """清空 RTSP 緩衝區中的舊幀
+
+        RTSP 串流會在 buffer 中累積影像，如果不清空就會讀到舊的影像。
+        此方法會快速讀取並丟棄緩衝的幀，確保下次擷取是最新影像。
+        
+        v5.5.0: 最終優化 - 基於實測確定最佳值
+        - skip_check_frames: 30 幀 (實測最佳平衡點)
+          * 60 幀: 11s/10s/5.6s (可靠但慢)
+          * 30 幀: 7s/6s/1.6s (可靠且快) ✅ 最佳
+          * 20 幀: 失敗 (清空不足，讀取到舊影像)
+        - threshold: 0.02s (20ms)
+        - max_frames: 150 幀
+
+        Args:
+            max_frames: 最多讀取的幀數（預設 150）
+
+        Returns:
+            int: 實際清空的幀數
+        """
+        if self.capture is None or not self.capture.isOpened():
+            return 0
+
+        flushed = 0
+        # 閾值: 判定是否為即時串流 (低於 30fps 的間隔, 33ms)
+        # 設定為 0.02s (20ms)，只要讀取快於 20ms 都視為緩衝幀
+        threshold = 0.02
+        
+        # 強制清空前 30 幀 (實測最佳值)
+        # 基於測試結果: 30 幀可靠且快速，20 幀會失敗
+        skip_check_frames = 30
+
+        for i in range(max_frames):
+            start_time = time.time()
+            if not self.capture.grab():
+                break
+            
+            elapsed = time.time() - start_time
+            flushed += 1
+            
+            # 前 30 幀不檢查時間 (強制清空)
+            if flushed <= skip_check_frames:
+                continue
+
+            # 如果讀取時間超過閾值，表示已經追上即時串流（Buffer已空）
+            if elapsed > threshold:
+                logger.debug(f"Buffer 已清空 (在第 {flushed} 幀追上即時串流, 當前幀耗時 {elapsed*1000:.1f}ms)")
+                break
+
+        if flushed == max_frames:
+            logger.warning(f"RTSP buffer 清空達到上限 ({flushed} 幀)，可能仍有延遲")
+        elif flushed > 30:
+            logger.debug(f"RTSP buffer 大量清空: {flushed} 幀")
+
+        return flushed
+
     def _get_safe_url(self, url: str) -> str:
         """取得隱藏密碼的安全 URL 用於日誌
 
@@ -117,12 +173,13 @@ class RTSPImageSource:
         safe_url = re.sub(r'://([^:]+):([^@]+)@', r'://\1:****@', url)
         return safe_url
 
-    def _init_capture(self, url: str, use_tcp: bool = True) -> bool:
+    def _init_capture(self, url: str, use_tcp: bool = True, timeout: int = 10) -> bool:
         """初始化 VideoCapture 連線
 
         Args:
             url: RTSP URL
             use_tcp: 是否使用 TCP 傳輸（預設 True，較穩定）
+            timeout: 連線逾時時間（秒），預設 10 秒
 
         Returns:
             bool: 連線是否成功
@@ -142,26 +199,30 @@ class RTSPImageSource:
         self.release()
 
         try:
-            logger.debug(f"初始化 VideoCapture: {self._get_safe_url(url)}")
+            logger.debug(f"初始化 VideoCapture: {self._get_safe_url(url)} (timeout={timeout}s)")
 
             # 設定 FFmpeg 選項以支援 HEVC/H.265 和 TCP 傳輸
             # 增加 loglevel 選項以抑制重複的HEVC解碼警告訊息
+            # 增加 stimeout 選項設定逾時 (單位: 微秒)
+            stimeout = timeout * 1000000
+            
+            common_options = (
+                f'analyzeduration;20000000|'
+                f'probesize;20000000|'
+                f'stimeout;{stimeout}|'
+                f'loglevel;quiet'
+            )
+
             if use_tcp:
                 os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = (
-                    'rtsp_transport;tcp|'
-                    'analyzeduration;20000000|'
-                    'probesize;20000000|'
-                    'loglevel;quiet'  # 抑制FFmpeg日誌輸出
+                    f'rtsp_transport;tcp|{common_options}'
                 )
-                logger.debug("已設定 FFmpeg 選項: TCP 傳輸 + HEVC 支援 + 日誌過濾")
+                logger.debug("已設定 FFmpeg 選項: TCP 傳輸 + HEVC 支援 + 日誌過濾 + Timeout")
             else:
                 os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = (
-                    'rtsp_transport;udp|'
-                    'analyzeduration;20000000|'
-                    'probesize;20000000|'
-                    'loglevel;quiet'  # 抑制FFmpeg日誌輸出
+                    f'rtsp_transport;udp|{common_options}'
                 )
-                logger.debug("已設定 FFmpeg 選項: UDP 傳輸 + HEVC 支援 + 日誌過濾")
+                logger.debug("已設定 FFmpeg 選項: UDP 傳輸 + HEVC 支援 + 日誌過濾 + Timeout")
 
             # 建立 VideoCapture
             self.capture = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
@@ -184,7 +245,8 @@ class RTSPImageSource:
         retry_attempts: int = 3,
         retry_delay: float = 2.0,
         frame_skip: int = 3,
-        use_tcp: bool = True
+        use_tcp: bool = True,
+        timeout: int = 10
     ) -> np.ndarray:
         """擷取單一影像幀
 
@@ -211,20 +273,23 @@ class RTSPImageSource:
         for attempt in range(retry_attempts):
             try:
                 # 初始化 VideoCapture
-                if not self._init_capture(url, use_tcp):
+                if not self._init_capture(url, use_tcp, timeout):
                     raise ConnectionError("無法初始化 RTSP 連線")
 
                 logger.debug(f"正在擷取影像 (嘗試 {attempt + 1}/{retry_attempts})")
 
-                # 增強版預熱：等待有效影像（最多 60 幀，約 2-3 秒）
+                # v4.3.1: 先清空 buffer，確保讀取的是最新影像
+                self.flush_buffer(max_frames=90)
+
+                # 增強版預熱：等待有效影像（最多 30 幀）
                 # 這可以解決 "SPS 0 does not exist" 等初始化問題
                 valid_frame_found = False
-                for _ in range(60):
+                for _ in range(30):
                     ret, test_frame = self.capture.read()
                     if ret and test_frame is not None and test_frame.size > 0:
                         valid_frame_found = True
                         break
-                
+
                 if not valid_frame_found:
                     raise RuntimeError("無法從串流讀取有效影像 (預熱失敗)")
 
@@ -265,7 +330,8 @@ class RTSPImageSource:
         warmup_frames: int = 20,
         retry_attempts: int = 3,
         retry_delay: float = 2.0,
-        use_tcp: bool = True
+        use_tcp: bool = True,
+        timeout: int = 10
     ) -> List[np.ndarray]:
         """擷取多幀影像（用於多幀平均）
 
@@ -301,8 +367,11 @@ class RTSPImageSource:
         for attempt in range(retry_attempts):
             try:
                 # 初始化 VideoCapture
-                if not self._init_capture(url, use_tcp):
+                if not self._init_capture(url, use_tcp, timeout):
                     raise ConnectionError("無法初始化 RTSP 連線")
+
+                # v4.3.1: 先清空 buffer，確保讀取的是最新影像
+                self.flush_buffer(max_frames=90)
 
                 logger.debug(f"正在擷取 {num_frames} 幀影像 (預熱至多 {warmup_frames} 幀)")
 
@@ -315,7 +384,7 @@ class RTSPImageSource:
                         valid_frame_found = True
                         logger.debug(f"在第 {i+1} 幀找到有效影像")
                         break
-                
+
                 if not valid_frame_found:
                     raise RuntimeError(f"預熱階段讀取失敗: 在 {warmup_frames} 幀內未找到有效影像")
 

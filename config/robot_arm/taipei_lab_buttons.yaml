@@ -3,16 +3,17 @@ environment: {name: taipei_lab, display_name: 台北實驗室, panel_type: 3611a
 connection:
   socket: {host: 192.168.165.100, port: 9000}
   serial: {port: /dev/ttyTHS1, baudrate: 1000000}
-defaults: {speed: 100, press_duration: 1.0, lift_duration: 0.1, count: 1}
+defaults: {speed: 50, press_duration: 1.0, lift_duration: 0.1, count: 1}
 buttons:
   light1:
     name: Light1 按鈕
     description: 燈光控制 1
     type: panel_light
+    environment_light: level1_light_1
     panel_section: 3611a
-    down_angles: [1.5, -57, -81.5, 22, 0, 159.3]
+    down_angles: [1.5, -58, -81.5, 22, 0, 159.3]
     up_angles: [1.5, -25, -81.5, 22, 0, 159.3]
-    speed: 100
+    speed: 50
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -23,10 +24,11 @@ buttons:
     name: Light2 按鈕
     description: 燈光控制 2
     type: panel_light
+    environment_light: level1_light_2
     panel_section: 3611a
     down_angles: [6.8, -60, -86.5, 25, 0, 159.3]
     up_angles: [6.8, -35, -86.5, 25, 0, 159.3]
-    speed: 100
+    speed: 50
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -37,10 +39,11 @@ buttons:
     name: Light3 按鈕
     description: 燈光控制 3
     type: panel_light
+    environment_light: level1_light_3
     panel_section: 3611a
     down_angles: [12, -59, -85, 23.8, 0, 159.3]
     up_angles: [12, -35, -85, 23.8, 0, 159.3]
-    speed: 100
+    speed: 50
     count: 2
     lift_duration: 0.01
     press_duration: 0.01
@@ -51,10 +54,11 @@ buttons:
     name: Light4 按鈕
     description: 燈光控制 4
     type: panel_light
+    environment_light: level1_light_4
     panel_section: 3611a
-    down_angles: [-8.2, -65, -65, 20, 0, 159.3]
-    up_angles: [-8.2, -25, -65, 20, 0, 159.3]
-    speed: 100
+    down_angles: [-8.3, -65, -72, 25, 0, 159.3]
+    up_angles: [-8.3, -35, -72, 25, 0, 159.3]
+    speed: 50
     count: 2
     lift_duration: 0.01
     press_duration: 0.01
@@ -65,10 +69,11 @@ buttons:
     name: Light5 按鈕
     description: 燈光控制 5
     type: panel_light
+    environment_light: level1_light_5
     panel_section: 3611a
-    down_angles: [-3.7, -65, -68, 20, 0, 159.3]
-    up_angles: [-3.7, -35, -68, 20, 0, 159.3]
-    speed: 100
+    down_angles: [-3.7, -66, -73.7, 25, 0, 159.3]
+    up_angles: [-3.7, -35, -73.7, 25, 0, 159.3]
+    speed: 50
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -79,10 +84,11 @@ buttons:
     name: Light6 按鈕
     description: 燈光控制 6
     type: panel_light
+    environment_light: level1_light_6
     panel_section: 3611a
     down_angles: [1.5, -59, -77, 25, 0, 159.3]
     up_angles: [1.5, -35, -77, 25, 0, 159.3]
-    speed: 100
+    speed: 50
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -93,10 +99,11 @@ buttons:
     name: Light7 按鈕
     description: 燈光控制 7
     type: panel_light
+    environment_light: level1_light_7
     panel_section: 3611a
     down_angles: [6.6, -59.5, -77.5, 23.8, 0, 159.3]
     up_angles: [6.6, -35, -77.5, 23.8, 0, 159.3]
-    speed: 100
+    speed: 50
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -107,10 +114,11 @@ buttons:
     name: Light8 按鈕
     description: 燈光控制 8
     type: panel_light
+    environment_light: level1_light_8
     panel_section: 3611a
     down_angles: [10.8, -62, -77.4, 23.8, 0, 159.3]
     up_angles: [10.8, -35, -77.4, 23.8, 0, 159.3]
-    speed: 100
+    speed: 50
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -124,7 +132,7 @@ buttons:
     panel_section: 3611a
     down_angles: [15, -51, -130, 73.7, 0, 159.3]
     up_angles: [15, -13, -130, 73.7, 0, 159.3]
-    speed: 100
+    speed: 50
     count: 2
     lift_duration: 0.01
     press_duration: 0.01
@@ -138,7 +146,7 @@ buttons:
     panel_section: 3611a
     down_angles: [-11.2, -51, -94, 28 , 0, 159.3]
     up_angles: [-11.2, -15, -94, 28 , 0, 159.3]
-    speed: 100
+    speed: 50
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -152,7 +160,7 @@ buttons:
     panel_section: 3611a
     down_angles: [10.5, -63.8, -69, 22.5, 0, 159.3]
     up_angles: [10.5, -35, -69, 22.5, 0, 159.3]
-    speed: 100
+    speed: 50
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -163,10 +171,11 @@ buttons:
     name: AUX1 按鈕
     description: 輔助控制按鈕 1
     type: control
+    environment_light: level2_light_1
     panel_section: 3611a
     down_angles: [7, -51, -93, 25, 0, 159.3]
     up_angles: [7, -25, -93, 25, 0, 159.3]
-    speed: 100
+    speed: 50
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -177,10 +186,11 @@ buttons:
     name: AUX2 按鈕
     description: 輔助控制按鈕 2
     type: control
+    environment_light: level2_light_2
     panel_section: 3611a
     down_angles: [12, -51, -93, 23.9, 0, 159.3]
     up_angles: [12, -25, -93, 23.9, 0, 159.3]
-    speed: 100
+    speed: 50
     count: 2
     lift_duration: 0.01
     press_duration: 0.01
@@ -192,9 +202,9 @@ buttons:
     description: 門鎖控制
     type: control
     panel_section: 3611a
-    down_angles: [1.5, -54, -93, 25.6, 0, 159.3]
-    up_angles: [1.5, -15, -90, 25.6, 0, 159.3]
-    speed: 100
+    down_angles: [1.2, -54, -92, 25.6, 0, 159.3]
+    up_angles: [1.2, -15, -90, 25.6, 0, 159.3]
+    speed: 50
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -205,10 +215,11 @@ buttons:
     name: Tank Heater 按鈕
     description: 沖水加熱控制
     type: control
+    environment_light: level1_light_12
     panel_section: 3611a
     down_angles: [-4.5, -60, -89, 26.2, 0, 159.3]
     up_angles: [-4.5, -15, -89, 26.2, 0, 159.3]
-    speed: 100
+    speed: 50
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -219,10 +230,11 @@ buttons:
     name: Water Pump 按鈕
     description: 水幫浦控制
     type: control
+    environment_light: level1_light_11
     panel_section: 3611a
-    down_angles: [-9.3, -59, -92, 31.5, 0, 159.3]
-    up_angles: [-9.3, -15, -92, 31.5, 0, 159.3]
-    speed: 100
+    down_angles: [-9.6, -60, -90, 31, 0, 159.3]
+    up_angles: [-9.6, -35, -90, 31, 0, 159.3]
+    speed: 50
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -233,10 +245,11 @@ buttons:
     name: Water Heater Electric 按鈕
     description: 水加熱控制
     type: control
+    environment_light: level1_light_10
     panel_section: 3611a
-    down_angles: [-8.5, -60.9, -72, 17.9, 0, 159.3]
-    up_angles: [-8.5, -25, -72, 17.9, 0, 159.3]
-    speed: 100
+    down_angles: [-8.7, -61, -72, 17.9, 0, 159.3]
+    up_angles: [-8.7, -25, -72, 17.9, 0, 159.3]
+    speed: 50
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -247,10 +260,11 @@ buttons:
     name: Water Heater Gas 按鈕
     description: 水加熱控制
     type: control
+    environment_light: level1_light_9
     panel_section: 3611a
-    down_angles: [-3.7, -61, -72.9, 13.8, 0, 159.3]
-    up_angles: [-3.7, -15, -72.9, 13.8, 0, 159.3]
-    speed: 100
+    down_angles: [-3.9, -61, -72.9, 13.8, 0, 159.3]
+    up_angles: [-3.9, -15, -72.9, 13.8, 0, 159.3]
+    speed: 50
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -262,7 +276,7 @@ buttons:
     description: 氣候控制按鈕
     type: control
     panel_section: 3611a
-    down_angles: [-7.6, -86, -24, -10 , 0, 159.3]
+    down_angles: [-7.6, -86.5, -24, -10 , 0, 159.3]
     up_angles: [-7.6, -35, -24, -10 , 0, 159.3]
     speed: 50
     count: 1
@@ -276,8 +290,8 @@ buttons:
     description: 延長按鈕
     type: control
     panel_section: 3611a
-    down_angles: [-3, -66, -67.5, 26.2, 0, 159.3]
-    up_angles: [-3, -15, -67.5, 26.2, 0, 159.3]
+    down_angles: [-3.4, -66, -66, 26.2, 0, 159.3]
+    up_angles: [-3.4, -15, -66, 26.2, 0, 159.3]
     speed: 50
     count: 1
     lift_duration: 0.5
@@ -290,9 +304,9 @@ buttons:
     description: 收縮按鈕
     type: control
     panel_section: 3611a
-    down_angles: [1.8, -65, -70, 26, 0, 159.3]
-    up_angles: [1.8, -15, -70, 26, 0, 159.3]
-    speed: 100
+    down_angles: [1.5, -65, -69, 26, 0, 159.3]
+    up_angles: [1.5, -15, -69, 26, 0, 159.3]
+    speed: 50
     count: 1
     lift_duration: 0.5
     press_duration: 0.5
@@ -307,8 +321,8 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1478, y: 1295, width: 258, height: 121}
-    bright_threshold: 100
-    dark_threshold: 50
+    bright_threshold: 190  # 恢復原值 (燈泡正常，問題在於 RTSP 緩衝清空不足)
+    dark_threshold: 160    # 恢復原值
   level1_light_2:
     name: Level1 燈泡 2
     type: single_light
@@ -316,8 +330,8 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1215, y: 1307, width: 254, height: 113}
-    bright_threshold: 100
-    dark_threshold: 50
+    bright_threshold: 190  # 與 Light1 一致
+    dark_threshold: 160    # 與 Light1 一致
   level1_light_3:
     name: Level1 燈泡 3
     type: single_light
@@ -325,8 +339,8 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 888, y: 1319, width: 315, height: 141}
-    bright_threshold: 100
-    dark_threshold: 50
+    bright_threshold: 190  # 與 Light1 一致
+    dark_threshold: 160    # 與 Light1 一致
   level1_light_4:
     name: Level1 燈泡 4
     type: single_light
@@ -334,8 +348,8 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1498, y: 1098, width: 270, height: 141}
-    bright_threshold: 100
-    dark_threshold: 50
+    bright_threshold: 190  # 與 Light1 一致
+    dark_threshold: 160    # 與 Light1 一致
   level1_light_5:
     name: Level1 燈泡 5
     type: single_light
@@ -343,8 +357,8 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1167, y: 1126, width: 295, height: 125}
-    bright_threshold: 100
-    dark_threshold: 50
+    bright_threshold: 190  # 與 Light1 一致
+    dark_threshold: 160    # 與 Light1 一致
   level1_light_6:
     name: Level1 燈泡 6
     type: single_light
@@ -352,8 +366,8 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 820, y: 1142, width: 355, height: 141}
-    bright_threshold: 100
-    dark_threshold: 50
+    bright_threshold: 190  # 與 Light1 一致
+    dark_threshold: 160    # 與 Light1 一致
   level1_light_7:
     name: Level1 燈泡 7
     type: single_light
@@ -361,8 +375,8 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1498, y: 843, width: 307, height: 190}
-    bright_threshold: 100
-    dark_threshold: 50
+    bright_threshold: 190  # 與 Light1 一致
+    dark_threshold: 160    # 與 Light1 一致
   level1_light_8:
     name: Level1 燈泡 8
     type: single_light
@@ -370,8 +384,8 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1151, y: 880, width: 323, height: 157}
-    bright_threshold: 100
-    dark_threshold: 50
+    bright_threshold: 190  # 與 Light1 一致
+    dark_threshold: 160    # 與 Light1 一致
   level1_light_9:
     name: Level1 燈泡 9
     type: single_light
@@ -379,8 +393,8 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 771, y: 880, width: 347, height: 165}
-    bright_threshold: 100
-    dark_threshold: 50
+    bright_threshold: 190  # 與 Light1 一致
+    dark_threshold: 160    # 與 Light1 一致
   level1_light_10:
     name: Level1 燈泡 10
     type: single_light
@@ -388,8 +402,8 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1494, y: 512, width: 347, height: 214}
-    bright_threshold: 100
-    dark_threshold: 50
+    bright_threshold: 190  # 與 Light1 一致
+    dark_threshold: 160    # 與 Light1 一致
   level1_light_11:
     name: Level1 燈泡 11
     type: single_light
@@ -397,8 +411,8 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 1066, y: 553, width: 408, height: 202}
-    bright_threshold: 100
-    dark_threshold: 50
+    bright_threshold: 190  # 與 Light1 一致
+    dark_threshold: 160    # 與 Light1 一致
   level1_light_12:
     name: Level1 燈泡 12
     type: single_light
@@ -406,8 +420,8 @@ environment_lights:
     camera_id: level1
     camera_purpose: level1_light_detection
     roi: {x: 691, y: 593, width: 355, height: 210}
-    bright_threshold: 100
-    dark_threshold: 50
+    bright_threshold: 190  # 與 Light1 一致
+    dark_threshold: 160    # 與 Light1 一致
   level2_light_1:
     name: Level2 燈泡 1
     type: single_light

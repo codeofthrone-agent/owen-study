@@ -807,11 +807,11 @@ class RobotArmKeywords:
 
         return buttons[button_id]
 
-    @keyword('When 用戶檢測實體燈光亮度 "${light_id}"')
-    def when_user_detects_physical_light_brightness(self, light_id: str, save_debug_image: bool = False, step_prefix: str = "") -> Dict[str, Any]:
-        """When: 用戶檢測實體燈光亮度
+    @keyword('When 用戶檢測環境燈光亮度 "${light_id}"')
+    def when_user_detects_environment_light_brightness(self, light_id: str, save_debug_image: bool = False, step_prefix: str = "") -> Dict[str, Any]:
+        """When: 用戶檢測環境燈光亮度
 
-        執行動作：檢測實體燈光的亮度級別（本機視覺檢測）
+        執行動作：檢測環境燈光的亮度級別（本機視覺檢測）
 
         支援 11 級亮度: 0%, 10%, 20%, ..., 100%
 
@@ -828,8 +828,8 @@ class RobotArmKeywords:
                 - confidence (float): 檢測信心度 (0.0-1.0)
 
         Examples:
-            | When | 用戶檢測實體燈光亮度 "ceiling_light_1" |
-            | When | 用戶檢測實體燈光亮度 "desk_lamp" |
+            | When | 用戶檢測環境燈光亮度 "ceiling_light_1" |
+            | When | 用戶檢測環境燈光亮度 "desk_lamp" |
 
         Raises:
             RuntimeError: 尚未設定測試環境或面板類型
@@ -848,7 +848,7 @@ class RobotArmKeywords:
         # 取得燈光配置
         light_config = self._get_light_config(light_id)
 
-        logger.info(f"💡 正在檢測實體燈光 '{light_id}' 的亮度...")
+        logger.info(f"💡 正在檢測環境燈光 '{light_id}' 的亮度...")
 
         # 移動機器手臂到觀測角度（如果需要且已連接機器手臂）
         if "observe_angles" in light_config and self.controller is not None:
@@ -879,23 +879,37 @@ class RobotArmKeywords:
                 image_source_config = self.image_source_manager.get_current_source()["config"]
                 logger.debug(f"使用當前影像源: {image_source_config['type']}")
 
-            detection_result, _, _ = self.local_vision.detect_physical_light_brightness(
+            # 從 YAML 配置取得閾值（若有設定）
+            bright_threshold = light_config.get("bright_threshold")
+            dark_threshold = light_config.get("dark_threshold")
+
+            if bright_threshold is not None or dark_threshold is not None:
+                logger.debug(f"使用 YAML 配置閾值: bright={bright_threshold}, dark={dark_threshold}")
+
+            detection_result, _, _ = self.local_vision.detect_environment_light_brightness(
                 roi_config=light_config["roi"],
                 image_source_config=image_source_config,
                 num_frames=5,
                 warmup_frames=20,
                 save_debug_images=save_debug_image,  # 根據參數決定是否儲存除錯影像
-                step_prefix=step_prefix  # 傳遞步驟前綴
+                step_prefix=step_prefix,  # 傳遞步驟前綴
+                bright_threshold=bright_threshold,  # 傳遞 YAML 配置的亮閾值
+                dark_threshold=dark_threshold  # 傳遞 YAML 配置的暗閾值
             )
 
             # 儲存結果供 Then 關鍵字驗證
             self._last_detection_result = detection_result
 
+            # 組合閾值資訊供日誌顯示
+            threshold_info = ""
+            if bright_threshold is not None or dark_threshold is not None:
+                threshold_info = f", 閾值(亮={bright_threshold}/暗={dark_threshold})"
+
             logger.info(
                 f"✅ 檢測完成: 亮度={detection_result['brightness_level']}%, "
                 f"原始值={detection_result['brightness_value']:.1f}, "
                 f"信心度={detection_result['confidence']:.2f}, "
-                f"狀態={detection_result['light_state']}"
+                f"狀態={detection_result['light_state']}{threshold_info}"
             )
 
             return detection_result
@@ -933,6 +947,82 @@ class RobotArmKeywords:
             )
 
         return environment_lights[light_id]
+
+    @keyword("Given 環境 IP Camera 已完成預熱連接")
+    def warmup_environment_cameras(self, warmup_frames: int = 30) -> Dict[str, bool]:
+        """Given: 環境 IP Camera 已完成預熱連接
+
+        前置條件：預熱環境中所有 IP Camera 的 RTSP 連接，
+        避免首次檢測時因 RTSP 串流尚未穩定而產生的 HEVC codec 錯誤。
+
+        Args:
+            warmup_frames: 每個 Camera 預熱擷取的幀數（預設 30）
+
+        Returns:
+            dict: 各 Camera 的預熱結果 {camera_id: success}
+
+        Examples:
+            | Given | 環境 IP Camera 已完成預熱連接 |        # 預設 30 幀預熱
+            | Given | 環境 IP Camera 已完成預熱連接 | 50 |   # 50 幀預熱
+
+        Note:
+            需先設定測試環境（Given 測試環境設定為 "..."）
+        """
+        if self.current_environment is None:
+            raise RuntimeError(
+                "尚未設定測試環境，請先使用 'Given 測試環境設定為 \"${environment}\"'"
+            )
+
+        from config.robot_arm.environment_config import EnvironmentConfig
+
+        results = {}
+        cameras = EnvironmentConfig.get_cameras(self.current_environment)
+
+        logger.info(f"🔌 開始預熱 {len(cameras)} 個 IP Camera...")
+
+        for camera_config in cameras:
+            camera_id = camera_config.get("id")
+            camera_type = camera_config.get("type", "rtsp")
+
+            # 只預熱 RTSP 類型的 Camera
+            if camera_type != "rtsp":
+                logger.debug(f"跳過非 RTSP Camera: {camera_id} (type={camera_type})")
+                results[camera_id] = True
+                continue
+
+            try:
+                logger.info(f"📹 預熱 Camera: {camera_id} ({camera_config.get('url', 'N/A')})")
+
+                # 設定影像源
+                image_source_config = EnvironmentConfig.get_image_source_config(
+                    self.current_environment,
+                    camera_id=camera_id
+                )
+
+                self.image_source_manager.set_image_source("rtsp", image_source_config)
+
+                # 擷取預熱幀
+                frames = self.image_source_manager.capture_multiple_frames(
+                    num_frames=5,
+                    warmup_frames=warmup_frames
+                )
+
+                if frames and len(frames) > 0:
+                    logger.info(f"✅ Camera {camera_id} 預熱成功 (擷取 {len(frames)} 幀)")
+                    results[camera_id] = True
+                else:
+                    logger.warn(f"⚠️ Camera {camera_id} 預熱失敗：無法擷取影像")
+                    results[camera_id] = False
+
+            except Exception as e:
+                logger.warn(f"⚠️ Camera {camera_id} 預熱失敗: {e}")
+                results[camera_id] = False
+
+        # 統計結果
+        success_count = sum(1 for v in results.values() if v)
+        logger.info(f"🔌 IP Camera 預熱完成: {success_count}/{len(results)} 成功")
+
+        return results
 
     # ==================== BDD Then 關鍵字 ====================
 
@@ -1049,19 +1139,19 @@ class RobotArmKeywords:
             f"(信心度: {confidence:.2f}, 亮度: {brightness}%)"
         )
 
-    @keyword('Then 實體燈光亮度應該為 "${expected_level}" %')
-    def then_physical_light_brightness_should_be(self, expected_level: str):
-        """Then: 實體燈光亮度應該為指定級別
+    @keyword('Then 環境燈光亮度應該為 "${expected_level}" %')
+    def then_environment_light_brightness_should_be(self, expected_level: str):
+        """Then: 環境燈光亮度應該為指定級別
 
-        預期結果：驗證實體燈光亮度是否符合預期（允許 ±10% 誤差）
+        預期結果：驗證環境燈光亮度是否符合預期（允許 ±10% 誤差）
 
         Args:
             expected_level: 預期亮度百分比 (0-100)
 
         Examples:
-            | Then | 實體燈光亮度應該為 "0" % |
-            | Then | 實體燈光亮度應該為 "50" % |
-            | Then | 實體燈光亮度應該為 "100" % |
+            | Then | 環境燈光亮度應該為 "0" % |
+            | Then | 環境燈光亮度應該為 "50" % |
+            | Then | 環境燈光亮度應該為 "100" % |
 
         Raises:
             RuntimeError: 尚未執行檢測
@@ -1073,7 +1163,7 @@ class RobotArmKeywords:
         """
         if self._last_detection_result is None:
             raise RuntimeError(
-                "尚未執行檢測，請先使用 'When 用戶檢測實體燈光亮度 \"${light_id}\"' 關鍵字"
+                "尚未執行檢測，請先使用 'When 用戶檢測環境燈光亮度 \"${light_id}\"' 關鍵字"
             )
 
         expected_level = int(expected_level)
@@ -1088,7 +1178,7 @@ class RobotArmKeywords:
 
         if error > error_margin:
             raise AssertionError(
-                f"❌ 實體燈光亮度不符預期！\n"
+                f"❌ 環境燈光亮度不符預期！\n"
                 f"   預期亮度: {expected_level}%\n"
                 f"   實際亮度: {actual_level}%\n"
                 f"   誤差: {error}% (允許 ±{error_margin}%)\n"
@@ -1098,9 +1188,56 @@ class RobotArmKeywords:
             )
 
         logger.info(
-            f"✅ 實體燈光亮度驗證通過: {actual_level}% "
+            f"✅ 環境燈光亮度驗證通過: {actual_level}% "
             f"(預期: {expected_level}%, 誤差: {error}%, 信心度: {confidence:.2f})"
         )
+
+    @keyword("取得按鈕對應的環境燈光 ID")
+    def get_environment_light_for_button(self, button_id: str) -> Optional[str]:
+        """取得按鈕對應的環境燈光 ID
+        
+        Args:
+            button_id: 按鈕 ID (例如 "light1")
+            
+        Returns:
+            str: 環境燈光 ID (例如 "level1_light_1")，若無對應則返回 None
+        """
+        # 取得完整按鈕配置
+        try:
+            button_config = self._get_button_config(button_id)
+            return button_config.get('environment_light')
+        except Exception:
+            return None
+
+    @keyword('Then 環境燈光狀態應該為 "${expected_state}"')
+    def then_environment_light_state_should_be(self, expected_state: str):
+        """驗證環境燈光狀態 (ON/OFF)
+        
+        依據由 "When 用戶檢測面板按鈕 ... 的顏色" 或 "When 用戶檢測環境燈光亮度"
+        所產生的結果進行驗證。
+        
+        Args:
+            expected_state: 'on' 或 'off' (不分大小寫)
+        """
+        if self._last_detection_result is None:
+             raise RuntimeError("請先執行 'When 用戶檢測... ' 相關關鍵字才能進行驗證")
+             
+        actual_state = self._last_detection_result.get("light_state", "unknown").lower()
+        expected = expected_state.lower()
+        
+        if actual_state != expected:
+            confidence = self._last_detection_result.get("confidence", 0.0)
+            brightness = self._last_detection_result.get("brightness_level", "N/A")
+            
+            raise AssertionError(
+                f"❌ 環境燈光狀態不符預期！\n"
+                f"   預期狀態: {expected}\n"
+                f"   實際狀態: {actual_state}\n"
+                f"   亮度級別: {brightness}%\n"
+                f"   檢測信心度: {confidence:.2f}"
+            )
+            
+        logger.info(f"✅ 環境燈光狀態驗證通過: {actual_state} (預期: {expected})")
 
     @keyword('按鈕 "${button_id}" 的狀態應為 "${expected_state}"')
     def button_state_should_be(self, button_id: str, expected_state: str):
@@ -1237,85 +1374,112 @@ class RobotArmKeywords:
 
         Raises:
             RuntimeError: 如果機器手臂未連接或命令執行失敗
+
+        Note:
+            v4.3.1 更新:
+            - 增加初始等待時間從 50ms 到 150ms
+            - 增加二進制協議檢測（0xfe 開頭）和重試機制
         """
         self._ensure_connected()
 
-        try:
-            import socket as sock_module
-
-            # 發送前先等待並清空緩衝區，避免讀到之前 Raw Command 的殘留回應 (e.g. 0xfe...)
-            # 等待一小段時間確保 in-flight 的二進制回應已經到達
-            time.sleep(0.05)
-            self.controller._flush_socket_buffer()
-
-            # 設定 socket timeout
-            original_timeout = self.controller.socket.gettimeout()
-            self.controller.socket.settimeout(timeout)
-
+        max_retries = 3
+        for attempt in range(max_retries):
             try:
-                # 使用底層 socket 發送 JSON 命令
-                cmd_str = json.dumps(command, ensure_ascii=False)
-                logger.debug(f"發送視覺命令: {cmd_str[:200]}...")
-                self.controller.socket.sendall(cmd_str.encode('utf-8'))
+                import socket as sock_module
 
-                # 接收回應
-                response = b""
-                start_time = time.time()
+                # 發送前先等待並清空緩衝區，避免讀到之前 Raw Command 的殘留回應 (e.g. 0xfe...)
+                # 等待較長時間確保 in-flight 的二進制回應已經到達
+                wait_time = 0.15 if attempt == 0 else 0.25  # 首次 150ms，重試 250ms
+                time.sleep(wait_time)
+                self.controller._flush_socket_buffer()
 
-                while True:
-                    elapsed = time.time() - start_time
-                    if elapsed > timeout:
-                        raise sock_module.timeout(f"接收回應超時（{timeout}秒）")
+                # 設定 socket timeout
+                original_timeout = self.controller.socket.gettimeout()
+                self.controller.socket.settimeout(timeout)
 
-                    try:
-                        chunk = self.controller.socket.recv(65536)
-                        if not chunk:
-                            # 連接關閉，嘗試解析已接收的資料
-                            if response:
-                                break
-                            else:
-                                raise RuntimeError("連接關閉，未收到任何回應")
+                try:
+                    # 使用底層 socket 發送 JSON 命令
+                    cmd_str = json.dumps(command, ensure_ascii=False)
+                    logger.debug(f"發送視覺命令: {cmd_str[:200]}...")
+                    self.controller.socket.sendall(cmd_str.encode('utf-8'))
 
-                        response += chunk
+                    # 接收回應
+                    response = b""
+                    start_time = time.time()
 
-                        # 嘗試解析 JSON
+                    while True:
+                        elapsed = time.time() - start_time
+                        if elapsed > timeout:
+                            raise sock_module.timeout(f"接收回應超時（{timeout}秒）")
+
                         try:
-                            result = json.loads(response.decode('utf-8'))
-                            logger.debug(f"收到視覺檢測結果: {result.get('status')}")
-                            return result
-                        except json.JSONDecodeError:
-                            # JSON 不完整，繼續接收
-                            continue
+                            chunk = self.controller.socket.recv(65536)
+                            if not chunk:
+                                # 連接關閉，嘗試解析已接收的資料
+                                if response:
+                                    break
+                                else:
+                                    raise RuntimeError("連接關閉，未收到任何回應")
 
-                    except sock_module.timeout:
-                        # Socket timeout，檢查是否已收到完整資料
-                        if response:
+                            # 檢測二進制協議殘留回應（MyCobot 協議以 0xfe 開頭）
+                            if len(response) == 0 and len(chunk) >= 1 and chunk[0] == 0xfe:
+                                logger.warning(
+                                    f"收到二進制協議殘留回應 (attempt {attempt + 1}/{max_retries}): "
+                                    f"{len(chunk)} bytes, 首字節: 0x{chunk[0]:02x}"
+                                )
+                                # 跳出內層迴圈，準備重試
+                                raise RuntimeError("收到二進制協議殘留回應")
+
+                            response += chunk
+
+                            # 嘗試解析 JSON
                             try:
                                 result = json.loads(response.decode('utf-8'))
-                                logger.debug(f"收到視覺檢測結果（timeout 後）: {result.get('status')}")
+                                logger.debug(f"收到視覺檢測結果: {result.get('status')}")
                                 return result
                             except json.JSONDecodeError:
-                                pass
-                        # 未收到完整資料，繼續等待
-                        continue
+                                # JSON 不完整，繼續接收
+                                continue
 
-                # 迴圈結束，嘗試最後一次解析
-                if response:
-                    result = json.loads(response.decode('utf-8'))
-                    return result
-                else:
-                    raise RuntimeError("未收到伺服器回應")
+                        except sock_module.timeout:
+                            # Socket timeout，檢查是否已收到完整資料
+                            if response:
+                                try:
+                                    result = json.loads(response.decode('utf-8'))
+                                    logger.debug(f"收到視覺檢測結果（timeout 後）: {result.get('status')}")
+                                    return result
+                                except json.JSONDecodeError:
+                                    pass
+                            # 未收到完整資料，繼續等待
+                            continue
 
-            finally:
-                # 恢復原始 timeout
-                self.controller.socket.settimeout(original_timeout)
+                    # 迴圈結束，嘗試最後一次解析
+                    if response:
+                        result = json.loads(response.decode('utf-8'))
+                        return result
+                    else:
+                        raise RuntimeError("未收到伺服器回應")
 
-        except sock_module.timeout as e:
-            logger.error(f"視覺命令執行逾時: {e}")
-            raise RuntimeError(f"視覺命令執行逾時: {e}")
-        except Exception as e:
-            logger.error(f"視覺命令執行失敗: {e}")
-            raise RuntimeError(f"視覺命令執行失敗: {e}")
+                finally:
+                    # 恢復原始 timeout
+                    self.controller.socket.settimeout(original_timeout)
+
+            except RuntimeError as e:
+                if "二進制協議殘留" in str(e) and attempt < max_retries - 1:
+                    logger.warning(f"視覺命令重試 (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(0.1)
+                    self.controller._flush_socket_buffer()
+                    continue
+                raise
+
+            except sock_module.timeout as e:
+                logger.error(f"視覺命令執行逾時: {e}")
+                raise RuntimeError(f"視覺命令執行逾時: {e}")
+            except Exception as e:
+                logger.error(f"視覺命令執行失敗: {e}")
+                raise RuntimeError(f"視覺命令執行失敗: {e}")
+
+        raise RuntimeError("發送視覺命令失敗：已達最大重試次數")
 
     @keyword('When 用戶檢測第 "${button_id}" 按鈕的燈光狀態')
     def when_user_detects_button_light_state(self, button_id: str, save_debug_image: bool = False, dwell_time: float = 1.0) -> dict:

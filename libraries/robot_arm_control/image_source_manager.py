@@ -248,7 +248,8 @@ class ImageSourceManager:
                 retry_attempts=3,
                 retry_delay=2.0,
                 frame_skip=3,
-                use_tcp=use_tcp
+                use_tcp=use_tcp,
+                timeout=timeout
             )
 
         elif self.current_source == "socket":
@@ -315,6 +316,7 @@ class ImageSourceManager:
         if self.current_source == "rtsp":
             # Phase 1.4 完成 - RTSP 多幀擷取
             url = self.current_config["url"]
+            timeout = self.current_config.get("timeout", 10)
             transport = self.current_config.get("transport", "tcp")
             use_tcp = (transport.lower() != "udp")
 
@@ -324,7 +326,8 @@ class ImageSourceManager:
                 warmup_frames=warmup_frames,
                 retry_attempts=3,
                 retry_delay=2.0,
-                use_tcp=use_tcp
+                use_tcp=use_tcp,
+                timeout=timeout
             )
 
         elif self.current_source == "socket":

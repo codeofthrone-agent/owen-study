@@ -31,7 +31,7 @@ environments:
         # username 和 password 會自動從 .env 讀取
 
       motor:
-        ip: "10.42.0.39"
+        ip: "192.168.165.136"
         port: 554
         protocol: "rtsp"
         stream_path: "/live0"
@@ -39,14 +39,16 @@ environments:
         description: "馬達區域監控攝影機"
         # username 和 password 會自動從 .env 讀取
 
-      panel:
-        ip: "10.42.0.246"
-        port: 554
-        protocol: "rtsp"
-        stream_path: "/live0"
-        transport: "udp"
-        description: "馬達區域監控攝影機"
-        # username 和 password 會自動從 .env 讀取
+      # ===== 暫時停用 (10.42.0.x 子網不可達) =====
+      # panel:
+      #   ip: "10.42.0.246"
+      #   port: 554
+      #   protocol: "rtsp"
+      #   stream_path: "/live0"
+      #   transport: "udp"
+      #   description: "馬達區域監控攝影機"
+      #   # username 和 password 會自動從 .env 讀取
+      # ===== 暫時停用結束 =====
 
   # RV 車環境
   rv_car:

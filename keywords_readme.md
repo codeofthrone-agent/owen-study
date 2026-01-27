@@ -1,5 +1,38 @@
 # Robot Framework 關鍵字說明文件 - Gherkin 風格 (最新更新)
 
+## 🚀 重大更新 (2026-01-27) - v5.5.0 RTSP 影像擷取效能優化 (最終版)
+
+### ✅ 視覺檢測效能大幅提升
+- **智慧緩衝區清空 (Smart Buffer Flush) - 最終優化**
+  - 優化 `RTSPImageSource.flush_buffer` 機制，基於實測確定最佳參數
+  - **最佳配置**: 強制清空前 30 幀 + 動態智慧退出
+  - **效能數據** (實測對比):
+    * 原始 (90 幀固定): ~15s (可靠但慢)
+    * v5.5.0 (30 幀): **7s / 6s / 1.6s** (可靠且快) ✅ **最佳**
+    * 測試 (20 幀): 失敗 (清空不足，讀取到舊影像)
+  - **總體提升**: 平均檢測時間從 15s 降至 **5s**，提升 **67%**
+  - 解決了固定清空導致的嚴重延遲問題，同時保證可靠性
+
+
+## 🚀 重大更新 (2026-01-26) - v5.4.0 原子化按壓與 Socket 優化
+
+### ✅ 機器手臂控制增強
+- **原子化按壓指令 (Atomic Press)**
+  - 在 Server 端實作 `press_button_angles` 指令，將 `down -> wait -> up` 動作序列原子化。
+  - 解決了因網路延遲導致按壓時間不精確（過長）的問題。
+  - 修改 `RobotArmKeywords.py` 中的 `_press_button` 方法，底層改用原子指令。
+
+### ✅ Socket 通訊優化
+- **Socket 緩衝區清空**
+  - 在發送 JSON 指令前，新增自動清空 Socket 接收緩衝區的機制。
+  - 解決了因硬體回應延遲導致 Raw Byte (0xfe...) 殘留在緩衝區，進而干擾 JSON 響應解析的問題。
+  - 提升了 `scan_and_detect` 與原子按壓指令的通訊穩定性。
+
+### ✅ 視覺除錯增強
+- **原始影像保存**
+  - `scan_and_detect` 功能現在除了保存標註後的影像外，也會保存原始影像（後綴 `_raw.jpg`）。
+  - 方便後續重新標註或訓練模型使用。
+
 ## 🚀 重大更新 (2025-12-02) - v1.3.0 音訊路由驗證增強
 
 ### ✅ 音訊關鍵字增強
@@ -44,7 +77,7 @@ v4.0.0（新版）: Client（本機影像判定）+ Server（僅提供影像截�
 | 檢測目標 | 影像源類型 | 配置位置 | 用途 |
 |---------|----------|---------|------|
 | **面板按鈕 LED** | Socket | `buttons` → `type: "panel_light"` | 機器手臂 USB Camera |
-| **環境實體燈光** | RTSP | `environment_lights` → `camera_id` | IP Camera (level2) |
+| **環境燈光** | RTSP | `environment_lights` → `camera_id` | IP Camera (level2) |
 | **YOLO 狀態驗證** | Socket/Server | `buttons` → `vision.observe_angles` | 伺服器端 YOLO 模型 |
 
 **新增 BDD 關鍵字（32+）:**
@@ -63,7 +96,7 @@ v4.0.0（新版）: Client（本機影像判定）+ Server（僅提供影像截�
 - `When 用戶長按第 "${button_id}" 按鈕 "${duration}" 秒` - 長按按鈕
 - `When 用戶檢測第 "${button_id}" 按鈕的燈光狀態` - 檢測面板按鈕 LED（Socket）
 - `When 用戶檢測多個按鈕的燈光狀態 "${button_ids}"` - 批次檢測
-- `When 用戶檢測實體燈光亮度 "${light_id}"` - 檢測環境燈光（RTSP）
+- `When 用戶檢測環境燈光亮度 "${light_id}"` - 檢測環境燈光（RTSP）
 - `When 使用者發送 GET 請求到 "${url}"` - API GET 請求
 - `When 使用者發送 POST 請求到 "${url}" 帶資料 "${data}"` - API POST 請求
 - 以及其他 6 個操作關鍵字...
@@ -74,7 +107,7 @@ v4.0.0（新版）: Client（本機影像判定）+ Server（僅提供影像截�
 - `Then YOLO 應該檢測到按鈕 "${button_id}" 為 "${expected_state}"` - 驗證物件狀態 (YOLO + 180°翻轉)
 - `Then 按鈕亮度應該為 "${expected_level}" %` - 驗證亮度
 - `Then 檢測信心度應該大於 ${min_confidence}` - 驗證信心度
-- `Then 實體燈光亮度應該為 "${expected_level}" %` - 驗證環境燈光
+- `Then 環境燈光亮度應該為 "${expected_level}" %` - 驗證環境燈光
 - `Given/When/Then/And 按鈕 "${button_id}" 的狀態應為 "${expected_state}"` - 視覺狀態驗證 (v4.3.0)
 - `Then 回應狀態碼應該為 "${status_code}"` - API 驗證
 - `Then 回應內容應該包含 "${expected_content}"` - 內容驗證

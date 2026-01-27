@@ -372,12 +372,19 @@ class MyCobotSocketController:
             raise RuntimeError(f"檢查電源狀態失敗: {e}") from e
 
 
-    def _flush_socket_buffer(self, max_passes: int = 3):
+    def _flush_socket_buffer(self, max_passes: int = 5, pass_delay: float = 0.05):
         """
         清空 Socket 接收緩衝區，避免殘留數據影響後續指令
 
         Args:
             max_passes: 最多嘗試清空的次數，用於處理網路延遲導致的分批到達數據
+            pass_delay: 每次 pass 之間的等待時間（秒），預設 50ms
+
+        Note:
+            v4.3.1 更新:
+            - 增加 max_passes 從 3 到 5
+            - 增加 pass_delay 從 10ms 到 50ms
+            - 改善殘留二進制數據清理效果
         """
         total_flushed = 0
         try:
@@ -403,7 +410,7 @@ class MyCobotSocketController:
 
                 # 短暫等待，讓可能延遲到達的數據有機會進入緩衝區
                 if pass_num < max_passes - 1:
-                    time.sleep(0.01)
+                    time.sleep(pass_delay)
 
         except Exception as e:
             logger.warning(f"清空 Socket 緩衝區時發生錯誤: {e}")
@@ -413,51 +420,103 @@ class MyCobotSocketController:
         if total_flushed > 0:
             logger.debug(f"Socket 緩衝區清空完成，共清出 {total_flushed} bytes")
 
-    def send_json_command(self, cmd: Dict[str, Any]) -> Dict[str, Any]:
+    def send_json_command(self, cmd: Dict[str, Any], max_retries: int = 3) -> Dict[str, Any]:
         """
         發送 JSON 指令到伺服器
-        
+
         Args:
             cmd: 指令字典
-            
+            max_retries: 最大重試次數（用於處理二進制協議殘留回應）
+
         Returns:
             Dict: 伺服器回應
-            
+
         Raises:
             RuntimeError: 發送或接收失敗
+
+        Note:
+            v4.3.1 更新:
+            - 增加初始等待時間從 50ms 到 150ms
+            - 增加二進制協議檢測（0xfe 開頭）和重試機制
+            - 改善錯誤處理
         """
         if not self.is_connected():
             raise RuntimeError("機器手臂未連接，無法發送 JSON 指令")
-            
-        try:
-            # 1. 發送前先等待並清空緩衝區，避免讀到之前 Raw Command 的殘留回應 (e.g. 0xfe...)
-            # 等待一小段時間確保 in-flight 的二進制回應已經到達
-            time.sleep(0.05)
-            self._flush_socket_buffer()
-            
-            # 暫時增加 Timeout 以防止原子操作超時
-            # 原子操作可能包含長時間的移動和等待
-            original_timeout = self.socket.gettimeout()
-            self.socket.settimeout(20.0)
-            
-            cmd_str = json.dumps(cmd)
-            self.socket.sendall(cmd_str.encode('utf-8'))
-            
-            # 接收回應
-            # 簡單實作：假設回應不會過長
-            data = self.socket.recv(4096)
-            
-            # 恢復 Timeout
-            self.socket.settimeout(original_timeout)
-            
-            if not data:
-                raise RuntimeError("伺服器未回傳數據")
-                
-            return json.loads(data.decode('utf-8'))
-            
-        except Exception as e:
-            logger.error(f"JSON 指令錯誤: {e}")
-            raise RuntimeError(f"JSON 指令錯誤: {e}") from e
+
+        for attempt in range(max_retries):
+            try:
+                # 1. 發送前先等待並清空緩衝區，避免讀到之前 Raw Command 的殘留回應 (e.g. 0xfe...)
+                # 等待較長時間確保 in-flight 的二進制回應已經到達
+                wait_time = 0.15 if attempt == 0 else 0.25  # 首次 150ms，重試 250ms
+                time.sleep(wait_time)
+                self._flush_socket_buffer()
+
+                # 暫時增加 Timeout 以防止原子操作超時
+                # 原子操作可能包含長時間的移動和等待
+                original_timeout = self.socket.gettimeout()
+                self.socket.settimeout(20.0)
+
+                cmd_str = json.dumps(cmd)
+                self.socket.sendall(cmd_str.encode('utf-8'))
+
+                # 接收回應
+                # 簡單實作：假設回應不會過長
+                data = self.socket.recv(4096)
+
+                # 恢復 Timeout
+                self.socket.settimeout(original_timeout)
+
+                if not data:
+                    raise RuntimeError("伺服器未回傳數據")
+
+                # 檢測是否為二進制協議殘留回應（MyCobot 協議以 0xfe 0xfe 開頭）
+                if len(data) >= 1 and data[0] == 0xfe:
+                    logger.warning(
+                        f"收到二進制協議殘留回應 (attempt {attempt + 1}/{max_retries}): "
+                        f"{len(data)} bytes, 首字節: 0x{data[0]:02x}"
+                    )
+                    if attempt < max_retries - 1:
+                        # 清空殘留並重試
+                        time.sleep(0.1)
+                        self._flush_socket_buffer()
+                        continue
+                    else:
+                        raise RuntimeError(
+                            f"多次收到二進制協議殘留回應，無法取得 JSON 回應。"
+                            f"首字節: 0x{data[0]:02x}"
+                        )
+
+                return json.loads(data.decode('utf-8'))
+
+            except json.JSONDecodeError as e:
+                # JSON 解碼失敗，可能是數據不完整或混雜二進制數據
+                logger.warning(
+                    f"JSON 解碼失敗 (attempt {attempt + 1}/{max_retries}): {e}"
+                )
+                if attempt < max_retries - 1:
+                    time.sleep(0.1)
+                    self._flush_socket_buffer()
+                    continue
+                else:
+                    raise RuntimeError(f"JSON 解碼失敗: {e}") from e
+
+            except UnicodeDecodeError as e:
+                # UTF-8 解碼失敗，可能收到二進制數據
+                logger.warning(
+                    f"UTF-8 解碼失敗 (attempt {attempt + 1}/{max_retries}): {e}"
+                )
+                if attempt < max_retries - 1:
+                    time.sleep(0.1)
+                    self._flush_socket_buffer()
+                    continue
+                else:
+                    raise RuntimeError(f"UTF-8 解碼失敗（可能收到二進制協議殘留）: {e}") from e
+
+            except Exception as e:
+                logger.error(f"JSON 指令錯誤: {e}")
+                raise RuntimeError(f"JSON 指令錯誤: {e}") from e
+
+        raise RuntimeError("發送 JSON 指令失敗：已達最大重試次數")
 
     def press_button_atomic(self, down_angles: List[float], up_angles: List[float], 
                           press_duration: float = 0.1, lift_duration: float = 0.1, 
