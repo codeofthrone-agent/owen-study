@@ -8,6 +8,4 @@ Test Setup        Given 語音控制系統已成功初始化
 Scenario: 使用者使用預設喇叭播放文字
     [Documentation]    測試使用預設喇叭播放 TTS 文字
     When 使用者使用預設喇叭播放文字 "Hey Power Pro"
-    Sleep 5
     Then 語音應該成功播放到指定聲道
-    When 使用者使用預設喇叭播放文字 "turn"
