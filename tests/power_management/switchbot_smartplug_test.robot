@@ -13,9 +13,9 @@ Documentation    SwitchBot 智慧插座測試案例
 ...              3. 已知測試用智慧插座設備 ID
 ...              4. 智慧插座處於在線狀態
 
-Library    libraries/switchbot_smartplug_control/SwitchBotSmartPlugLibrary.py
-Resource   resources/switchbot_keywords.robot
-Resource   resources/common_keywords.robot
+Library    ../../libraries/switchbot_smartplug_control/SwitchBotSmartPlugLibrary.py
+Resource   ../../resources/switchbot_keywords.robot
+Resource   ../../resources/common_keywords.robot
 
 Test Setup       測試前置設定
 Test Teardown    測試後置清理
@@ -66,7 +66,7 @@ Scenario: User Needs To Query Smart Plug Status
     Given 已設定SwitchBot API認證資訊    ${TEST_TOKEN}    ${TEST_SECRET}
     And 已知智慧插座設備ID    ${TEST_DEVICE_ID}
     And 智慧插座系統已準備就緒
-    When 使用者查詢智慧插座狀態    ${TEST_DEVICE_ID}
+    ${status} =    When 使用者查詢智慧插座狀態    ${TEST_DEVICE_ID}
     Then 狀態查詢應該成功回傳    ${status}
     And 設備資訊應該正確顯示    ${TEST_DEVICE_ID}
     And 系統狀態應該保持穩定
@@ -98,7 +98,7 @@ Scenario: User Needs To Control Multiple Operations In Sequence
     Then 智慧插座應該處於開啟狀態    ${TEST_DEVICE_ID}
     
     # 第二步：查詢狀態
-    When 使用者查詢智慧插座狀態    ${TEST_DEVICE_ID}
+    ${status} =    When 使用者查詢智慧插座狀態    ${TEST_DEVICE_ID}
     Then 狀態查詢應該成功回傳    ${status}
     
     # 第三步：關閉插座
@@ -193,7 +193,7 @@ Basic Status Query Test
     # 檢查是否從實際環境變數讀取
     ${env_token} =      Get Environment Variable    SWITCHBOT_TOKEN    default=${EMPTY}
     ${env_secret} =     Get Environment Variable    SWITCHBOT_SECRET   default=${EMPTY}
-    ${env_device_id} =  Get Environment Variable    SWITCHBOT_DEVICE_ID default=${EMPTY}
+    ${env_device_id} =  Get Environment Variable    SWITCHBOT_DEVICE_ID    default=${EMPTY}
     
     IF    '${env_token}' != '${EMPTY}' and '${env_secret}' != '${EMPTY}' and '${env_device_id}' != '${EMPTY}'
         Log    使用環境變數中的設定
