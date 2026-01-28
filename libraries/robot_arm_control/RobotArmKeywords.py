@@ -79,7 +79,7 @@ class RobotArmKeywords:
     """
 
     ROBOT_LIBRARY_SCOPE = 'GLOBAL'
-    ROBOT_LIBRARY_VERSION = '4.0.0'  # v4.0.0: 新增環境管理、多色彩檢測、亮度檢測
+    ROBOT_LIBRARY_VERSION = '5.5.5'  # v5.5.5: 新增關節移動追蹤 (Maintenance Analysis)
 
     def __init__(self, config_path: Optional[str] = None):
         """
@@ -797,15 +797,88 @@ class RobotArmKeywords:
             raise RuntimeError("尚未載入面板按鈕配置")
 
         buttons = self.panel_button_config.get("buttons", {})
-
         if button_id not in buttons:
-            available_buttons = ", ".join(buttons.keys())
-            raise ValueError(
-                f"按鈕 '{button_id}' 不存在於當前面板 '{self.current_panel_type}'。\n"
-                f"可用按鈕: {available_buttons}"
-            )
+            raise ValueError(f"按鈕 '{button_id}' 不存在於配置中")
 
         return buttons[button_id]
+
+    # ==================== BDD Other 關鍵字 - 維護分析 (v5.5.5) ====================
+
+    @keyword("取得關節移動統計")
+    def get_joint_movement_stats(self) -> List[float]:
+        """
+        取得關節移動統計數據 (Maintenance Analysis)
+        
+        回傳每個關節的累積移動度數，用於估算磨損。
+        
+        Returns:
+            List[float]: 6 個關節的累積移動度數列表
+            
+        Examples:
+            | ${stats} | 取得關節移動統計 |
+        """
+        self._ensure_connected()
+        stats = self.controller.get_total_movement()
+        logger.info(f"📊 關節移動統計: {[f'J{i+1}:{s:.1f}°' for i, s in enumerate(stats)]}")
+        return stats
+
+    @keyword("重置關節移動統計")
+    def reset_joint_movement_stats(self):
+        """
+        重置關節移動統計數據
+        
+        Examples:
+            | 重置關節移動統計 |
+        """
+        self._ensure_connected()
+        self.controller.reset_total_movement()
+        logger.info("🔄 已重置關節移動統計")
+
+    @keyword("記錄關節移動統計")
+    def log_joint_movement_stats(self):
+        """
+        記錄關節移動統計數據到報告中，並將數據附加到 logs/joint_movement_stats.csv 檔案。
+        
+        Examples:
+            | 記錄關節移動統計 |
+        """
+        stats = self.get_joint_movement_stats()
+        
+        # 1. 輸出到 Robot Framework 報告
+        msg = "📊 機器手臂關節移動統計 (累計):\n"
+        msg += "-" * 30 + "\n"
+        for i, degrees in enumerate(stats):
+            msg += f"  Joint {i+1}: {degrees:.2f}°\n"
+        msg += "-" * 30
+        
+        logger.info(msg)
+
+        # 2. 附加寫入 CSV 檔案
+        try:
+            log_dir = Path("logs")
+            log_dir.mkdir(parents=True, exist_ok=True)
+            csv_file = log_dir / "joint_movement_stats.csv"
+            
+            # 檢查檔案是否存在 (用於判斷是否需要寫入標頭)
+            file_exists = csv_file.exists()
+            
+            with open(csv_file, mode='a', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                
+                # 如果是新檔案，寫入標頭
+                if not file_exists:
+                    writer.writerow(["Timestamp", "Joint1", "Joint2", "Joint3", "Joint4", "Joint5", "Joint6"])
+                
+                # 寫入數據: 時間戳 + 6 個關節的度數
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                # 將度數格式化為小數點後 2 位
+                row = [timestamp] + [f"{d:.2f}" for d in stats]
+                writer.writerow(row)
+                
+            logger.info(f"✅ 統計數據已附加到: {csv_file}")
+            
+        except Exception as e:
+            logger.warn(f"⚠️ 無法寫入 CSV 檔案: {e}")
 
     @keyword('When 用戶檢測環境燈光亮度 "${light_id}"')
     def when_user_detects_environment_light_brightness(self, light_id: str, save_debug_image: bool = False, step_prefix: str = "") -> Dict[str, Any]:

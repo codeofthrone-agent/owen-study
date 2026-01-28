@@ -44,18 +44,18 @@ ${OUTPUT_DIR}       ${CURDIR}/../../output/debug_images
     Log    === 開始擷取 Level1 Camera 燈光圖片 ===    console=True
 
     # 檢測 Level1 的 12 個燈泡
-    When 用戶檢測實體燈光亮度 "level1_light_1"    save_debug_image=True    step_prefix=level1_light_1
-    When 用戶檢測實體燈光亮度 "level1_light_2"    save_debug_image=True    step_prefix=level1_light_2
-    When 用戶檢測實體燈光亮度 "level1_light_3"    save_debug_image=True    step_prefix=level1_light_3
-    When 用戶檢測實體燈光亮度 "level1_light_4"    save_debug_image=True    step_prefix=level1_light_4
-    When 用戶檢測實體燈光亮度 "level1_light_5"    save_debug_image=True    step_prefix=level1_light_5
-    When 用戶檢測實體燈光亮度 "level1_light_6"    save_debug_image=True    step_prefix=level1_light_6
-    When 用戶檢測實體燈光亮度 "level1_light_7"    save_debug_image=True    step_prefix=level1_light_7
-    When 用戶檢測實體燈光亮度 "level1_light_8"    save_debug_image=True    step_prefix=level1_light_8
-    When 用戶檢測實體燈光亮度 "level1_light_9"    save_debug_image=True    step_prefix=level1_light_9
-    When 用戶檢測實體燈光亮度 "level1_light_10"   save_debug_image=True    step_prefix=level1_light_10
-    When 用戶檢測實體燈光亮度 "level1_light_11"   save_debug_image=True    step_prefix=level1_light_11
-    When 用戶檢測實體燈光亮度 "level1_light_12"   save_debug_image=True    step_prefix=level1_light_12
+    When 用戶檢測環境燈光亮度 "level1_light_1"    save_debug_image=True    step_prefix=level1_light_1
+    When 用戶檢測環境燈光亮度 "level1_light_2"    save_debug_image=True    step_prefix=level1_light_2
+    When 用戶檢測環境燈光亮度 "level1_light_3"    save_debug_image=True    step_prefix=level1_light_3
+    When 用戶檢測環境燈光亮度 "level1_light_4"    save_debug_image=True    step_prefix=level1_light_4
+    When 用戶檢測環境燈光亮度 "level1_light_5"    save_debug_image=True    step_prefix=level1_light_5
+    When 用戶檢測環境燈光亮度 "level1_light_6"    save_debug_image=True    step_prefix=level1_light_6
+    When 用戶檢測環境燈光亮度 "level1_light_7"    save_debug_image=True    step_prefix=level1_light_7
+    When 用戶檢測環境燈光亮度 "level1_light_8"    save_debug_image=True    step_prefix=level1_light_8
+    When 用戶檢測環境燈光亮度 "level1_light_9"    save_debug_image=True    step_prefix=level1_light_9
+    When 用戶檢測環境燈光亮度 "level1_light_10"   save_debug_image=True    step_prefix=level1_light_10
+    When 用戶檢測環境燈光亮度 "level1_light_11"   save_debug_image=True    step_prefix=level1_light_11
+    When 用戶檢測環境燈光亮度 "level1_light_12"   save_debug_image=True    step_prefix=level1_light_12
 
     Log    ✅ Level1 Camera 燈光圖片擷取完成 (12 個燈泡)    console=True
 
@@ -75,18 +75,18 @@ ${OUTPUT_DIR}       ${CURDIR}/../../output/debug_images
     Log    === 開始擷取 Level2 Camera 燈光圖片 ===    console=True
 
     # 檢測 Level2 的 12 個燈泡
-    When 用戶檢測實體燈光亮度 "level2_light_1"    save_debug_image=True    step_prefix=level2_light_1
-    When 用戶檢測實體燈光亮度 "level2_light_2"    save_debug_image=True    step_prefix=level2_light_2
-    When 用戶檢測實體燈光亮度 "level2_light_3"    save_debug_image=True    step_prefix=level2_light_3
-    When 用戶檢測實體燈光亮度 "level2_light_4"    save_debug_image=True    step_prefix=level2_light_4
-    When 用戶檢測實體燈光亮度 "level2_light_5"    save_debug_image=True    step_prefix=level2_light_5
-    When 用戶檢測實體燈光亮度 "level2_light_6"    save_debug_image=True    step_prefix=level2_light_6
-    When 用戶檢測實體燈光亮度 "level2_light_7"    save_debug_image=True    step_prefix=level2_light_7
-    When 用戶檢測實體燈光亮度 "level2_light_8"    save_debug_image=True    step_prefix=level2_light_8
-    When 用戶檢測實體燈光亮度 "level2_light_9"    save_debug_image=True    step_prefix=level2_light_9
-    When 用戶檢測實體燈光亮度 "level2_light_10"   save_debug_image=True    step_prefix=level2_light_10
-    When 用戶檢測實體燈光亮度 "level2_light_11"   save_debug_image=True    step_prefix=level2_light_11
-    When 用戶檢測實體燈光亮度 "level2_light_12"   save_debug_image=True    step_prefix=level2_light_12
+    When 用戶檢測環境燈光亮度 "level2_light_1"    save_debug_image=True    step_prefix=level2_light_1
+    When 用戶檢測環境燈光亮度 "level2_light_2"    save_debug_image=True    step_prefix=level2_light_2
+    When 用戶檢測環境燈光亮度 "level2_light_3"    save_debug_image=True    step_prefix=level2_light_3
+    When 用戶檢測環境燈光亮度 "level2_light_4"    save_debug_image=True    step_prefix=level2_light_4
+    When 用戶檢測環境燈光亮度 "level2_light_5"    save_debug_image=True    step_prefix=level2_light_5
+    When 用戶檢測環境燈光亮度 "level2_light_6"    save_debug_image=True    step_prefix=level2_light_6
+    When 用戶檢測環境燈光亮度 "level2_light_7"    save_debug_image=True    step_prefix=level2_light_7
+    When 用戶檢測環境燈光亮度 "level2_light_8"    save_debug_image=True    step_prefix=level2_light_8
+    When 用戶檢測環境燈光亮度 "level2_light_9"    save_debug_image=True    step_prefix=level2_light_9
+    When 用戶檢測環境燈光亮度 "level2_light_10"   save_debug_image=True    step_prefix=level2_light_10
+    When 用戶檢測環境燈光亮度 "level2_light_11"   save_debug_image=True    step_prefix=level2_light_11
+    When 用戶檢測環境燈光亮度 "level2_light_12"   save_debug_image=True    step_prefix=level2_light_12
 
     Log    ✅ Level2 Camera 燈光圖片擷取完成 (12 個燈泡)    console=True
 
@@ -106,13 +106,13 @@ ${OUTPUT_DIR}       ${CURDIR}/../../output/debug_images
     Log    === 開始擷取 Motor Camera 區域圖片 ===    console=True
 
     # 檢測 Motor 的 7 個區域
-    When 用戶檢測實體燈光亮度 "motor_area_1"    save_debug_image=True    step_prefix=motor_area_1
-    When 用戶檢測實體燈光亮度 "motor_area_2"    save_debug_image=True    step_prefix=motor_area_2
-    When 用戶檢測實體燈光亮度 "motor_area_3"    save_debug_image=True    step_prefix=motor_area_3
-    When 用戶檢測實體燈光亮度 "motor_area_4"    save_debug_image=True    step_prefix=motor_area_4
-    When 用戶檢測實體燈光亮度 "motor_area_5"    save_debug_image=True    step_prefix=motor_area_5
-    When 用戶檢測實體燈光亮度 "motor_area_6"    save_debug_image=True    step_prefix=motor_area_6
-    When 用戶檢測實體燈光亮度 "motor_area_7"    save_debug_image=True    step_prefix=motor_area_7
+    When 用戶檢測環境燈光亮度 "motor_area_1"    save_debug_image=True    step_prefix=motor_area_1
+    When 用戶檢測環境燈光亮度 "motor_area_2"    save_debug_image=True    step_prefix=motor_area_2
+    When 用戶檢測環境燈光亮度 "motor_area_3"    save_debug_image=True    step_prefix=motor_area_3
+    When 用戶檢測環境燈光亮度 "motor_area_4"    save_debug_image=True    step_prefix=motor_area_4
+    When 用戶檢測環境燈光亮度 "motor_area_5"    save_debug_image=True    step_prefix=motor_area_5
+    When 用戶檢測環境燈光亮度 "motor_area_6"    save_debug_image=True    step_prefix=motor_area_6
+    When 用戶檢測環境燈光亮度 "motor_area_7"    save_debug_image=True    step_prefix=motor_area_7
 
     Log    ✅ Motor Camera 區域圖片擷取完成 (7 個區域)    console=True
 

@@ -168,3 +168,20 @@ def given_tts_engine_set_to(self, engine_name: str) -> bool:
 - **工具**:
   - **`robotidy`**: 用於自動格式化 `.robot` 檔案，保持風格一致。
   - **`libdoc`**: 使用 `python -m robot.libdoc YourLibrary.py docs/YourLibrary.html` 來產生和預覽 Keyword 文件，檢查 Docstring 是否完整、清晰。
+
+  ## Commit Message 規範
+1. **標題格式**：遵循 Semantic Commit (e.g., `feat(scope): 簡短描述`)。
+2. **語言**：使用繁體中文。
+3. **內容結構**：
+   - 第一行：精簡的標題。
+   - 空一行。
+   - **主要變更**：列點說明修改內容，並依性質分類（如：功能新增、效能優化、測試、設定檔調整）。
+   - 對於重要的邏輯修改（如演算法參數調整），需簡述修改原因或前後差異（例如：「延遲從 5.6s 降至 1.6s」）。
+4. **範例**：
+   feat(robot-arm): 優化 RTSP 緩衝機制
+
+   主要變更：
+   1. 核心優化：
+      - 修改 rtsp_source.py，將 skip_check_frames 改為 30 幀。
+   2. 設定調整：
+      - 恢復 yaml 中的亮度閾值設定。

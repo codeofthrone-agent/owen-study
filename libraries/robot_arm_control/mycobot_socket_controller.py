@@ -43,6 +43,13 @@ class MyCobotSocketController:
 
         logger.info(f"初始化 MyCobotSocketController: {host}:{port}")
 
+        # v5.5.5 新增: 關節移動統計
+        # 用於估算磨損程度 (Maintenance Analysis)
+        # 單位: 度 (Degrees)
+        self.joint_movement_accumulated: List[float] = [0.0] * 6
+        self._last_known_angles: Optional[List[float]] = None  # 最後已知位置 (用於推算移動量)
+
+
     @property
     def socket(self):
         """
@@ -125,6 +132,14 @@ class MyCobotSocketController:
             self._connected = True
             logger.info(f"✅ 成功連接到機器手臂 {self.host}:{self.port}")
             logger.info(f"   當前角度: {[f'{a:.2f}' for a in test_angles]}")
+            
+            # v5.5.5: 初始化最後已知位置 (僅在連接時讀取一次，避免後續延遲)
+            if isinstance(test_angles, list) and len(test_angles) == 6:
+                self._last_known_angles = test_angles
+            else:
+                 # 如果讀取失敗 (例如 -1)，先假設在 Home (0,0,0,0,0,0) 或不進行統計直到第一次成功移動
+                self._last_known_angles = [0.0] * 6
+                
             return True
 
         except Exception as e:
@@ -160,6 +175,46 @@ class MyCobotSocketController:
         """
         return self._connected and self.mc is not None
 
+    def _update_movement_stats(self, target_angles: List[float]):
+        """
+        更新關節移動統計數據 (推算模式)
+        
+        計算從 _last_known_angles 到 target_angles 的絕對差異並累加。
+        
+        Args:
+            target_angles: 目標角度列表
+        """
+        if self._last_known_angles is None:
+             # 如果沒有上次位置資訊 (理論上 connect 時會初始化，但防呆)
+             self._last_known_angles = target_angles
+             return
+
+        try:
+            for i in range(6):
+                delta = abs(target_angles[i] - self._last_known_angles[i])
+                self.joint_movement_accumulated[i] += delta
+            
+            # 更新最後已知位置
+            self._last_known_angles = list(target_angles) # 複製一份，避免參考問題
+            
+        except Exception as e:
+            logger.warning(f"更新移動統計失敗: {e}")
+
+    def get_total_movement(self) -> List[float]:
+        """
+        取得各關節累積移動度數
+        
+        Returns:
+            6 個關節的累積移動度數列表
+        """
+        return list(self.joint_movement_accumulated)
+
+    def reset_total_movement(self):
+        """重置關節移動統計數據"""
+        self.joint_movement_accumulated = [0.0] * 6
+        logger.info("已重置關節移動統計數據")
+
+
     def send_angles(self, angles: List[float], speed: int) -> bool:
         """
         發送角度指令到機器手臂
@@ -186,6 +241,10 @@ class MyCobotSocketController:
 
         try:
             logger.debug(f"發送角度指令: {[f'{a:.2f}' for a in angles]}, 速度: {speed}")
+            
+            # v5.5.5: 更新移動統計 (發送指令前推算)
+            self._update_movement_stats(angles)
+            
             self.mc.send_angles(angles, speed)
             return True
 
@@ -544,6 +603,14 @@ class MyCobotSocketController:
         }
         
         logger.info(f"發送原子按壓指令: press={press_duration}s")
+        logger.info(f"發送原子按壓指令: press={press_duration}s")
+        
+        # v5.5.5: 更新移動統計 (原子操作包含兩段移動)
+        # 1. 當前 -> 下壓 (Down)
+        self._update_movement_stats(down_angles)
+        # 2. 下壓 -> 抬起 (Up)
+        self._update_movement_stats(up_angles)
+        
         response = self.send_json_command(cmd)
         
         if response.get("status") == "success":
