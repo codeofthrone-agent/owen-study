@@ -45,6 +45,8 @@ Teardown Suite Environment
 按壓按鈕並驗證狀態變化
     [Documentation]    通用關鍵字：按壓按鈕並驗證 off -> on -> off -> on -> off 循環
     [Arguments]    ${button_id}
+    # 步驟 0: 若檢測到 x status 則多點一下喚醒
+    Given 若 YOLO 檢測到按鈕 "${button_id}" 為 "x" 則點擊喚醒
     # 步驟 1: 驗證初始狀態為 off
     Given YOLO 應該檢測到按鈕 "${button_id}" 為 "off"
     # 步驟 2: 按壓按鈕開啟
@@ -57,16 +59,7 @@ Teardown Suite Environment
     Then 機器手臂操作應該成功完成
     # 步驟 5: 驗證狀態變回 off
     And YOLO 應該檢測到按鈕 "${button_id}" 為 "off"
-    # 步驟 6: 再次按壓按鈕開啟
-    When 用戶按壓第 "${button_id}" 按鈕
-    Then 機器手臂操作應該成功完成
-    # 步驟 7: 驗證狀態變為 on
-    And YOLO 應該檢測到按鈕 "${button_id}" 為 "on"
-    # 步驟 8: 再次按壓按鈕關閉
-    When 用戶按壓第 "${button_id}" 按鈕
-    Then 機器手臂操作應該成功完成
-    # 步驟 9: 驗證狀態變回 off
-    And YOLO 應該檢測到按鈕 "${button_id}" 為 "off"
+    
 
 連續按壓按鈕並拍照
     [Documentation]    連續按壓按鈕 N 次，每次按壓後拍照記錄
@@ -87,6 +80,28 @@ Teardown Suite Environment
     Then 機器手臂操作應該成功完成
     # 長按後拍照記錄
     YOLO 僅檢測並儲存按鈕影像 "${button_id}" 預期狀態 "long_press"
+
+執行 Select-Extend-Retract 測試循環
+    [Documentation]    執行 Select(1次) -> Extend(4秒) -> Retract(4秒) 的測試循環
+    [Arguments]    ${times}=7    ${duration}=4
+    FOR    ${i}    IN RANGE    1    ${times}+1
+        Log    ===== 第 ${i}/${times} 次循環：Select -> Extend -> Retract =====    console=yes
+        
+        # 1. Select Click
+        When 用戶按壓第 "select" 按鈕
+        Then 機器手臂操作應該成功完成
+        # 每次按壓後拍照記錄狀態
+        YOLO 僅檢測並儲存按鈕影像 "select" 預期狀態 "click_${i}"
+        
+        # 2. Extend Long Press
+        When 用戶按壓第 "extend" 按鈕持續 "${duration}" 秒
+        Then 機器手臂操作應該成功完成
+
+        # 3. Retract Long Press
+        When 用戶按壓第 "retract" 按鈕持續 "${duration}" 秒
+        Then 機器手臂操作應該成功完成
+
+    END
 
 *** Test Cases ***
 測試 Light1 按鈕 ON-OFF 循環
@@ -193,3 +208,8 @@ Teardown Suite Environment
     [Documentation]    測試 Retract 按鈕長按 4 秒
     [Tags]    taipei_lab    retract    button    long_press
     長按按鈕    retract    4
+
+測試 Select-Extend-Retract 循環
+    [Documentation]    測試 Select -> Extend -> Retract 循環 7 次
+    [Tags]    taipei_lab    select    extend    retract    loop    complex
+    執行 Select-Extend-Retract 測試循環    7

@@ -100,6 +100,7 @@ v4.0.0（新版）: Client（本機影像判定）+ Server（僅提供影像截�
 - `Given 面板類型設定為 "${panel_type}"` - 設定面板類型（3510a / 3611a / 3611c）
 - `Given TTS 引擎已設定為 "${engine}"` - 設定 TTS 引擎
 - `Given API 服務已在端點 "${endpoint}" 運行` - API 服務前置條件
+- `Given 若 YOLO 檢測到按鈕 "${button_id}" 為 "${target_state}" 則點擊喚醒` - 條件式喚醒 (若狀態符合則點擊)
 
 **When 關鍵字（執行動作）- 16 個:**
 - `When 用戶連接到機器手臂 "${host}" "${port}"` - 建立連接
@@ -130,6 +131,7 @@ v4.0.0（新版）: Client（本機影像判定）+ Server（僅提供影像截�
 - `取得關節移動統計` - 回傳每個關節的累積移動度數列表
 - `記錄關節移動統計` - 記錄統計數據到日誌
 - `重置關節移動統計` - 重置累計數據
+- `Get YOLO Detection Status` - 取得 YOLO 檢測狀態 (不拋出例外)
 
 **技術細節:**
 - **LocalVisionAnalyzer**: 本機影像分析引擎（HSV 色彩空間 + 多幀平均）

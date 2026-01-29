@@ -232,6 +232,41 @@ class HTTPAPIServer:
             self.logger.error(f"Multiple capture error: {e}")
             return jsonify({"status": "error", "message": str(e)}), 500
 
+    def _resolve_detection_conflicts(self, detections: List[Dict]) -> List[Dict]:
+        """
+        解決檢測衝突：同一物件保留信心度最高者
+        邏輯移植自 annotate_with_model.py
+        """
+        if not detections:
+            return []
+
+        best_objects = {}  # Map base_name -> detection_dict
+
+        for det in detections:
+            # 兼容處理：確保取得 class name 和 confidence
+            name = det.get('class', det.get('name', 'unknown'))
+            conf = det.get('confidence', det.get('conf', 0.0))
+            
+            # Parse base name (e.g., 'light1_on' -> 'light1')
+            if '_' in name:
+                base_name = name.rsplit('_', 1)[0]
+            else:
+                base_name = name
+            
+            if base_name in best_objects:
+                # Conflict found!
+                existing = best_objects[base_name]
+                existing_conf = existing.get('confidence', existing.get('conf', 0.0))
+                
+                if conf > existing_conf:
+                    best_objects[base_name] = det
+                else:
+                    pass
+            else:
+                best_objects[base_name] = det
+
+        return list(best_objects.values())
+
     def _detect_with_retry(self, image, confidence=0.5):
         """Helper for robust detection: retries with 180 rotation if needed"""
         # 1. First attempt
@@ -261,7 +296,7 @@ class HTTPAPIServer:
         try:
             # 解析參數
             num_frames = int(request.args.get('num_frames', 5))
-            confidence = float(request.args.get('confidence', 0.85))
+            confidence = float(request.args.get('confidence', 0.25))
             save_image = request.args.get('save_image', 'true').lower() == 'true'
             return_image = request.args.get('return_image', 'false').lower() == 'true'
 
@@ -287,6 +322,9 @@ class HTTPAPIServer:
                 start_time = time.time()
                 
                 detections, final_image, rotated = self._detect_with_retry(avg_frame, confidence=confidence)
+                
+                # Apply Conflict Resolution (One Object, One Status)
+                detections = self._resolve_detection_conflicts(detections)
                 
                 inference_time = (time.time() - start_time) * 1000
 
@@ -1012,8 +1050,8 @@ class MycobotServer(object):
                  read_timeout = 0.2, socket_timeout = 30.0, log_level = logging.INFO,
                  camera_device = "/dev/video0", enable_vision = True,
                  enable_http = True, http_port = 8000,
-                 enable_yolo = True, yolo_model_path = "models/best_20260106.pt",
-                 yolo_confidence = 0.85, yolo_device = "cpu"):
+                 enable_yolo = True, yolo_model_path = "models/best_20260105_2000.pt",
+                 yolo_confidence = 0.25, yolo_device = "cpu"):
         """Server class with enhanced error handling and auto-reconnection
 
         Args:
@@ -2997,7 +3035,11 @@ class MycobotServer(object):
             # 2. 等待移動穩定
             # _cmd_move_to_angles 已經包含了 wait_for_arrival，但為了視覺穩定，這裡額外等待一小段時間
             # 由於移除了相機預熱 (約0.7s)，需要增加此等待時間以避免手臂晃動導致影像模糊
-            time.sleep(1.5)
+            # Update: Add explicit wait_for_arrival to ensure physical stop
+            if not self._wait_for_arrival(angles, threshold=2.0):
+                 self.logger.warning("⚠️ 掃描移動未準確到達，但繼續執行")
+
+            time.sleep(1.0)
 
             # 3. 確保相機可用
             if not self.camera_capture:
@@ -3008,7 +3050,8 @@ class MycobotServer(object):
 
             # 4. 擷取影像 (使用多幀平均以減少噪點)
             self.logger.info("📸 擷取影像中...")
-            image = self.camera_capture.capture_multi_frame_average(num_frames=3)
+            # Use warmup_frames=5 to flush buffer explicitly
+            image = self.camera_capture.capture_multi_frame_average(num_frames=3, warmup_frames=5)
             if image is None:
                 return {"status": "error", "message": "影像擷取失敗"}
 

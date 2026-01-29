@@ -2199,6 +2199,153 @@ class RobotArmKeywords:
             
         logger.info(f"Verified panel light {panel_light_id} is {expected_state}")
 
+    @keyword('Then 按鈕 "${button_id}" 的狀態應為 "${expected_state}"')
+    def then_button_state_should_be(self, button_id: str, expected_state: str):
+        """
+        Then: 驗證按鈕狀態
+        Then: Verify button state using YOLO
+
+        此關鍵字會移動手臂到該按鈕的觀測位置，並使用 YOLO 辨識按鈕狀態。
+
+        Args:
+            button_id: 按鈕 ID (例如 "light1")
+            expected_state: 預期狀態 (例如 "on" 或 "off")
+
+        Examples:
+        | Then | 按鈕 "light1" 的狀態應為 "on" |
+        """
+        self._ensure_connected()
+
+        # 1. 獲取按鈕配置
+        config = self._get_button_config(button_id)
+        if "vision" not in config or "observe_angles" not in config["vision"]:
+            raise ValueError(f"按鈕 '{button_id}' 未配置觀測角度 (vision.observe_angles)")
+
+        observe_angles = config["vision"]["observe_angles"]
+        logger.info(f"YOLO 驗證: 移動到觀測角度 {observe_angles} 並執行偵測...")
+
+        # 2. 發送 scan_and_detect 指令
+        cmd = {
+            "command": "scan_and_detect",
+            "angles": observe_angles,
+            "timeout": 20.0,
+            "filename_tags": {
+                "exp": expected_state,
+                "tag": button_id
+            }
+        }
+
+        result = self._send_vision_command(cmd, timeout=30.0)
+
+        if result.get("status") != "success":
+            raise RuntimeError(f"YOLO 偵測指令失敗: {result.get('message')}")
+
+        detections = result.get("detections", [])
+
+        # 3. 驗證結果
+        # 檢查是否有任何偵測結果的 class 等於 expected_state
+        found = False
+        detected_classes = []
+        for d in detections:
+            detected_classes.append(d['class'])
+            if d['class'] == expected_state:
+                found = True
+                break
+
+        if not found:
+            raise AssertionError(f"YOLO 未檢測到按鈕 '{button_id}' 為 '{expected_state}'。檢測到的物件: {detected_classes}")
+
+        logger.info(f"✅ YOLO 成功檢測到按鈕 '{button_id}' 為 '{expected_state}'")
+
+    @keyword('And 按鈕 "${button_id}" 的狀態應為 "${expected_state}"')
+    def and_button_state_should_be(self, button_id: str, expected_state: str):
+        """And: 驗證按鈕狀態 (同 Then)"""
+        self.then_button_state_should_be(button_id, expected_state)
+
+    @keyword('Given 按鈕 "${button_id}" 的狀態應為 "${expected_state}"')
+    def given_button_state_should_be(self, button_id: str, expected_state: str):
+        """Given: 驗證按鈕狀態 (同 Then，用於前置條件檢查)"""
+        self.then_button_state_should_be(button_id, expected_state)
+
+    @keyword('Get YOLO Detection Status')
+    def get_yolo_detection_status(self, button_id: str) -> str:
+        """
+        獲取 YOLO 檢測狀態（不拋出 AssertionError，僅返回狀態）
+
+        Args:
+            button_id: 按鈕 ID
+
+        Returns:
+            str: 檢測到的主要狀態 (例如 "on", "off", "x")，若無檢測到則回傳 "none"
+        """
+        self._ensure_connected()
+
+        # 1. 取得按鈕配置
+        config = self._get_button_config(button_id)
+        if "vision" not in config or "observe_angles" not in config["vision"]:
+            raise ValueError(f"按鈕 '{button_id}' 未配置觀測角度")
+
+        observe_angles = config["vision"]["observe_angles"]
+
+        # 2. 發送 scan_and_detect 指令 (標記為 status_check)
+        cmd = {
+            "command": "scan_and_detect",
+            "angles": observe_angles,
+            "timeout": 20.0,
+            "filename_tags": {
+                "exp": "status_check",
+                "tag": button_id
+            }
+        }
+
+        try:
+            result = self._send_vision_command(cmd, timeout=30.0)
+            if result.get("status") != "success":
+                logger.warning(f"YOLO 偵測指令失敗: {result.get('message')}")
+                return "error"
+
+            detections = result.get("detections", [])
+            if not detections:
+                return "none"
+
+            # 回傳第一個檢測到的物件 class (假設只有一個主要物件，或者取信心度最高的)
+            # 這裡簡單取第一個，若有多個可能需要過濾
+            # 通常 scan_and_detect 會回傳列表 [ {class, confidence, bbox}, ... ]
+            # 為了穩定性，我們可以排序信心度
+            sorted_dets = sorted(detections, key=lambda x: x.get('confidence', 0), reverse=True)
+            top_class = sorted_dets[0]['class']
+            logger.info(f"YOLO 檢測狀態: {top_class} (信心度: {sorted_dets[0].get('confidence', 0):.2f})")
+            return top_class
+
+        except Exception as e:
+            logger.error(f"獲取 YOLO 狀態發生錯誤: {e}")
+            return "error"
+
+    @keyword('若 YOLO 檢測到按鈕 "${button_id}" 為 "${target_state}" 則點擊喚醒')
+    def given_if_yolo_detects_state_then_wakeup(self, button_id: str, target_state: str):
+        """
+        Given: 如果 YOLO 檢測到特定狀態（如 "x" 或 "off"），則執行點擊喚醒
+
+        這用於處理面板休眠的情況。如果檢測到休眠狀態 (x) 或關閉狀態 (off)，
+        可能需要多點擊一次來喚醒面板。
+
+        Args:
+            button_id: 按鈕 ID
+            target_state: 觸發喚醒的目標狀態 (例如 "x")
+        """
+        logger.info(f"檢查是否需要喚醒點擊: 當 {button_id} 為 {target_state} 時...")
+
+        current_state = self.get_yolo_detection_status(button_id)
+
+        if current_state == target_state:
+            logger.info(f"⚠️ 檢測到狀態為 '{target_state}'，執行喚醒點擊！")
+            self._press_button(button_id)
+            # 點擊後等待一下讓面板反應
+            time.sleep(1.0)
+            self._last_operation_success = True
+        else:
+            logger.info(f"當前狀態為 '{current_state}' (非 '{target_state}')，無需喚醒。")
+
 
 # 測試用例
 if __name__ == "__main__":
@@ -2277,70 +2424,3 @@ if __name__ == "__main__":
     print("  狀態: on, off")
     print()
     print("=" * 70)
-
-    @keyword('Then 按鈕 "${button_id}" 的狀態應為 "${expected_state}"')
-    def then_button_state_should_be(self, button_id: str, expected_state: str):
-        """
-        Then: 驗證按鈕狀態
-        Then: Verify button state using YOLO
-
-        此關鍵字會移動手臂到該按鈕的觀測位置，並使用 YOLO 辨識按鈕狀態。
-
-        Args:
-            button_id: 按鈕 ID (例如 "light1")
-            expected_state: 預期狀態 (例如 "on" 或 "off")
-
-        Examples:
-        | Then | 按鈕 "light1" 的狀態應為 "on" |
-        """
-        self._ensure_controller_connected()
-        
-        # 1. 獲取按鈕配置
-        config = self._get_button_config(button_id)
-        vision_config = config.get("vision")
-        
-        if not vision_config:
-            raise ValueError(f"按鈕 {button_id} 未配置視覺資訊 (vision)")
-            
-        observe_angles = vision_config.get("observe_angles")
-        if not observe_angles:
-            raise ValueError(f"按鈕 {button_id} 未配置觀測角度 (vision.observe_angles)")
-            
-        # 2. 執行掃描與偵測
-        logger.info(f"正在驗證按鈕 {button_id} 狀態，預期為: {expected_state}")
-        detections = self.controller.scan_and_detect(observe_angles)
-        
-        # 3. 分析結果
-        # 預期的標籤名稱通常是 button_id + "_" + state，例如 "light1_on"
-        # 但有時可能是其他名稱，這裡假設標準命名慣例
-        expected_label_suffix = f"_{expected_state}"
-        
-        found = False
-        detected_labels = []
-        
-        for det in detections:
-            label = det.get("class", "")
-            detected_labels.append(label)
-            
-            # 檢查標籤是否包含按鈕ID且結尾符合預期狀態
-            # 例如 label="light1_on" 符合 button_id="light1", expected_state="on"
-            if button_id in label and label.endswith(expected_label_suffix):
-                found = True
-                confidence = det.get("confidence", 0.0)
-                logger.info(f"✅ 驗證成功: 發現 {label} (信賴度: {confidence:.2f})")
-                break
-                
-        if not found:
-            error_message = f"驗證失敗: 在按鈕 {button_id} 觀測點未發現狀態為 {expected_state} 的物件。偵測到的物件: {detected_labels}"
-            logger.error(error_message)
-            raise AssertionError(error_message)
-
-    @keyword('And 按鈕 "${button_id}" 的狀態應為 "${expected_state}"')
-    def and_button_state_should_be(self, button_id: str, expected_state: str):
-        """And: 驗證按鈕狀態 (同 Then)"""
-        self.then_button_state_should_be(button_id, expected_state)
-
-    @keyword('Given 按鈕 "${button_id}" 的狀態應為 "${expected_state}"')
-    def given_button_state_should_be(self, button_id: str, expected_state: str):
-        """Given: 驗證按鈕狀態 (同 Then，用於前置條件檢查)"""
-        self.then_button_state_should_be(button_id, expected_state)
