@@ -86,7 +86,7 @@ buttons:
     type: panel_light
     environment_light: level1_light_6
     panel_section: 3611a
-    down_angles: [1.5, -59, -77, 25, 0, 159.3]
+    down_angles: [1.5, -60, -77, 25, 0, 159.3]
     up_angles: [1.5, -35, -75, 25, 0, 159.3]
     speed: 30
     count: 1
@@ -101,7 +101,7 @@ buttons:
     type: panel_light
     environment_light: level1_light_7
     panel_section: 3611a
-    down_angles: [6.6, -59.5, -77.5, 23.8, 0, 159.3]
+    down_angles: [6.6, -60, -77.5, 23.8, 0, 159.3]
     up_angles: [6.6, -35, -75.5, 23.8, 0, 159.3]
     speed: 30
     count: 1
@@ -174,7 +174,7 @@ buttons:
     environment_light: level2_light_1
     panel_section: 3611a
     down_angles: [7, -51, -93, 25, 0, 159.3]
-    up_angles: [7, -25, -93, 25, 0, 159.3]
+    up_angles: [7, -25, -91, 25, 0, 159.3]
     speed: 30
     count: 1
     lift_duration: 0.01
@@ -189,7 +189,7 @@ buttons:
     environment_light: level2_light_2
     panel_section: 3611a
     down_angles: [12, -51, -93, 23.9, 0, 159.3]
-    up_angles: [12, -25, -93, 23.9, 0, 159.3]
+    up_angles: [12, -25, -91, 23.9, 0, 159.3]
     speed: 30
     count: 2
     lift_duration: 0.01
@@ -247,8 +247,8 @@ buttons:
     type: control
     environment_light: level1_light_10
     panel_section: 3611a
-    down_angles: [-8.7, -61, -72, 17.9, 0, 159.3]
-    up_angles: [-8.7, -25, -70, 17.9, 0, 159.3]
+    down_angles: [-8.9, -61, -72, 17.9, 0, 159.3]
+    up_angles: [-8.9, -25, -70, 17.9, 0, 159.3]
     speed: 30
     count: 1
     lift_duration: 0.01

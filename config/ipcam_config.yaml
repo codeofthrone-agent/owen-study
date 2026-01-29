@@ -17,7 +17,7 @@ environments:
         port: 554
         protocol: "rtsp"
         stream_path: "/live0"  # 主串流：/live0，次串流：/live1
-        transport: "udp"       # ✨ 強制使用 UDP 傳輸 (避免 461 錯誤)
+        transport: "tcp"       # ✨ SwitchBot 建議使用 TCP 傳輸 (穩定性較佳)
         description: "Level 1 監控攝影機"
         # username 和 password 會自動從 .env 讀取 IPCAM_USERNAME 和 IPCAM_PASSWORD
 
@@ -26,7 +26,7 @@ environments:
         port: 554
         protocol: "rtsp"
         stream_path: "/live0"
-        transport: "udp"
+        transport: "tcp"
         description: "Level 2 監控攝影機"
         # username 和 password 會自動從 .env 讀取
 
@@ -35,7 +35,7 @@ environments:
         port: 554
         protocol: "rtsp"
         stream_path: "/live0"
-        transport: "udp"
+        transport: "tcp"
         description: "馬達區域監控攝影機"
         # username 和 password 會自動從 .env 讀取
 

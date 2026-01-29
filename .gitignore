@@ -60,6 +60,7 @@ report.md
 
 # Temporary files
 **/temp_audio/*.mp3
+output/debug_images/
 click_angles
 temp_test.robot
 simple_test.robot

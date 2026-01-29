@@ -1,5 +1,25 @@
 # Robot Framework 關鍵字說明文件 - Gherkin 風格 (最新更新)
 
+## 🚀 重大更新 (2026-01-29) - v5.6.0 YOLO 截圖傳送功能
+
+### ✅ YOLO 檢測結果回傳與儲存
+- **Client 端接收 YOLO 檢測圖片**
+  - 現在可以將 Server 端 YOLO 檢測的結果圖片（含標註）回傳至 Client 端並儲存。
+  - 主要用於測試失敗時的除錯分析，或蒐集特定狀態的樣本。
+  - 圖片儲存路徑: `output/debug_images/`
+
+### ✅ 關鍵字更新
+- **`Then YOLO 應該檢測到按鈕 "${button_id}" 為 "${expected_state}"`**
+  - 新增參數 `save_debug_image` (預設 False)。
+  - 設定為 True 時，會強制下載並儲存 YOLO 檢測圖片。
+  - 範例: `Then YOLO 應該檢測到按鈕 "light1" 為 "on"  save_debug_image=True`
+
+- **`YOLO 僅檢測並儲存按鈕影像 "${button_id}" 預期狀態 "${expected_state}"`**
+  - 新增關鍵字，專用於蒐集圖片而不進行驗證。
+  - 自動下載並儲存圖片，檔名包含時間戳記與預期狀態。
+  - 範例: `YOLO 僅檢測並儲存按鈕影像 "light1" 預期狀態 "off"`
+
+
 ## 🚀 重大更新 (2026-01-27) - v5.5.5 關節移動追蹤與維護分析
 
 ### ✅ 機器手臂維護分析 (Maintenance Analysis)
@@ -12,6 +32,13 @@
 - `取得關節移動統計`: 回傳 6 個關節的累積移動度數。
 - `記錄關節移動統計`: 將當前累積的與移動數據寫入測試報告。
 - `重置關節移動統計`: 清除目前的累積計數。
+
+### ✅ 系統維護 (System Maintenance)
+- **磁碟空間管理 (Disk Management)**
+  - 新增磁碟空間監控與清理功能，防止 Debug 圖片佔用過多空間。
+  - `Given 磁碟剩餘空間應大於 "${size_mb}" MB`: 檢查剩餘空間。
+  - `When 清理超過 "${days}" 天前的 Debug 圖片`: 清理舊檔案。
+  - `When 保留最新的 "${count}" 張 Debug 圖片`: 依數量限制保留檔案。
 
 ## 🚀 重大更新 (2026-01-27) - v5.5.0 RTSP 影像擷取效能優化 (最終版)
 

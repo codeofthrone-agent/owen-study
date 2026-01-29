@@ -963,7 +963,7 @@ class RobotArmKeywords:
                 roi_config=light_config["roi"],
                 image_source_config=image_source_config,
                 num_frames=5,
-                warmup_frames=20,
+                warmup_frames=60,
                 save_debug_images=save_debug_image,  # 根據參數決定是否儲存除錯影像
                 step_prefix=step_prefix,  # 傳遞步驟前綴
                 bright_threshold=bright_threshold,  # 傳遞 YAML 配置的亮閾值
@@ -1705,7 +1705,7 @@ class RobotArmKeywords:
         return True
 
     @keyword('YOLO 應該檢測到按鈕 "${button_id}" 為 "${expected_state}"')
-    def then_yolo_should_detect_button_state(self, button_id: str, expected_state: str, confidence_threshold: float = 0.5):
+    def then_yolo_should_detect_button_state(self, button_id: str, expected_state: str, confidence_threshold: float = 0.5, save_debug_image: bool = False):
         """
         YOLO 應該檢測到按鈕為指定狀態
         (支援 Given/When/Then/And 前綴)
@@ -1719,10 +1719,11 @@ class RobotArmKeywords:
             button_id: 按鈕 ID (例如 "light1")
             expected_state: 預期狀態 ("on", "off", "x")
             confidence_threshold: 信心度閾值 (預設 0.5)
+            save_debug_image: 是否將偵測影像傳回並儲存於本機 (預設 False)
 
         Examples:
             | Given | YOLO 應該檢測到按鈕 "light1" 為 "x" |
-            | Then  | YOLO 應該檢測到按鈕 "light1" 為 "on" |
+            | Then  | YOLO 應該檢測到按鈕 "light1" 為 "on" | save_debug_image=True |
 
         Raises:
             AssertionError: 如果未檢測到符合的物件
@@ -1746,13 +1747,65 @@ class RobotArmKeywords:
             "filename_tags": {
                 "exp": expected_state,
                 "tag": button_id
-            }
+            },
+            "return_image": save_debug_image  # 請求 Server 回傳圖片
         }
         
         result = self._send_vision_command(cmd, timeout=30.0)
         
         if result.get("status") != "success":
             raise RuntimeError(f"YOLO 偵測指令失敗: {result.get('message')}")
+            
+        # 處理回傳圖片
+        if save_debug_image:
+             self._save_returned_yolo_image(result, button_id, prefix="yolo_valid")
+
+        detections = result.get("detections", [])
+
+        # 3. 驗證結果
+        # 檢查是否有任何偵測結果的 class 等於 expected_state
+        found = False
+        detected_classes = []
+        for d in detections:
+            detected_classes.append(d['class'])
+            if d['class'] == expected_state:
+                found = True
+                break
+
+        if not found:
+            raise AssertionError(f"YOLO 未檢測到按鈕 '{button_id}' 為 '{expected_state}'。檢測到的物件: {detected_classes}")
+
+        logger.info(f"✅ YOLO 成功檢測到按鈕 '{button_id}' 為 '{expected_state}'")
+
+    def _save_returned_yolo_image(self, result: dict, tag: str, prefix: str = "yolo"):
+        """(Internal) 儲存 Server 回傳的 YOLO 截圖"""
+        try:
+            import base64
+            import numpy as np
+            import cv2
+            from pathlib import Path
+            from datetime import datetime
+            
+            # 優先儲存標註圖，如果沒有則儲存原圖
+            img_b64 = result.get("annotated_image_base64") or result.get("image_base64")
+            
+            if img_b64:
+                img_data = base64.b64decode(img_b64)
+                nparr = np.frombuffer(img_data, np.uint8)
+                img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                
+                if img is not None:
+                    debug_dir = Path("output/debug_images")
+                    debug_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                    filename = f"{prefix}_{tag}_{timestamp}.jpg"
+                    filepath = debug_dir / filename
+                    
+                    cv2.imwrite(str(filepath), img)
+                    logger.info(f"📷 YOLO 截圖已儲存到本機: {filepath}")
+        except Exception as e:
+            logger.warning(f"儲存 YOLO 回傳圖片失敗: {e}")
     @keyword('YOLO 僅檢測並儲存按鈕影像 "${button_id}" 預期狀態 "${expected_state}"')
     def then_yolo_only_detect_and_save_image(self, button_id: str, expected_state: str):
         """
@@ -1782,7 +1835,8 @@ class RobotArmKeywords:
             "filename_tags": {
                 "exp": expected_state,
                 "tag": button_id
-            }
+            },
+            "return_image": True  # 強制回傳圖片
         }
         
         result = self._send_vision_command(cmd, timeout=30.0)
@@ -1790,6 +1844,9 @@ class RobotArmKeywords:
         if result.get("status") != "success":
             logger.warning(f"YOLO 偵測指令回傳失敗: {result.get('message')}")
             return
+
+        # 儲存回傳的圖片到本機
+        self._save_returned_yolo_image(result, button_id, prefix="yolo_audit")
 
         server_image_path = result.get("image_path", "")
         detections = result.get("detections", [])

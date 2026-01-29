@@ -5,6 +5,12 @@ MyCobot Socket Controller - MyCobot 280 Socket 控制核心
 
 import time
 import json
+import base64
+import os
+from pathlib import Path
+from datetime import datetime
+import cv2
+import numpy as np
 from typing import List, Optional, Dict, Any
 from loguru import logger
 
@@ -678,13 +684,14 @@ if __name__ == "__main__":
         print(f"❌ 未預期的錯誤: {e}")
         import traceback
         traceback.print_exc()
-    def scan_and_detect(self, angles: List[float], speed: int = 50) -> List[Dict[str, Any]]:
+    def scan_and_detect(self, angles: List[float], speed: int = 50, save_debug_image: bool = False) -> List[Dict[str, Any]]:
         """
         發送指令：移動到指定角度並執行 YOLO 偵測
 
         Args:
             angles: 6 個關節角度 [j1, j2, j3, j4, j5, j6]
             speed: 移動速度 (1-100)
+            save_debug_image: 是否將偵測結果截圖傳回並儲存於本機 (output/debug_images)
 
         Returns:
             List[Dict]: 偵測到的物件列表，每個物件包含 class, confidence, box 等資訊
@@ -695,7 +702,8 @@ if __name__ == "__main__":
         cmd = {
             "command": "scan_and_detect",
             "angles": angles,
-            "speed": speed
+            "speed": speed,
+            "return_image": save_debug_image  # 請求 Server 回傳圖片 Base64
         }
         
         logger.info(f"發送掃描與偵測指令，目標角度: {angles}")
@@ -704,6 +712,28 @@ if __name__ == "__main__":
         if response.get("status") == "success":
             detections = response.get("detections", [])
             logger.info(f"掃描完成，偵測到 {len(detections)} 個物件")
+            
+            # 處理回傳圖片
+            if save_debug_image and "annotated_image_base64" in response:
+                try:
+                    img_data = base64.b64decode(response["annotated_image_base64"])
+                    nparr = np.frombuffer(img_data, np.uint8)
+                    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                    
+                    if img is not None:
+                        # 儲存到 logs/debug_images
+                        debug_dir = Path("output/debug_images")
+                        debug_dir.mkdir(parents=True, exist_ok=True)
+                        
+                        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                        filename = f"scan_and_detect_{timestamp}.jpg"
+                        filepath = debug_dir / filename
+                        
+                        cv2.imwrite(str(filepath), img)
+                        logger.info(f"📷 偵測結果截圖已儲存: {filepath}")
+                except Exception as e:
+                    logger.warning(f"儲存回傳圖片失敗: {e}")
+
             return detections
         else:
             error_msg = response.get("message", "未知錯誤")

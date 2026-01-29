@@ -1522,7 +1522,7 @@ def main():
     print("🚀 Web 伺服器已啟動")
     print("=" * 60)
     print()
-    print(f"📍 請在瀏覽器中開啟: http://localhost:{args.web_port}")
+    print(f"📍 請在瀏覽器中開啟: http://localhost:{args.web_port} (若被佔用會自動遞增)")
     print(f"🌐 或從其他設備訪問: http://{get_local_ip()}:{args.web_port}")
     print()
     print("功能說明：")
@@ -1539,10 +1539,28 @@ def main():
     print("=" * 60)
     print()
 
+    # 自動尋找可用連接埠
     try:
-        app.run(host='0.0.0.0', port=args.web_port, debug=False)
-    except KeyboardInterrupt:
-        print("\n\n⏹️  伺服器已停止")
+        start_port = args.web_port
+        max_ports_to_try = 10
+        selected_port = None
+
+        # 先找到可用的端口
+        for port in range(start_port, start_port + max_ports_to_try):
+            if is_port_available(port):
+                selected_port = port
+                break
+            else:
+                print(f"⚠️  Port {port} 已被佔用，嘗試下一個 port...")
+
+        if selected_port is None:
+            print(f"❌ 無法找到可用連接埠 (嘗試範圍: {start_port}-{start_port + max_ports_to_try - 1})")
+        else:
+            print(f"✅ 啟動伺服器於 port {selected_port}...")
+            print(f"📍 請在瀏覽器中開啟: http://localhost:{selected_port}")
+            print(f"🌐 或從其他設備訪問: http://{get_local_ip()}:{selected_port}")
+            print()
+            app.run(host='0.0.0.0', port=selected_port, debug=False)
     finally:
         if global_client:
             global_client.disconnect()
@@ -1561,6 +1579,17 @@ def get_local_ip():
         return ip
     except:
         return "localhost"
+
+
+def is_port_available(port: int) -> bool:
+    """檢查端口是否可用"""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind(('0.0.0.0', port))
+            return True
+    except OSError:
+        return False
 
 
 if __name__ == "__main__":

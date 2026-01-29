@@ -59,7 +59,7 @@ Enhanced features:
 
 has_return = [0x01,0x02,0x03,0x04,0x09,0x12, 0x14, 0x15, 0x17,0x1B, 0x20,0x23, 0x27, 0x2A,0x2B,0x2D,0x2E, 0x3B,0x3D, 0x40,0x42,0x43,0x44,0x4A, 0x4B,0x50,0x51,0x53,0x62,0x65,0x69,0x90,0x91,0x92,0xC0, 0xC3,0x82,0x84,0x86,0x88,0x8A,0xD0,0xD1,0xD5,0xE1,0xE2,0xE3,0xE4,0xE5,0XE6, 0xB0]
 
-SERVER_VERSION = "v5.5.5"
+SERVER_VERSION = "v5.6.0"
 
 
 # ==================== HTTP API Server (v4.2.0) ====================
@@ -71,7 +71,7 @@ SERVER_VERSION = "v5.5.5"
 # - GET  /api/v1/capture/multiple     - 多張影像截取
 
 class HTTPAPIServer:
-    """HTTP API Server (v4.4.0) - Flask Implementation with YOLO + STag ROI support"""
+    """HTTP API Server (v5.6.0) - Flask Implementation with YOLO + STag ROI support"""
 
     def __init__(self, host, port, camera_capture, camera_lock, logger, yolo_detector=None, stag_detector=None):
         self.host = host
@@ -137,7 +137,7 @@ class HTTPAPIServer:
     def health(self):
         return jsonify({
             "status": "healthy",
-            "version": "4.4.0",
+            "version": "5.6.0",
             "services": {
                 "vision": self.camera_capture is not None
             }
@@ -1050,7 +1050,7 @@ class MycobotServer(object):
                  read_timeout = 0.2, socket_timeout = 30.0, log_level = logging.INFO,
                  camera_device = "/dev/video0", enable_vision = True,
                  enable_http = True, http_port = 8000,
-                 enable_yolo = True, yolo_model_path = "models/best_20260105_2000.pt",
+                 enable_yolo = True, yolo_model_path = "models/best.pt",
                  yolo_confidence = 0.25, yolo_device = "cpu"):
         """Server class with enhanced error handling and auto-reconnection
 
@@ -3095,92 +3095,128 @@ class MycobotServer(object):
                 det_details = ", ".join([f"{d['class']}({d['confidence']:.2f})" for d in formatted_detections])
                 self.logger.info(f"📋 偵測詳細結果: [{det_details}]")
             
-            # Save debug image for verification
-            try:
-                debug_dir = os.path.join(os.getcwd(), "logs", "yolo_debug")
-                os.makedirs(debug_dir, exist_ok=True)
-                
-                # Check disk space before saving
-                if not self.disk_manager.check_disk_space(debug_dir, min_free_mb=500.0):
-                    self.logger.warning("⚠️ 磁碟空間不足，跳過儲存除錯影像")
-                    filepath = ""
-                else:
-                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+            # Save debug image and handle return_image
+            filepath = ""
+            image_base64 = None
+            annotated_image_base64 = None
+            
+            # Determine which image to use (rotated or original)
+            final_image = rotated_image if (rotated and 'rotated_image' in locals()) else image
+            
+            # 1. Image Return (Base64)
+            if cmd.get("return_image", False):
+                try:
+                    import base64
+                    # 原始圖 Base64
+                    _, buffer = cv2.imencode('.jpg', final_image)
+                    image_base64 = base64.b64encode(buffer).decode('utf-8')
                     
-                    # Custom filename logic if tags provided
-                    filename_tags = cmd.get("filename_tags")
-                    if filename_tags:
-                        exp = filename_tags.get("exp", "unknown")
-                        tag = filename_tags.get("tag", "")
-                        
-                        # Find actual status using tag (simple substring match)
-                        act = "none"
-                        if tag:
-                            # Search for tag in detection classes (e.g. "light1" in "light1_on")
-                            for d in formatted_detections:
-                                if tag.lower() in d['class'].lower():
-                                    act = d['class']
-                                    break
-                        
-                        # Requested format: scan_TIMESTAMP_[tag]_exp-[status]_act-[status].jpg
-                        # e.g. scan_20260122_144852_light1_exp-on_act-off.jpg
-                        filename = f"scan_{timestamp}_{tag}_exp-{exp}_act-{act}.jpg"
-                    else:
-                        filename = f"scan_{timestamp}.jpg"
-                    
-                    filepath = os.path.join(debug_dir, filename)
-                    
-                    # Also save raw image
-                    filename_raw = filename.replace(".jpg", "_raw.jpg")
-                    filepath_raw = os.path.join(debug_dir, filename_raw)
-                    
-                    # Use the appropriate image (rotated if applicable)
-                    save_img = rotated_image if (rotated and 'rotated_image' in locals()) else image
-                    
-                    # Save raw image first
-                    cv2.imwrite(filepath_raw, save_img)
-                    self.logger.info(f"💾 儲存原始影像: {filepath_raw}")
-                    
-                    # Draw detections on image for annotated version
-                    debug_img = save_img.copy()
+                    # 標註圖 Base64
+                    annotated_img_mem = final_image.copy()
                     for det in formatted_detections:
-                        box = det.get("box")
-                        label = f"{det['class']} {det['confidence']:.2f}"
-                        if box:
+                         box = det.get("box")
+                         if box:
                             try:
                                 if isinstance(box, dict):
-                                    x = int(box.get('x', 0))
-                                    y = int(box.get('y', 0))
-                                    w = int(box.get('w', 0) or box.get('width', 0))
-                                    h = int(box.get('h', 0) or box.get('height', 0))
+                                    x, y, w, h = int(box.get('x', 0)), int(box.get('y', 0)), int(box.get('w', 0)), int(box.get('h', 0))
                                 else:
-                                    x, y, w, h = [int(float(v)) for v in box] # Use float then int to be safe
-                                
-                                cv2.rectangle(debug_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                                cv2.putText(debug_img, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                            except Exception as e:
-                                self.logger.warning(f"⚠️ 無法繪製邊框: {e}, box data: {box}")
-                    
-                    cv2.imwrite(filepath, debug_img)
-                    
-                    # Log detection details (Requested by user)
-                    det_str = ", ".join([f"{d['class']}({d['confidence']:.2f})" for d in formatted_detections])
-                    self.logger.info(f"💾 儲存偵測除錯影像: {filepath} | 偵測結果: [{det_str}]")
-                    
-                    # Trigger disk cleanup after successful save
-                    # Max 1GB (1000MB) or 5000 files
-                    self.disk_manager.cleanup_old_files(debug_dir, max_size_mb=1000.0, max_files=5000)
+                                    x, y, w, h = [int(float(v)) for v in box]
+                                cv2.rectangle(annotated_img_mem, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                            except: pass
+                            
+                    _, buffer = cv2.imencode('.jpg', annotated_img_mem)
+                    annotated_image_base64 = base64.b64encode(buffer).decode('utf-8')
+                except Exception as e:
+                    self.logger.warning(f"Base64 encoding failed: {e}")
 
-            except Exception as e:
-                self.logger.error(f"⚠️ 儲存除錯影像失敗: {e}")
-                filepath = ""
+            # 2. Save Debug Image (Local)
+            if cmd.get("save_image", True):
+                try:
+                    debug_dir = os.path.join(os.getcwd(), "logs", "yolo_debug")
+                    os.makedirs(debug_dir, exist_ok=True)
+                    
+                    # Check disk space before saving
+                    if not self.disk_manager.check_disk_space(debug_dir, min_free_mb=500.0):
+                        self.logger.warning("⚠️ 磁碟空間不足，跳過儲存除錯影像")
+                    else:
+                        timestamp = time.strftime("%Y%m%d_%H%M%S")
+                        
+                        # Custom filename logic if tags provided
+                        filename_tags = cmd.get("filename_tags")
+                        if filename_tags:
+                            exp = filename_tags.get("exp", "unknown")
+                            tag = filename_tags.get("tag", "")
+                            
+                            # Find actual status using tag (simple substring match)
+                            act = "none"
+                            if tag:
+                                # Search for tag in detection classes (e.g. "light1" in "light1_on")
+                                for d in formatted_detections:
+                                    if tag.lower() in d['class'].lower():
+                                        act = d['class']
+                                        break
+                            
+                            # Requested format: scan_TIMESTAMP_[tag]_exp-[status]_act-[status].jpg
+                            filename = f"scan_{timestamp}_{tag}_exp-{exp}_act-{act}.jpg"
+                        else:
+                            filename = f"scan_{timestamp}.jpg"
+                        
+                        filepath = os.path.join(debug_dir, filename)
+                        
+                        # Also save raw image
+                        filename_raw = filename.replace(".jpg", "_raw.jpg")
+                        filepath_raw = os.path.join(debug_dir, filename_raw)
+                        
+                        # Save raw image first
+                        cv2.imwrite(filepath_raw, final_image)
+                        self.logger.info(f"💾 儲存原始影像: {filepath_raw}")
+                        
+                        # Draw detections on image for annotated version
+                        debug_img = final_image.copy()
+                        for det in formatted_detections:
+                            box = det.get("box")
+                            label = f"{det['class']} {det['confidence']:.2f}"
+                            if box:
+                                try:
+                                    if isinstance(box, dict):
+                                        x = int(box.get('x', 0))
+                                        y = int(box.get('y', 0))
+                                        w = int(box.get('w', 0) or box.get('width', 0))
+                                        h = int(box.get('h', 0) or box.get('height', 0))
+                                    else:
+                                        x, y, w, h = [int(float(v)) for v in box] # Use float then int to be safe
+                                    
+                                    cv2.rectangle(debug_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                                    cv2.putText(debug_img, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                                except Exception as e:
+                                    self.logger.warning(f"⚠️ 無法繪製邊框: {e}, box data: {box}")
+                        
+                        cv2.imwrite(filepath, debug_img)
+                        
+                        # Log detection details (Requested by user)
+                        det_str = ", ".join([f"{d['class']}({d['confidence']:.2f})" for d in formatted_detections])
+                        self.logger.info(f"💾 儲存偵測除錯影像: {filepath} | 偵測結果: [{det_str}]")
+                        
+                        # Trigger disk cleanup after successful save
+                        # Max 1GB (1000MB) or 5000 files
+                        self.disk_manager.cleanup_old_files(debug_dir, max_size_mb=1000.0, max_files=5000)
 
-            return {
+                except Exception as e:
+                    self.logger.error(f"⚠️ 儲存除錯影像失敗: {e}")
+                    filepath = ""
+
+            result = {
                 "status": "success",
                 "detections": formatted_detections,
                 "moved": True,
                 "image_path": filepath
             }
+            if image_base64:
+                result["image_base64"] = image_base64
+            if annotated_image_base64:
+                result["annotated_image_base64"] = annotated_image_base64
+                
+            return result
 
         except Exception as e:
             self.logger.error(f"scan_and_detect 失敗: {e}")
