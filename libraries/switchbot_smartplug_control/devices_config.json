@@ -1,5 +1,5 @@
 {
-  "last_updated": "2025-06-23 16:11:37",
+  "last_updated": "2026-02-02 16:50:14",
   "devices": [
     {
       "deviceId": "3C84279C35E2",
@@ -7,8 +7,71 @@
       "deviceType": "Plug Mini (US)",
       "enableCloudService": true,
       "hubDeviceId": ""
+    },
+    {
+      "deviceId": "B0E9FE00E17F",
+      "deviceName": "Camera 2",
+      "deviceType": "Pan/Tilt Cam Plus 3K",
+      "enableCloudService": true,
+      "hubDeviceId": ""
+    },
+    {
+      "deviceId": "B0E9FE00E194",
+      "deviceName": "Level1",
+      "deviceType": "Pan/Tilt Cam Plus 3K",
+      "enableCloudService": true,
+      "hubDeviceId": ""
+    },
+    {
+      "deviceId": "B0E9FE00E1A8",
+      "deviceName": "Panel",
+      "deviceType": "Pan/Tilt Cam Plus 3K",
+      "enableCloudService": true,
+      "hubDeviceId": ""
+    },
+    {
+      "deviceId": "B0E9FE00E1CC",
+      "deviceName": "4F",
+      "deviceType": "Pan/Tilt Cam Plus 3K",
+      "enableCloudService": true,
+      "hubDeviceId": ""
+    },
+    {
+      "deviceId": "B0E9FE00E1DC",
+      "deviceName": "Camera 3",
+      "deviceType": "Pan/Tilt Cam Plus 3K",
+      "enableCloudService": true,
+      "hubDeviceId": ""
+    },
+    {
+      "deviceId": "B0E9FE019CE9",
+      "deviceName": "Level2",
+      "deviceType": "Pan/Tilt Cam Plus 3K",
+      "enableCloudService": true,
+      "hubDeviceId": ""
+    },
+    {
+      "deviceId": "B0E9FE01FCFC",
+      "deviceName": "Motor",
+      "deviceType": "Pan/Tilt Cam Plus 3K",
+      "enableCloudService": true,
+      "hubDeviceId": ""
+    },
+    {
+      "deviceId": "B0E9FE01FD2E",
+      "deviceName": "Camera 1",
+      "deviceType": "Pan/Tilt Cam Plus 3K",
+      "enableCloudService": true,
+      "hubDeviceId": ""
+    },
+    {
+      "deviceId": "B0E9FE02067C",
+      "deviceName": "Motorfix",
+      "deviceType": "Pan/Tilt Cam Plus 3K",
+      "enableCloudService": true,
+      "hubDeviceId": ""
     }
   ],
   "infrared_devices": [],
-  "total_count": 1
+  "total_count": 10
 }

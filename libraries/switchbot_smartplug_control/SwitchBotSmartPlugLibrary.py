@@ -12,6 +12,7 @@ import base64
 import time
 import json
 import logging
+import uuid
 from typing import Dict, Any, Optional, Union, List
 from pathlib import Path
 from datetime import datetime
@@ -29,13 +30,13 @@ except ImportError:
             return func
         return decorator
 
-# 外部依賴
+# 外部依賴 - 只需要 requests，不需要第三方 SDK
 try:
     import requests
-    SWITCHBOT_AVAILABLE = True
+    REQUESTS_AVAILABLE = True
 except ImportError:
-    SWITCHBOT_AVAILABLE = False
-    print("警告: requests 套件未安裝，請執行 'pipenv install requests'")
+    REQUESTS_AVAILABLE = False
+    print("警告: requests 套件未安裝，請執行 'pip install requests'")
 
 # 內部模組匯入 - 處理相對/絕對匯入
 try:
@@ -120,13 +121,13 @@ class SwitchBotSmartPlugLibrary:
         # 初始化變數
         self.token = None
         self.secret = None
-        self.client = None
         self.devices_cache = {}
         self.last_device_scan = None
-        
+        self.api_base_url = "https://api.switch-bot.com/v1.1"
+
         # 從統一配置載入設定
         self._load_config()
-        
+
         self.logger.info("SwitchBot 智慧插座控制庫初始化完成")
     
     def _setup_logging(self):
@@ -158,72 +159,152 @@ class SwitchBotSmartPlugLibrary:
         self.logger.info("SwitchBot 智慧插座日誌系統啟動")
     
     def _load_config(self):
-        """從統一配置系統載入設定"""
+        """
+        統一載入配置邏輯
+
+        載入順序：
+        1. 先從 .env 檔案載入環境變數
+        2. 若統一配置系統可用，嘗試讀取並覆蓋
+        3. 最後驗證認證資訊是否完整
+        """
+        # 1. 先從 .env 載入環境變數
+        self._load_env_config()
+
+        # 2. 如果統一配置系統可用，嘗試讀取並覆蓋
         if CONFIG_AVAILABLE:
-            # 使用統一配置系統
-            self.token = SWITCHBOT_CREDENTIALS.get('token')
-            self.secret = SWITCHBOT_CREDENTIALS.get('secret')
-            
-            if self.token and self.secret:
-                self.logger.info("從統一配置系統載入 SwitchBot 認證資訊")
-                self._initialize_client()
+            config_token = SWITCHBOT_CREDENTIALS.get('token')
+            config_secret = SWITCHBOT_CREDENTIALS.get('secret')
+
+            if config_token and config_secret:
+                self.token = config_token
+                self.secret = config_secret
+                self.logger.info("已從統一配置系統覆蓋認證資訊")
             else:
                 validation = validate_switchbot_config()
                 if not validation['valid']:
-                    self.logger.warning(f"配置驗證失敗: {', '.join(validation['errors'])}")
+                    self.logger.warning(f"配置驗證提示: {', '.join(validation['errors'])}")
+
+        # 3. 最後確認認證資訊是否完整
+        if self.token and self.secret:
+            self.logger.info("SwitchBot 認證資訊載入成功")
         else:
-            # 回退到環境變數
-            self._load_env_config()
-    
+            self.logger.error("錯誤：找不到任何有效的 SwitchBot 認證資訊 (.env 或 Config)")
+
     def _load_env_config(self):
-        """從環境變數或 .env 檔案載入配置 (回退方案)"""
+        """
+        從環境變數或 .env 檔案載入配置
+
+        使用相對路徑動態偵測 .env 檔案位置
+        """
         try:
             from dotenv import load_dotenv
-            load_dotenv()
+
+            # 取得目前這隻檔案的絕對路徑
+            current_file_path = os.path.abspath(__file__)
+            # 取得該檔案所在的目錄 (libraries/switchbot_smartplug_control)
+            current_dir = os.path.dirname(current_file_path)
+            # 往上跳兩層回到專案根目錄
+            env_path = os.path.normpath(os.path.join(current_dir, "../../.env"))
+
+            if os.path.exists(env_path):
+                load_dotenv(dotenv_path=env_path)
+                self.logger.info(f"成功從動態路徑載入環境變數: {env_path}")
+            else:
+                self.logger.warning(f"找不到 .env 檔案: {env_path}，將嘗試讀取系統環境變數")
+
         except ImportError:
-            pass
-        
+            self.logger.warning("未安裝 python-dotenv，無法讀取 .env 檔案")
+
         self.token = os.getenv('TOKEN') or os.getenv('SWITCHBOT_TOKEN')
         self.secret = os.getenv('SECRET') or os.getenv('SWITCHBOT_SECRET')
-        
+
         if self.token and self.secret:
-            self.logger.info("從環境變數載入 SwitchBot 認證資訊")
-            self._initialize_client()
-    
-    def _initialize_client(self):
-        """初始化 SwitchBot 客戶端"""
-        try:
-            if not SWITCHBOT_AVAILABLE:
-                raise ImportError("SwitchBot 套件未安裝")
-            
-            self.client = SwitchBot(token=self.token, secret=self.secret)
-            self.logger.info("SwitchBot 客戶端初始化成功")
-            return True
-        except Exception as e:
-            self.logger.error(f"SwitchBot 客戶端初始化失敗: {e}")
-            return False
-    
-    def _get_sign(self, token: str, secret: str, nonce: int) -> str:
+            self.logger.info("SwitchBot 認證資訊從環境變數載入成功")
+
+    def _get_auth_headers(self) -> Dict[str, str]:
         """
-        產生 SwitchBot API 簽名
-        
-        Args:
-            token: SwitchBot API Token
-            secret: SwitchBot API Secret
-            nonce: 時間戳記
-            
+        產生 SwitchBot API v1.1 認證 Header
+
+        根據官方文檔實作 HMAC-SHA256 簽名算法：
+        https://github.com/OpenWonderLabs/SwitchBotAPI
+
+        簽名公式: HMAC-SHA256(secret, token + t + nonce)
+
         Returns:
-            Base64 編碼的簽名字串
+            Dict[str, str]: 包含認證資訊的 HTTP Header
+
+        Raises:
+            ValueError: 當 token 或 secret 未設定時
         """
-        string_to_sign = f'{token}{int(nonce)}'.encode('utf-8')
-        signature = base64.b64encode(
+        if not self.token or not self.secret:
+            raise ValueError("SwitchBot 認證資訊未設定，請先設定 token 和 secret")
+
+        t = int(time.time() * 1000)
+        nonce = str(uuid.uuid4())
+
+        # 嚴格遵循官方公式: token + t + nonce
+        string_to_sign = f'{self.token}{t}{nonce}'
+
+        # HMAC-SHA256 加密
+        sign = base64.b64encode(
             hmac.new(
-                secret.encode('utf-8'), 
-                msg=string_to_sign, 
+                self.secret.encode('utf-8'),
+                msg=string_to_sign.encode('utf-8'),
                 digestmod=hashlib.sha256
             ).digest()
-        )
-        return signature.decode('utf-8')
+        ).decode('utf-8')
+
+        return {
+            "Authorization": self.token,
+            "sign": sign,
+            "nonce": nonce,
+            "t": str(t),
+            "Content-Type": "application/json; charset=utf8"
+        }
+
+    def _send_command(self, device_id: str, command: str, parameter: str = "default") -> bool:
+        """
+        發送控制指令到 SwitchBot API
+
+        Args:
+            device_id: 設備 ID
+            command: 指令名稱 (如 "turnOn", "turnOff", "toggle")
+            parameter: 指令參數，預設為 "default"
+
+        Returns:
+            bool: 操作是否成功
+        """
+        try:
+            url = f"{self.api_base_url}/devices/{device_id}/commands"
+            headers = self._get_auth_headers()
+
+            payload = {
+                "command": command,
+                "parameter": parameter,
+                "commandType": "command"
+            }
+
+            self.logger.debug(f"正在對設備 {device_id} 發送指令: {command}")
+            response = requests.post(url, headers=headers, json=payload, timeout=15)
+
+            # 確保 HTTP 請求成功
+            response.raise_for_status()
+            result = response.json()
+
+            if result.get("statusCode") == 100:
+                self.logger.info(f"設備 {device_id} 指令 {command} 執行成功")
+                return True
+            else:
+                error_msg = f"API 業務失敗 (Code {result.get('statusCode')}): {result.get('message')}"
+                self.logger.error(error_msg)
+                return False
+
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"發送指令網路錯誤: {str(e)}")
+            return False
+        except Exception as e:
+            self.logger.error(f"發送指令出錯: {str(e)}")
+            return False
     
     # === Robot Framework Keywords ===
     
@@ -231,31 +312,35 @@ class SwitchBotSmartPlugLibrary:
     def set_switchbot_credentials(self, token: str, secret: str) -> bool:
         """
         設定 SwitchBot API 認證資訊
-        
+
         設定 SwitchBot API 的 Token 和 Secret，用於後續的設備控制操作
-        
+
         Args:
             token: SwitchBot API Token
             secret: SwitchBot API Secret
-            
+
         Returns:
             bool: 設定是否成功
-            
+
         Example:
         | 設定SwitchBot認證資訊 | ${TOKEN} | ${SECRET} |
         """
         try:
             self.token = token
             self.secret = secret
-            
-            if self._initialize_client():
+
+            # 驗證認證資訊是否有效（嘗試取得設備清單）
+            self.logger.info("正在驗證 SwitchBot 認證資訊...")
+            devices = self.get_all_devices(force_refresh=True)
+
+            if devices is not None:
                 self.logger.info("SwitchBot 認證資訊設定成功")
                 if ROBOT_AVAILABLE:
                     robot_logger.info("SwitchBot 認證資訊設定成功")
                 return True
             else:
-                raise Exception("客戶端初始化失敗")
-                
+                raise Exception("認證驗證失敗")
+
         except Exception as e:
             error_msg = f"設定 SwitchBot 認證資訊失敗: {e}"
             self.logger.error(error_msg)
@@ -267,69 +352,68 @@ class SwitchBotSmartPlugLibrary:
     def get_all_devices(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
         """
         取得所有 SwitchBot 設備清單
-        
+
         獲取與帳戶關聯的所有 SwitchBot 設備資訊，包括設備 ID、名稱、類型等
-        
+
         Args:
             force_refresh: 是否強制重新掃描設備（預設 False）
-            
+
         Returns:
             List[Dict]: 設備清單，每個設備包含 deviceId, deviceName, deviceType 等資訊
-            
+
         Example:
         | ${devices} | 取得所有SwitchBot設備清單 |
         | ${devices} | 取得所有SwitchBot設備清單 | force_refresh=True |
         """
         try:
-            if not self.client:
-                raise Exception("SwitchBot 客戶端尚未初始化，請先設定認證資訊")
-            
             # 檢查快取
             current_time = time.time()
-            if (not force_refresh and 
-                self.devices_cache and 
-                self.last_device_scan and 
+            if (not force_refresh and
+                self.devices_cache and
+                self.last_device_scan and
                 (current_time - self.last_device_scan) < 300):  # 5分鐘快取
                 self.logger.info("使用快取的設備清單")
                 return self.devices_cache.get('devices', [])
-            
-            # 使用直接 API 呼叫以獲得更好的控制
-            url = "https://api.switch-bot.com/v1.1/devices"
-            t = int(time.time() * 1000)
-            sign = self._get_sign(self.token, self.secret, t)
-            
-            headers = {
-                "Authorization": self.token,
-                "sign": sign,
-                "nonce": str(t),
-                "t": str(t),
-                "Content-Type": "application/json; charset=utf8"
-            }
-            
-            response = requests.get(url, headers=headers)
+
+            # 使用統一的認證 Header 產生器
+            url = f"{self.api_base_url}/devices"
+            headers = self._get_auth_headers()
+
+            self.logger.debug("正在發送 API 請求取得設備清單...")
+            response = requests.get(url, headers=headers, timeout=10)
+
+            # 檢查 HTTP 狀態碼
+            response.raise_for_status()
             result = response.json()
-            
+
             if result.get("statusCode") == 100:
                 devices = result.get("body", {}).get("deviceList", [])
                 infrared_devices = result.get("body", {}).get("infraredRemoteList", [])
-                
+
                 all_devices = devices + infrared_devices
-                
+
                 # 更新快取
                 self.devices_cache = {'devices': all_devices}
                 self.last_device_scan = current_time
-                
+
                 self.logger.info(f"成功取得 {len(all_devices)} 個設備")
                 if ROBOT_AVAILABLE:
                     robot_logger.info(f"找到 {len(all_devices)} 個 SwitchBot 設備")
-                
+
                 return all_devices
             else:
-                error_msg = f"API 錯誤: {result.get('message', '未知錯誤')}"
+                error_msg = f"API 業務邏輯錯誤: {result.get('message', '未知錯誤')}"
+                self.logger.error(error_msg)
                 raise Exception(error_msg)
-                
+
+        except requests.exceptions.RequestException as e:
+            error_msg = f"取得設備清單網路錯誤: {str(e)}"
+            self.logger.error(error_msg)
+            if ROBOT_AVAILABLE:
+                robot_logger.error(error_msg)
+            return []
         except Exception as e:
-            error_msg = f"取得設備清單失敗: {e}"
+            error_msg = f"取得設備清單失敗: {str(e)}"
             self.logger.error(error_msg)
             if ROBOT_AVAILABLE:
                 robot_logger.error(error_msg)
@@ -375,107 +459,110 @@ class SwitchBotSmartPlugLibrary:
     def turn_on_smart_plug(self, device_id: str) -> bool:
         """
         開啟智慧插座
-        
+
         將指定的智慧插座設定為開啟狀態
-        
+
         Args:
             device_id: 智慧插座設備 ID
-            
+
         Returns:
             bool: 操作是否成功
-            
+
         Example:
         | 當開啟智慧插座 | ${DEVICE_ID} |
         """
         try:
-            if not self.client:
-                raise Exception("SwitchBot 客戶端尚未初始化")
-            
-            device = self.client.device(id=device_id)
-            device.command("turnOn")
-            
-            self.logger.info(f"智慧插座 {device_id} 已開啟")
-            if ROBOT_AVAILABLE:
-                robot_logger.info(f"智慧插座 {device_id} 開啟成功")
-            
-            return True
-            
+            result = self._send_command(device_id, "turnOn")
+
+            if result:
+                self.logger.info(f"智慧插座 {device_id} 已開啟")
+                if ROBOT_AVAILABLE:
+                    robot_logger.info(f"智慧插座 {device_id} 開啟成功")
+            return result
+
         except Exception as e:
             error_msg = f"開啟智慧插座失敗: {e}"
             self.logger.error(error_msg)
             if ROBOT_AVAILABLE:
                 robot_logger.error(error_msg)
             return False
-    
+
     @keyword("當關閉智慧插座")
     def turn_off_smart_plug(self, device_id: str) -> bool:
         """
         關閉智慧插座
-        
+
         將指定的智慧插座設定為關閉狀態
-        
+
         Args:
             device_id: 智慧插座設備 ID
-            
+
         Returns:
             bool: 操作是否成功
-            
+
         Example:
         | 當關閉智慧插座 | ${DEVICE_ID} |
         """
         try:
-            if not self.client:
-                raise Exception("SwitchBot 客戶端尚未初始化")
-            
-            device = self.client.device(id=device_id)
-            device.command("turnOff")
-            
-            self.logger.info(f"智慧插座 {device_id} 已關閉")
-            if ROBOT_AVAILABLE:
-                robot_logger.info(f"智慧插座 {device_id} 關閉成功")
-            
-            return True
-            
+            result = self._send_command(device_id, "turnOff")
+
+            if result:
+                self.logger.info(f"智慧插座 {device_id} 已關閉")
+                if ROBOT_AVAILABLE:
+                    robot_logger.info(f"智慧插座 {device_id} 關閉成功")
+            return result
+
         except Exception as e:
             error_msg = f"關閉智慧插座失敗: {e}"
             self.logger.error(error_msg)
             if ROBOT_AVAILABLE:
                 robot_logger.error(error_msg)
             return False
-    
+
     @keyword("取得智慧插座狀態")
     def get_smart_plug_status(self, device_id: str) -> str:
         """
         取得智慧插座目前狀態
-        
+
         查詢指定智慧插座的目前電源狀態
-        
+
         Args:
             device_id: 智慧插座設備 ID
-            
+
         Returns:
             str: 插座狀態 ("on", "off", "unknown")
-            
+
         Example:
         | ${status} | 取得智慧插座狀態 | ${DEVICE_ID} |
         """
         try:
-            if not self.client:
-                raise Exception("SwitchBot 客戶端尚未初始化")
-            
-            device = self.client.device(id=device_id)
-            status = device.status()
-            
-            power_state = status.get('power', 'unknown')
-            
-            self.logger.info(f"智慧插座 {device_id} 狀態: {power_state}")
-            if ROBOT_AVAILABLE:
-                robot_logger.info(f"智慧插座狀態: {power_state}")
-            
-            return power_state
-            
+            url = f"{self.api_base_url}/devices/{device_id}/status"
+            headers = self._get_auth_headers()
+
+            self.logger.debug(f"正在查詢設備 {device_id} 的狀態...")
+            response = requests.get(url, headers=headers, timeout=10)
+
+            # 若 HTTP 狀態碼不是 200，直接拋出異常
+            response.raise_for_status()
+            result = response.json()
+
+            if result.get("statusCode") == 100:
+                power_state = str(result.get("body", {}).get("power", "unknown")).lower().strip()
+                self.logger.info(f"智慧插座 {device_id} 狀態: {power_state}")
+                if ROBOT_AVAILABLE:
+                    robot_logger.info(f"智慧插座狀態: {power_state}")
+                return power_state
+            else:
+                error_msg = f"API 回傳錯誤: {result.get('message')}"
+                self.logger.error(error_msg)
+                return "unknown"
+
+        except requests.exceptions.RequestException as e:
+            error_msg = f"查詢狀態網路錯誤: {str(e)}"
+            self.logger.error(error_msg)
+            return "unknown"
         except Exception as e:
-            error_msg = f"取得智慧插座狀態失敗: {e}"
+            error_msg = f"取得智慧插座狀態失敗: {str(e)}"
             self.logger.error(error_msg)
             if ROBOT_AVAILABLE:
                 robot_logger.error(error_msg)

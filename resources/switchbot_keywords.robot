@@ -1,18 +1,22 @@
 *** Settings ***
 Documentation    SwitchBot 智慧插座控制關鍵字
 ...              提供 Gherkin 風格的中文關鍵字，用於 SwitchBot 智慧插座的控制與測試
-...              
+...
 ...              主要功能：
 ...              - 智慧插座開關控制
 ...              - 設備狀態查詢與驗證
 ...              - 電源管理操作
 ...              - 設備資訊取得
-...              
+...
 ...              使用前請確保：
-...              1. 已安裝 pyswitchbot 套件
-...              2. 已設定 SwitchBot API 認證資訊
+...              1. 已安裝 requests 套件
+...              2. 已設定 SwitchBot API 認證資訊（Token 和 Secret）
 ...              3. 已知設備 ID
-...              
+...
+...              技術說明：
+...              - 使用 SwitchBot 官方 HTTP API v1.1（非第三方 SDK）
+...              - 認證方式：HMAC-SHA256 簽名
+...
 ...              範例：
 ...              | Library | libraries/switchbot_smartplug_control/SwitchBotSmartPlugLibrary.py |
 ...              | Resource | resources/switchbot_keywords.robot |
@@ -191,8 +195,8 @@ ${STATUS_UNKNOWN}           unknown
     Log    正在查詢智慧插座狀態: ${device_id}
     ${status} =    取得智慧插座狀態    ${device_id}
     Log    智慧插座目前狀態: ${status}
-    
-    [Return]    ${status}
+
+    RETURN    ${status}
 
 使用者執行設備電源重啟
     [Documentation]    When: 使用者執行設備的電源重啟操作

@@ -2,7 +2,7 @@
 
 ## 概述
 
-本模組提供 SwitchBot 智慧插座的完整控制功能，參考 [codeofthrone/switchbot_smartplug_control](https://github.com/codeofthrone/switchbot_smartplug_control) 專案開發，整合至 Robot Framework 測試環境中，支援 Gherkin 風格的中文關鍵字與測試案例。
+本模組提供 SwitchBot 智慧插座的完整控制功能，使用 **SwitchBot 官方 HTTP API v1.1**（非第三方 SDK），整合至 Robot Framework 測試環境中，支援 Gherkin 風格的中文關鍵字與測試案例。
 
 ## 主要功能
 
@@ -23,6 +23,12 @@
 - ✅ **設備查詢工具** (`get_device_id.py`) - 列出所有設備與 ID
 - ✅ **插座控制工具** (`plug_control.py`) - 命令列開關控制
 - ✅ **設備檢查工具** (`check_device.py`) - 檢查設備屬性與連線狀態
+
+### 技術特點
+- ✅ **官方 API** - 使用 SwitchBot 官方 HTTP API v1.1
+- ✅ **無第三方依賴** - 不需要 pyswitchbot 等第三方 SDK
+- ✅ **HMAC-SHA256 簽名** - 符合官方認證規範
+- ✅ **UUID nonce** - 使用 UUID v4 作為 nonce（官方建議）
 
 ## 檔案結構
 
@@ -47,12 +53,14 @@ tests/power_management/
 ### 1. 安裝相依套件
 
 ```bash
-# 使用 pipenv 安裝 (推薦)
-pipenv install pyswitchbot requests python-dotenv
+# 使用 uv 安裝 (推薦)
+uv pip install requests python-dotenv
 
 # 或使用 pip 安裝
-pip install pyswitchbot requests python-dotenv
+pip install requests python-dotenv
 ```
+
+> **注意**: 本模組不需要安裝 `pyswitchbot` 套件，直接使用官方 HTTP API。
 
 ### 2. 設定 API 認證資訊
 
@@ -221,11 +229,11 @@ robot --dryrun tests/power_management/switchbot_smartplug_test.robot
 
 #### 1. 套件匯入錯誤
 ```
-❌ 警告: SwitchBot 相關套件未安裝
+❌ 警告: requests 套件未安裝
 ```
-**解決方式**: 
+**解決方式**:
 ```bash
-pipenv install pyswitchbot requests
+pip install requests python-dotenv
 ```
 
 #### 2. API 認證失敗
@@ -316,10 +324,39 @@ def custom_plug_operation(self, device_id: str, operation: str):
 
 ## 參考資源
 
-- [SwitchBot API 官方文件](https://github.com/OpenWonderLabs/SwitchBotAPI)
-- [python-switchbot 文件](https://github.com/jjbattles/python-switchbot)
-- [參考專案](https://github.com/codeofthrone/switchbot_smartplug_control)
+- [SwitchBot API 官方文件](https://github.com/OpenWonderLabs/SwitchBotAPI) - 官方 HTTP API v1.1 文檔
 - [Robot Framework 使用者指南](https://robotframework.org/robotframework/latest/RobotFrameworkUserGuide.html)
+
+## 技術實作說明
+
+### API 認證機制
+
+本模組使用 SwitchBot 官方 API v1.1 認證方式：
+
+```python
+# 簽名算法（HMAC-SHA256）
+t = int(time.time() * 1000)  # 毫秒時間戳
+nonce = str(uuid.uuid4())     # UUID v4 作為 nonce
+string_to_sign = f"{token}{t}{nonce}"
+sign = base64.b64encode(
+    hmac.new(secret.encode(), string_to_sign.encode(), hashlib.sha256).digest()
+).decode()
+
+# HTTP Headers
+headers = {
+    "Authorization": token,
+    "sign": sign,
+    "nonce": nonce,
+    "t": str(t),
+    "Content-Type": "application/json; charset=utf8"
+}
+```
+
+### 為什麼不使用第三方 SDK？
+
+1. **pyswitchbot** - 這是藍牙控制套件，不適用於 HTTP API
+2. **官方建議** - SwitchBot 官方文檔提供 HTTP API 範例，建議直接實作
+3. **穩定性** - 直接使用 HTTP API 更加穩定，無第三方依賴問題
 
 ## 授權條款
 
@@ -327,6 +364,10 @@ def custom_plug_operation(self, device_id: str, operation: str):
 
 ---
 
-**最後更新**: 2025-06-23  
-**版本**: v1.0.0  
+**最後更新**: 2026-02-02
+**版本**: v2.0.0
 **狀態**: ✅ 生產就緒
+
+### 版本歷程
+- **v2.0.0** (2026-02-02): 重構為使用官方 HTTP API v1.1，移除第三方 SDK 依賴
+- **v1.0.0** (2025-06-23): 初始版本

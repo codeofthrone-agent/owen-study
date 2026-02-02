@@ -1,17 +1,21 @@
 *** Settings ***
 Documentation    SwitchBot 智慧插座測試案例
-...              
+...
 ...              本測試案例驗證 SwitchBot 智慧插座控制功能，包括：
 ...              - 基本開關控制
 ...              - 狀態查詢
 ...              - 電源管理
 ...              - 設備重啟
-...              
+...
 ...              測試前置條件：
-...              1. 已安裝 pyswitchbot 套件
-...              2. 已設定 SwitchBot API 認證資訊
+...              1. 已安裝 requests 套件
+...              2. 已設定 SwitchBot API 認證資訊（Token 和 Secret）
 ...              3. 已知測試用智慧插座設備 ID
 ...              4. 智慧插座處於在線狀態
+...
+...              技術說明：
+...              - 使用 SwitchBot 官方 HTTP API v1.1（非第三方 SDK）
+...              - 認證方式：HMAC-SHA256 簽名
 
 Library    ../../libraries/switchbot_smartplug_control/SwitchBotSmartPlugLibrary.py
 Resource   ../../resources/switchbot_keywords.robot
@@ -21,10 +25,11 @@ Test Setup       測試前置設定
 Test Teardown    測試後置清理
 
 *** Variables ***
-# 測試配置變數 - 請根據實際環境修改
-${TEST_TOKEN}           your_switchbot_token_here
-${TEST_SECRET}          your_switchbot_secret_here  
-${TEST_DEVICE_ID}       your_device_id_here
+# 測試配置變數 - 從環境變數讀取，請在 .env 檔案中設定
+# SWITCHBOT_TOKEN, SWITCHBOT_SECRET, SWITCHBOT_DEVICE_ID
+${TEST_TOKEN}           %{TOKEN=}
+${TEST_SECRET}          %{SECRET=}
+${TEST_DEVICE_ID}       %{DEVICE_ID=}
 ${TEST_TIMEOUT}         30s
 
 # 測試狀態常數
@@ -145,36 +150,46 @@ Basic Status Query Test
 *** Keywords ***
 測試前置設定
     [Documentation]    測試案例執行前的設定工作
-    
+    ...
+    ...                環境變數設定方式：
+    ...                1. 在專案根目錄的 .env 檔案中設定：
+    ...                   SWITCHBOT_TOKEN=your_token
+    ...                   SWITCHBOT_SECRET=your_secret
+    ...                   SWITCHBOT_DEVICE_ID=your_device_id
+    ...                2. 或直接設定系統環境變數
+
     Log    開始執行智慧插座測試案例
-    
-    # 檢查測試配置
-    Should Not Be Empty    ${TEST_TOKEN}     msg=請設定 TEST_TOKEN 變數
-    Should Not Be Empty    ${TEST_SECRET}    msg=請設定 TEST_SECRET 變數  
-    Should Not Be Empty    ${TEST_DEVICE_ID} msg=請設定 TEST_DEVICE_ID 變數
-    
+
+    # 檢查測試配置（從環境變數讀取）
+    Should Not Be Empty    ${TEST_TOKEN}
+    ...    msg=請設定環境變數 SWITCHBOT_TOKEN（可在 .env 檔案中設定）
+    Should Not Be Empty    ${TEST_SECRET}
+    ...    msg=請設定環境變數 SWITCHBOT_SECRET（可在 .env 檔案中設定）
+    Should Not Be Empty    ${TEST_DEVICE_ID}
+    ...    msg=請設定環境變數 SWITCHBOT_DEVICE_ID（可在 .env 檔案中設定）
+
     # 設定測試環境
     設定測試環境變數    ${TEST_TOKEN}    ${TEST_SECRET}    ${TEST_DEVICE_ID}
-    
-    Log    測試前置設定完成
+
+    Log    測試前置設定完成（使用環境變數: SWITCHBOT_TOKEN, SWITCHBOT_SECRET, SWITCHBOT_DEVICE_ID）
 
 測試後置清理
     [Documentation]    測試案例執行後的清理工作
-    
+
     Log    執行測試後置清理
-    
+
     # 清理測試環境變數
     清理測試環境
-    
+
     Log    測試後置清理完成
 
 驗證設備連線狀態
     [Documentation]    驗證設備是否處於可用狀態
     [Arguments]    ${device_id}
-    
+
     ${devices} =    取得所有SwitchBot設備清單
     ${device_found} =    Set Variable    False
-    
+
     FOR    ${device}    IN    @{devices}
         ${current_id} =    Get From Dictionary    ${device}    deviceId
         IF    '${current_id}' == '${device_id}'
@@ -184,22 +199,5 @@ Basic Status Query Test
             BREAK
         END
     END
-    
+
     Should Be True    ${device_found}    msg=測試設備 ${device_id} 未找到
-    
-確認環境變數設定
-    [Documentation]    確認必要的環境變數已正確設定
-    
-    # 檢查是否從實際環境變數讀取
-    ${env_token} =      Get Environment Variable    SWITCHBOT_TOKEN    default=${EMPTY}
-    ${env_secret} =     Get Environment Variable    SWITCHBOT_SECRET   default=${EMPTY}
-    ${env_device_id} =  Get Environment Variable    SWITCHBOT_DEVICE_ID    default=${EMPTY}
-    
-    IF    '${env_token}' != '${EMPTY}' and '${env_secret}' != '${EMPTY}' and '${env_device_id}' != '${EMPTY}'
-        Log    使用環境變數中的設定
-        Set Suite Variable    ${TEST_TOKEN}      ${env_token}
-        Set Suite Variable    ${TEST_SECRET}     ${env_secret}
-        Set Suite Variable    ${TEST_DEVICE_ID}  ${env_device_id}
-    ELSE
-        Log    使用測試案例中的預設設定
-    END

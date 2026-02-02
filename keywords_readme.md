@@ -1,5 +1,68 @@
 # Robot Framework 關鍵字說明文件 - Gherkin 風格 (最新更新)
 
+## 🚀 重大更新 (2026-02-02) - v2.0.0 SwitchBot 模組重構
+
+### ✅ SwitchBot 智慧插座控制 - 改用官方 HTTP API
+
+**更新概覽:**
+- ✅ 移除第三方 SDK 依賴（pyswitchbot）
+- ✅ 改用 SwitchBot 官方 HTTP API v1.1
+- ✅ 實作官方 HMAC-SHA256 簽名算法
+- ✅ 使用 UUID v4 作為 nonce（官方建議）
+- ✅ 環境變數讀取改進（動態路徑偵測 .env）
+
+**為什麼移除 pyswitchbot？**
+- `pyswitchbot` 是**藍牙控制**套件，不是 HTTP API SDK
+- SwitchBot 官方建議直接使用 HTTP API
+- 減少第三方依賴，提高穩定性
+
+**主要關鍵字（SwitchBotSmartPlugLibrary.py）:**
+
+| 關鍵字 | 說明 |
+|--------|------|
+| `設定SwitchBot認證資訊` | 設定 API Token 和 Secret |
+| `取得所有SwitchBot設備清單` | 取得帳號下所有設備 |
+| `查詢設備資訊` | 查詢特定設備資訊 |
+| `當開啟智慧插座` | 開啟指定智慧插座 |
+| `當關閉智慧插座` | 關閉指定智慧插座 |
+| `取得智慧插座狀態` | 查詢插座狀態 (on/off) |
+| `那麼智慧插座狀態應該是開啟` | 驗證插座為開啟狀態 |
+| `那麼智慧插座狀態應該是關閉` | 驗證插座為關閉狀態 |
+| `等待設備狀態變更` | 等待狀態變更 |
+| `執行設備電源重啟` | 電源重啟循環 |
+
+**Gherkin 風格關鍵字（switchbot_keywords.robot）:**
+
+| 類型 | 關鍵字 | 說明 |
+|------|--------|------|
+| Given | `已設定SwitchBot API認證資訊` | 前置條件：設定認證 |
+| Given | `已知智慧插座設備ID` | 前置條件：確認設備 ID |
+| Given | `智慧插座系統已準備就緒` | 前置條件：系統檢查 |
+| When | `使用者開啟智慧插座` | 動作：開啟插座 |
+| When | `使用者關閉智慧插座` | 動作：關閉插座 |
+| When | `使用者查詢智慧插座狀態` | 動作：查詢狀態 |
+| When | `使用者執行設備電源重啟` | 動作：電源重啟 |
+| Then | `智慧插座應該處於開啟狀態` | 驗證：開啟狀態 |
+| Then | `智慧插座應該處於關閉狀態` | 驗證：關閉狀態 |
+| Then | `狀態查詢應該成功回傳` | 驗證：查詢成功 |
+| And | `設備資訊應該正確顯示` | 驗證：設備資訊 |
+| And | `操作記錄應該完整保存` | 驗證：日誌記錄 |
+
+**環境變數設定:**
+```bash
+# 在 .env 檔案中設定
+SWITCHBOT_TOKEN=your_token_here
+SWITCHBOT_SECRET=your_secret_here
+SWITCHBOT_DEVICE_ID=your_device_id_here
+```
+
+**相關檔案:**
+- `libraries/switchbot_smartplug_control/SwitchBotSmartPlugLibrary.py` - 主要 Library
+- `resources/switchbot_keywords.robot` - Gherkin 風格關鍵字
+- `tests/power_management/switchbot_smartplug_test.robot` - 測試案例
+
+---
+
 ## 🚀 重大更新 (2026-01-29) - v5.6.0 YOLO 截圖傳送功能
 
 ### ✅ YOLO 檢測結果回傳與儲存
