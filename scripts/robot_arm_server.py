@@ -86,6 +86,10 @@ DEFAULT_LIFT_OFFSET_J3 = 15.0         # Default J3 lift offset
 # IK Configuration (mm)
 IK_ERROR_THRESHOLD_MM = 5.0      # IK error threshold for validation
 
+# RPY Validation Constants
+STANDARD_DOWNWARD_RPY = [-180.0, 0.0, 0.0]  # Standard downward-facing orientation
+RPY_TOLERANCE = 0.1              # Tolerance for considering RPY as "zero"
+
 # Camera / Frame Configuration
 DEFAULT_NUM_FRAMES = 5           # Default frames for averaging
 MAX_NUM_FRAMES = 20              # Maximum allowed frames
@@ -1621,6 +1625,120 @@ class MycobotServer(object):
             
         return None
 
+    def _get_final_position(self) -> Tuple[Optional[List[float]], Optional[List[float]]]:
+        """
+        獲取最終位置（角度和座標），用於動作完成後的確認。
+        
+        此方法封裝了常見的「讀取角度 + FK 計算座標」模式，
+        減少重複程式碼並統一錯誤處理。
+        
+        Returns:
+            Tuple[final_angles, final_coords]:
+                - final_angles: 6 個關節角度列表，讀取失敗時為 None
+                - final_coords: 6DOF 座標 [x, y, z, 0, 0, 0]，計算失敗時為 None
+        """
+        final_angles = self._get_angles_with_retry(max_retries=DEFAULT_MAX_RETRIES)
+        final_coords = None
+        
+        if final_angles and self.fk_calculator:
+            try:
+                xyz = self.fk_calculator.forward_kinematics(final_angles)
+                # 轉換為標準 Python float 避免 JSON 序列化問題
+                final_coords = [float(c) for c in xyz] + [0.0, 0.0, 0.0]
+            except Exception:
+                pass  # FK 計算失敗時保持 final_coords 為 None
+        
+        return final_angles, final_coords
+
+    def _has_non_standard_rpy(self, rpy: List[float]) -> bool:
+        """
+        檢查 RPY 是否為非標準姿態（需要警告用戶 IK 會忽略）。
+        
+        標準姿態定義：
+        - [0, 0, 0] 或接近零（所有值 < RPY_TOLERANCE）
+        - [-180, 0, 0]（標準向下姿態）
+        
+        Args:
+            rpy: [rx, ry, rz] 姿態角度
+            
+        Returns:
+            bool: True 如果是非標準姿態（需要警告）
+        """
+        if rpy == STANDARD_DOWNWARD_RPY:
+            return False
+        return any(abs(r) > RPY_TOLERANCE for r in rpy)
+
+    def _warn_if_rpy_ignored(self, rpy: List[float]) -> Optional[str]:
+        """
+        如果 RPY 被忽略，記錄警告並返回警告訊息。
+        
+        此方法用於 IK 求解前檢查 RPY 姿態，因為目前的 IK Solver
+        只支援 XYZ 位置，RPY 姿態會被忽略。
+        
+        Args:
+            rpy: [rx, ry, rz] 姿態角度
+            
+        Returns:
+            str | None: 警告訊息（用於加入回應），或 None 如果不需要警告
+        """
+        if self._has_non_standard_rpy(rpy):
+            warning = f"RPY 姿態 {rpy} 被忽略，僅使用 XYZ 位置求解"
+            self.logger.warning(f"⚠️ IK 限制: {warning}")
+            return warning
+        return None
+
+    def _solve_ik_validated(self, xyz: List[float], initial_guess: List[float],
+                            tolerance: float = IK_ERROR_THRESHOLD_MM,
+                            raise_on_error: bool = True) -> Tuple[Optional[List[float]], float, Optional[str]]:
+        """
+        執行 IK 求解並驗證誤差。
+        
+        此方法封裝了 IK 求解和誤差檢查的常見模式，提供統一的錯誤處理。
+        
+        Args:
+            xyz: 目標位置 [x, y, z]
+            initial_guess: IK 初始猜測角度（6 個關節）
+            tolerance: 最大允許誤差 (mm)，預設為 IK_ERROR_THRESHOLD_MM (5.0)
+            raise_on_error: True 時拋出異常，False 時返回錯誤訊息
+            
+        Returns:
+            Tuple[angles, ik_error, error_message]:
+                - angles: 求解結果（6 個關節角度），失敗時為 None
+                - ik_error: IK 誤差 (mm)
+                - error_message: 錯誤訊息，成功時為 None
+                
+        Raises:
+            ValueError: 當 raise_on_error=True 且求解失敗或誤差過大
+        """
+        if not self.ik_solver:
+            msg = "IK Solver 不可用"
+            if raise_on_error:
+                raise ValueError(msg)
+            return None, float('inf'), msg
+        
+        try:
+            angles, ik_error = self.ik_solver.solve_ik(xyz, initial_guess=initial_guess)
+        except Exception as e:
+            msg = f"IK 求解異常: {str(e)}"
+            if raise_on_error:
+                raise ValueError(msg)
+            return None, float('inf'), msg
+        
+        if angles is None:
+            msg = f"IK 求解失敗: 無解 (誤差: {ik_error:.2f}mm)"
+            if raise_on_error:
+                raise ValueError(msg)
+            return None, ik_error, msg
+        
+        if ik_error > tolerance:
+            msg = f"IK 誤差過大: {ik_error:.2f}mm > {tolerance}mm"
+            self.logger.warning(f"⚠️ {msg}")
+            if raise_on_error:
+                raise ValueError(msg)
+            return angles, ik_error, msg
+        
+        return angles, ik_error, None
+
     def _generate_click_sequence(self, target_6dof: List[float], approach_height: float = DEFAULT_APPROACH_HEIGHT_MM) -> List[Dict]:
         """
         生成點擊序列
@@ -1678,8 +1796,7 @@ class MycobotServer(object):
 
         # ⚠️ 警告：目前 IK Solver 只支援 XYZ 位置，RPY 姿態會被忽略
         rpy = adjusted_target[3:6] if len(adjusted_target) >= 6 else [0, 0, 0]
-        if any(abs(r) > 0.1 for r in rpy) and rpy != [-180.0, 0.0, 0.0]:
-            self.logger.warning(f"⚠️ IK 限制: RPY 姿態 {rpy} 被忽略，僅使用 XYZ 位置求解")
+        rpy_warning = self._warn_if_rpy_ignored(rpy)
 
         # 生成點擊序列
         click_sequence = self._generate_click_sequence(adjusted_target, approach_height)
@@ -1783,17 +1900,7 @@ class MycobotServer(object):
         total_time = time.time() - start_time
         
         # 最終確認：強制讀取當前位置
-        final_angles = self._get_angles_with_retry(max_retries=DEFAULT_MAX_RETRIES)
-        final_coords = None
-        
-        if final_angles:
-            if self.fk_calculator:
-                try:
-                    xyz = self.fk_calculator.forward_kinematics(final_angles)
-                    # 轉換為標準 Python float 避免 JSON 序列化問題
-                    final_coords = [float(c) for c in xyz] + [0.0, 0.0, 0.0]
-                except Exception:
-                    pass
+        final_angles, final_coords = self._get_final_position()
         
         self.logger.info(f"✅ 點擊完成 (IK 模式, 耗時: {total_time:.2f}s)")
 
@@ -1807,8 +1914,8 @@ class MycobotServer(object):
         }
 
         # 如果有非預設 RPY，加入警告
-        if any(abs(r) > 0.1 for r in rpy) and rpy != [-180.0, 0.0, 0.0]:
-            result["rpy_warning"] = f"RPY 姿態 {rpy} 被忽略，僅使用 XYZ 位置求解"
+        if rpy_warning:
+            result["rpy_warning"] = rpy_warning
 
         return result
 
@@ -1857,14 +1964,7 @@ class MycobotServer(object):
         total_time = time.time() - start_time
         
         # 最終確認
-        final_angles = self._get_angles_with_retry(max_retries=DEFAULT_MAX_RETRIES)
-        final_coords = None
-        if final_angles and self.fk_calculator:
-            try:
-                xyz = self.fk_calculator.forward_kinematics(final_angles)
-                final_coords = list(xyz) + [0.0, 0.0, 0.0]
-            except Exception:
-                pass
+        final_angles, final_coords = self._get_final_position()
 
         self.logger.info(f"✅ 點擊完成 (Fallback 模式, 耗時: {total_time:.2f}s)")
 
@@ -2649,22 +2749,23 @@ class MycobotServer(object):
                 self.logger.info(f"🎯 STag 校正後位置: {corrected_pos}")
                 self.logger.info(f"   偏移量: {self.stag_offset}")
 
-                # 3.3 IK: 位置 → 角度
-                corrected_angles, ik_error = self.ik_solver.solve_ik(
+                # 3.3 IK: 位置 → 角度（使用封裝方法，不拋出異常）
+                corrected_angles, ik_error, ik_error_msg = self._solve_ik_validated(
                     corrected_pos,
                     initial_guess=angles,
-                    tolerance=5.0
+                    tolerance=IK_ERROR_THRESHOLD_MM,
+                    raise_on_error=False
                 )
 
                 self.logger.info(f"🔧 IK 求解誤差: {ik_error:.2f}mm")
 
                 # 3.4 錯誤檢查：IK 失敗或誤差過大時回退
-                if ik_error > IK_ERROR_THRESHOLD_MM:  # Phase 12 IK 精度目標 < 5mm
-                    self.logger.warning(f"⚠️ IK 誤差過大 ({ik_error:.2f}mm > {IK_ERROR_THRESHOLD_MM}mm)，回退到原始角度")
+                if corrected_angles is None or ik_error_msg:
+                    self.logger.warning(f"⚠️ IK 求解問題，回退到原始角度: {ik_error_msg}")
                     result = self._cmd_move_to_angles(cmd)
                     result["stag_applied"] = False
                     result["fallback"] = True
-                    result["fallback_reason"] = f"IK error {ik_error:.2f}mm exceeds 5mm threshold"
+                    result["fallback_reason"] = ik_error_msg or f"IK error {ik_error:.2f}mm"
                     return result
 
                 # 3.5 使用校正後的角度調用現有命令
@@ -2786,24 +2887,19 @@ class MycobotServer(object):
 
             # ⚠️ 警告：目前 IK Solver 只支援 XYZ 位置，RPY 姿態會被忽略
             rpy = coords[3:6] if len(coords) >= 6 else [0, 0, 0]
-            if any(abs(r) > 0.1 for r in rpy) and rpy != [-180.0, 0.0, 0.0]:
-                self.logger.warning(f"⚠️ IK 限制: RPY 姿態 {rpy} 被忽略，僅使用 XYZ 位置求解")
+            rpy_warning = self._warn_if_rpy_ignored(rpy)
 
-            try:
-                solved_angles, ik_error = self.ik_solver.solve_ik(
-                    coords[:3],  # 取前三個值 (x, y, z)
-                    initial_guess=initial_guess
-                )
-
-                if solved_angles is None:
-                    return {"status": "error", "message": f"IK 求解失敗: 無解 (誤差: {ik_error:.2f}mm)"}
-                
-                # 檢查 IK 誤差 (Phase 12 目標 < 5mm)
-                if ik_error > IK_ERROR_THRESHOLD_MM:
-                    self.logger.warning(f"⚠️ IK 誤差過大: {ik_error:.2f}mm")
-                    
-            except Exception as e:
-                return {"status": "error", "message": f"IK 求解異常: {str(e)}"}
+            # 使用封裝的 IK 求解方法（不拋出異常，返回錯誤訊息）
+            solved_angles, ik_error, ik_error_msg = self._solve_ik_validated(
+                coords[:3],
+                initial_guess=initial_guess,
+                raise_on_error=False
+            )
+            
+            if solved_angles is None:
+                return {"status": "error", "message": ik_error_msg}
+            
+            # IK 誤差過大但仍有解時記錄警告（已在 _solve_ik_validated 中記錄）
 
             # 確保機器手臂已上電
             self._cmd_power_on({})
@@ -2825,20 +2921,11 @@ class MycobotServer(object):
             self._wait_for_arrival(solved_angles, threshold=DEFAULT_ARRIVAL_THRESHOLD_DEG)
 
             # 最終確認：強制讀取當前位置
-            final_angles = self._get_angles_with_retry(max_retries=DEFAULT_MAX_RETRIES)
-            final_coords = None
+            final_angles, final_coords = self._get_final_position()
             
-            if final_angles:
-                # 計算實際座標
-                if self.fk_calculator:
-                    try:
-                        xyz = self.fk_calculator.forward_kinematics(final_angles)
-                        # 轉換為標準 Python float 避免 JSON 序列化問題
-                        final_coords = [float(c) for c in xyz] + [0.0, 0.0, 0.0]
-                        self.logger.info(f"📍 最終確認位置: {[round(c, 2) for c in final_coords[:3]]}")
-                    except Exception:
-                        pass
-            else:
+            if final_coords:
+                self.logger.info(f"📍 最終確認位置: {[round(c, 2) for c in final_coords[:3]]}")
+            elif not final_angles:
                 self.logger.warning("⚠️ 無法確認最終位置")
 
             self.logger.info(f"✅ 移動完成，IK 誤差: {ik_error:.2f}mm")
@@ -2853,8 +2940,8 @@ class MycobotServer(object):
             }
 
             # 如果有非預設 RPY，加入警告
-            if any(abs(r) > 0.1 for r in rpy) and rpy != [-180.0, 0.0, 0.0]:
-                result["rpy_warning"] = f"RPY 姿態 {rpy} 被忽略，僅使用 XYZ 位置求解"
+            if rpy_warning:
+                result["rpy_warning"] = rpy_warning
 
             return result
 
