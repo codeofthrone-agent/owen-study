@@ -15,7 +15,9 @@ import traceback
 import threading
 import json
 import yaml
+from datetime import datetime
 from typing import Optional, Dict, List, Tuple
+import math
 import numpy as np
 import cv2
 import cv2.aruco as aruco
@@ -59,7 +61,107 @@ Enhanced features:
 
 has_return = [0x01,0x02,0x03,0x04,0x09,0x12, 0x14, 0x15, 0x17,0x1B, 0x20,0x23, 0x27, 0x2A,0x2B,0x2D,0x2E, 0x3B,0x3D, 0x40,0x42,0x43,0x44,0x4A, 0x4B,0x50,0x51,0x53,0x62,0x65,0x69,0x90,0x91,0x92,0xC0, 0xC3,0x82,0x84,0x86,0x88,0x8A,0xD0,0xD1,0xD5,0xE1,0xE2,0xE3,0xE4,0xE5,0XE6, 0xB0]
 
-SERVER_VERSION = "v5.6.0"
+SERVER_VERSION = "v5.6.1"
+
+# ==================== CONFIGURATION CONSTANTS ====================
+
+# Speed Defaults (1-100)
+DEFAULT_MOVE_SPEED = 50          # General movement speed
+DEFAULT_CLICK_SPEED = 20         # Speed for click/press operations
+DEFAULT_SCAN_SPEED = 50          # Speed for scanning movements
+
+# Movement Thresholds (degrees)
+DEFAULT_ARRIVAL_THRESHOLD_DEG = 1.5   # Default threshold to consider arrived
+ARRIVAL_WARNING_THRESHOLD_DEG = 2.0   # Threshold for arrival warnings
+WRIST_FIRST_THRESHOLD_DEG = 2.0       # Threshold for wrist-first movements
+
+# Retry Configuration
+DEFAULT_MAX_RETRIES = 3          # Default retry count for operations
+
+# Geometry Defaults (mm)
+DEFAULT_APPROACH_HEIGHT_MM = 30.0     # Default height for approach movements
+DEFAULT_LIFT_OFFSET_J2 = 10.0         # Default J2 lift offset
+DEFAULT_LIFT_OFFSET_J3 = 15.0         # Default J3 lift offset
+
+# IK Configuration (mm)
+IK_ERROR_THRESHOLD_MM = 5.0      # IK error threshold for validation
+
+# Camera / Frame Configuration
+DEFAULT_NUM_FRAMES = 5           # Default frames for averaging
+MAX_NUM_FRAMES = 20              # Maximum allowed frames
+CAMERA_WARMUP_FRAMES = 20        # Frames to discard during warmup
+
+# Timeout Configuration (seconds)
+MOVEMENT_TIMEOUT_SEC = 15.0      # Timeout for movement operations
+ARRIVAL_TIMEOUT_SEC = 5.0        # Timeout for arrival confirmation
+SCAN_STABILIZATION_WAIT_SEC = 1.0  # Wait time after scan movement
+
+# ==================== ROBOT PROTOCOL CONSTANTS ====================
+# MyCobot serial protocol format: [HEADER, HEADER, LENGTH, COMMAND, ...DATA, FOOTER]
+# Reference: https://docs.elephantrobotics.com/docs/gitbook-en/12-ApplicationBasePython/12.1-ApplicationBasePython.html
+
+PROTOCOL_HEADER = 0xFE           # Protocol header byte (appears twice)
+PROTOCOL_FOOTER = 0xFA           # Protocol footer byte
+
+# Protocol Command Codes
+CMD_CODE_POWER_ON = 0x10         # Power on servos
+CMD_CODE_POWER_OFF = 0x11        # Power off servos (release)
+CMD_CODE_GET_ANGLES = 0x20       # Get current joint angles
+CMD_CODE_IS_MOVING = 0x2B        # Check if robot is moving
+
+# Pre-built command arrays (no data payload)
+CMD_POWER_ON = [PROTOCOL_HEADER, PROTOCOL_HEADER, 0x02, CMD_CODE_POWER_ON, PROTOCOL_FOOTER]
+CMD_POWER_OFF = [PROTOCOL_HEADER, PROTOCOL_HEADER, 0x02, CMD_CODE_POWER_OFF, PROTOCOL_FOOTER]
+CMD_GET_ANGLES = [PROTOCOL_HEADER, PROTOCOL_HEADER, 0x02, CMD_CODE_GET_ANGLES, PROTOCOL_FOOTER]
+CMD_IS_MOVING = [PROTOCOL_HEADER, PROTOCOL_HEADER, 0x02, CMD_CODE_IS_MOVING, PROTOCOL_FOOTER]
+
+# Response parsing constants
+RESPONSE_MIN_LENGTH = 5          # Minimum valid response length
+RESPONSE_ANGLES_LENGTH = 16      # Expected length for get_angles response
+RESPONSE_BUSY = b'\xfe\xfe\x03\x20\x01\xfa'  # Busy response for get_angles
+
+# ==================== 共用工具函數 ====================
+
+def resolve_detection_conflicts(detections: List[Dict]) -> List[Dict]:
+    """
+    解決檢測衝突：同一物件保留信心度最高者
+    
+    例如：如果同時檢測到 light1_on (0.8) 和 light1_off (0.6)，
+    只保留 light1_on (0.8)。
+    
+    Args:
+        detections: YOLO 檢測結果列表
+        
+    Returns:
+        去重後的檢測結果列表
+    """
+    if not detections:
+        return []
+
+    best_objects = {}  # Map base_name -> detection_dict
+
+    for det in detections:
+        # 兼容處理：確保取得 class name 和 confidence
+        name = det.get('class', det.get('name', 'unknown'))
+        conf = det.get('confidence', det.get('conf', 0.0))
+        
+        # Parse base name (e.g., 'light1_on' -> 'light1')
+        if '_' in name:
+            base_name = name.rsplit('_', 1)[0]
+        else:
+            base_name = name
+        
+        if base_name in best_objects:
+            # Conflict found!
+            existing = best_objects[base_name]
+            existing_conf = existing.get('confidence', existing.get('conf', 0.0))
+            
+            if conf > existing_conf:
+                best_objects[base_name] = det
+        else:
+            best_objects[base_name] = det
+
+    return list(best_objects.values())
 
 
 # ==================== HTTP API Server (v4.2.0) ====================
@@ -137,7 +239,7 @@ class HTTPAPIServer:
     def health(self):
         return jsonify({
             "status": "healthy",
-            "version": "5.6.0",
+            "version": SERVER_VERSION,
             "services": {
                 "vision": self.camera_capture is not None
             }
@@ -148,7 +250,7 @@ class HTTPAPIServer:
             return jsonify({"status": "error", "message": "Vision system not available"}), 503
 
         try:
-            num_frames = int(request.args.get('num_frames', 5))
+            num_frames = int(request.args.get('num_frames', DEFAULT_NUM_FRAMES))
             image_format = request.args.get('format', 'jpeg')
 
             if not (1 <= num_frames <= 20):
@@ -189,7 +291,7 @@ class HTTPAPIServer:
 
         try:
             count = int(request.args.get('count', 5))
-            num_frames = int(request.args.get('num_frames', 5))
+            num_frames = int(request.args.get('num_frames', DEFAULT_NUM_FRAMES))
             image_format = request.args.get('format', 'jpeg')
 
             if not (1 <= count <= 10):
@@ -232,41 +334,6 @@ class HTTPAPIServer:
             self.logger.error(f"Multiple capture error: {e}")
             return jsonify({"status": "error", "message": str(e)}), 500
 
-    def _resolve_detection_conflicts(self, detections: List[Dict]) -> List[Dict]:
-        """
-        解決檢測衝突：同一物件保留信心度最高者
-        邏輯移植自 annotate_with_model.py
-        """
-        if not detections:
-            return []
-
-        best_objects = {}  # Map base_name -> detection_dict
-
-        for det in detections:
-            # 兼容處理：確保取得 class name 和 confidence
-            name = det.get('class', det.get('name', 'unknown'))
-            conf = det.get('confidence', det.get('conf', 0.0))
-            
-            # Parse base name (e.g., 'light1_on' -> 'light1')
-            if '_' in name:
-                base_name = name.rsplit('_', 1)[0]
-            else:
-                base_name = name
-            
-            if base_name in best_objects:
-                # Conflict found!
-                existing = best_objects[base_name]
-                existing_conf = existing.get('confidence', existing.get('conf', 0.0))
-                
-                if conf > existing_conf:
-                    best_objects[base_name] = det
-                else:
-                    pass
-            else:
-                best_objects[base_name] = det
-
-        return list(best_objects.values())
-
     def _detect_with_retry(self, image, confidence=0.5):
         """Helper for robust detection: retries with 180 rotation if needed"""
         # 1. First attempt
@@ -295,7 +362,7 @@ class HTTPAPIServer:
 
         try:
             # 解析參數
-            num_frames = int(request.args.get('num_frames', 5))
+            num_frames = int(request.args.get('num_frames', DEFAULT_NUM_FRAMES))
             confidence = float(request.args.get('confidence', 0.25))
             save_image = request.args.get('save_image', 'true').lower() == 'true'
             return_image = request.args.get('return_image', 'false').lower() == 'true'
@@ -318,13 +385,12 @@ class HTTPAPIServer:
                     return jsonify({"status": "error", "message": "Failed to capture image"}), 500
 
                 # 2. 執行 YOLO 檢測 (Robust Mode)
-                import time
                 start_time = time.time()
                 
                 detections, final_image, rotated = self._detect_with_retry(avg_frame, confidence=confidence)
                 
                 # Apply Conflict Resolution (One Object, One Status)
-                detections = self._resolve_detection_conflicts(detections)
+                detections = resolve_detection_conflicts(detections)
                 
                 inference_time = (time.time() - start_time) * 1000
 
@@ -484,10 +550,9 @@ class HTTPAPIServer:
             return jsonify({"status": "error", "message": "STag detection not available"}), 503
 
         try:
-            import time
 
             # 解析參數
-            num_frames = int(request.args.get('num_frames', 5))
+            num_frames = int(request.args.get('num_frames', DEFAULT_NUM_FRAMES))
             confidence = float(request.args.get('confidence', 0.5))
             padding = int(request.args.get('padding', 20))
             save_image = request.args.get('save_image', 'true').lower() == 'true'
@@ -609,10 +674,8 @@ class HTTPAPIServer:
                 # 7. 儲存圖片
                 if save_image:
                     try:
-                        from datetime import datetime
                         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                         save_dir = "images/stag_roi_yolo"
-                        import os
                         os.makedirs(save_dir, exist_ok=True)
 
                         # 儲存 ROI
@@ -676,7 +739,6 @@ class HTTPAPIServer:
             return jsonify({"status": "error", "message": f"Invalid parameter: {str(e)}"}), 400
         except Exception as e:
             self.logger.error(f"STag ROI YOLO detection error: {e}")
-            import traceback
             self.logger.error(traceback.format_exc())
             return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -1114,11 +1176,12 @@ class MycobotServer(object):
         self.global_offsets = [0.0] * 6
         self.correction_enabled = False
         # 使用絕對路徑，確保從任何目錄啟動都能找到配置檔
-        import os
         self.offset_config_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "config", "global_offset.json"
         )
+        # NOTE: Global offsets are loaded on-demand via 'reload_offset' command
+        # rather than automatically at startup. Uncomment to enable auto-loading:
         # self._load_global_offsets()
 
         # STag 視覺偏移系統 (v5.1.0 Phase 13.5)
@@ -1163,7 +1226,6 @@ class MycobotServer(object):
         if self.enable_vision:  # 只在 Vision 啟用時載入（STag 偏移依賴 Vision）
             try:
                 # 確保專案根目錄在 sys.path
-                import os
                 project_root = os.path.abspath(os.path.join(
                     os.path.dirname(__file__), '..'
                 ))
@@ -1193,7 +1255,6 @@ class MycobotServer(object):
 
                 if STAG_AVAILABLE:
                     # 載入全域視覺設定
-                    import os
                     app_config_path = os.path.join(
                         os.path.dirname(os.path.dirname(__file__)),
                         'config', 'app', 'app.yaml'
@@ -1303,7 +1364,6 @@ class MycobotServer(object):
     def _load_global_offsets(self):
         """載入全局偏移補償設定"""
         try:
-            import os
             if not os.path.exists(self.offset_config_path):
                 self.logger.warning(f"偏移設定檔不存在: {self.offset_config_path}")
                 return
@@ -1360,8 +1420,7 @@ class MycobotServer(object):
             # 啟動時自動 power on 伺服馬達
             try:
                 time.sleep(0.1)  # 等待串口穩定
-                power_on_command = [0xfe, 0xfe, 0x02, 0x10, 0xfa]  # power_on 指令
-                self.mc.write(power_on_command)
+                self.mc.write(CMD_POWER_ON)
                 self.mc.flush()
                 self.logger.info("已發送伺服馬達上電指令 (power_on)")
                 time.sleep(0.3)  # 等待馬達上電
@@ -1400,15 +1459,14 @@ class MycobotServer(object):
     def _is_moving(self) -> bool:
         """檢查機器手臂是否正在移動"""
         with self.serial_lock:
-            is_moving_cmd = [0xfe, 0xfe, 0x02, 0x2b, 0xfa]
             try:
                 # 清空輸入緩衝區，避免讀到上一條指令的殘留回應
                 self.mc.reset_input_buffer()
                 
-                self.write(is_moving_cmd)
+                self.write(CMD_IS_MOVING)
                 # is_moving 指令有回應
-                response = self.read(is_moving_cmd)
-                if response and len(response) >= 5 and response[3] == 0x2b:
+                response = self.read(CMD_IS_MOVING)
+                if response and len(response) >= RESPONSE_MIN_LENGTH and response[3] == CMD_CODE_IS_MOVING:
                     return bool(response[4])
             except Exception as e:
                 self.logger.error(f"檢查 is_moving 狀態失敗: {e}")
@@ -1421,21 +1479,17 @@ class MycobotServer(object):
             list: 6 個關節角度 [j1, j2, j3, j4, j5, j6]，失敗時返回 [None] * 6
         """
         with self.serial_lock:
-            # MyCobot 280 get_angles 命令: 0xfe 0xfe 0x02 0x20 0xfa
-            # ProtocolCode.GET_ANGLES = 0x20 (注意：不是 0x10，0x10 是 POWER_ON)
-            get_angles_cmd = [0xfe, 0xfe, 0x02, 0x20, 0xfa]
             try:
-                self.write(get_angles_cmd)
-                response = self.read(get_angles_cmd)
+                self.write(CMD_GET_ANGLES)
+                response = self.read(CMD_GET_ANGLES)
 
-                # 預期回應: [0xfe, 0xfe, len, 0x20, j1_h, j1_l, ..., j6_h, j6_l, 0xfa]
-                # 處理忙碌回應: b'\xfe\xfe\x03\x20\x01\xfa'
-                if response == b'\xfe\xfe\x03\x20\x01\xfa':
+                # 處理忙碌回應
+                if response == RESPONSE_BUSY:
                     self.logger.debug("機器手臂忙碌中 (Busy)，無法讀取角度")
                     return [None] * 6
 
                 # 總長度應該是 16 bytes: header(2) + len(1) + cmd(1) + 6*angles(12) + footer(1)
-                if response and len(response) >= 16 and response[3] == 0x20:
+                if response and len(response) >= RESPONSE_ANGLES_LENGTH and response[3] == CMD_CODE_GET_ANGLES:
                     angles = []
                     for i in range(6):
                         # 讀取每個關節的高位和低位字節
@@ -1476,7 +1530,7 @@ class MycobotServer(object):
         self.logger.warning(f"⚠️ 等待移動超時 ({timeout} 秒)")
         return False
 
-    def _wait_for_arrival(self, target_angles: List[float], timeout: float = 5.0, threshold: float = 1.5) -> bool:
+    def _wait_for_arrival(self, target_angles: List[float], timeout: float = ARRIVAL_TIMEOUT_SEC, threshold: float = DEFAULT_ARRIVAL_THRESHOLD_DEG) -> bool:
         """
         動態等待手臂到達目標位置
         優化策略：使用 is_moving 檢查代替 get_angles 輪詢，減少通訊負擔。
@@ -1520,7 +1574,6 @@ class MycobotServer(object):
         Returns:
             dict: Zone 配置，包含 id, pos, rpy, angles；如果找不到返回 None
         """
-        import os
         path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             'config', 'calibration_zones', f'zone_{stag_id}.json'
@@ -1544,15 +1597,13 @@ class MycobotServer(object):
             self.logger.error(f"載入 Zone 配置失敗: {e}")
             return None
 
-    def _get_angles_with_retry(self, max_retries=3, delay=1.0) -> Optional[List[float]]:
+    def _get_angles_with_retry(self, max_retries=DEFAULT_MAX_RETRIES, delay=1.0) -> Optional[List[float]]:
         """
         嘗試多次讀取角度，專門用於動作完成後的最終確認。
         包含緩衝區清空與延遲機制。
         """
-        import time as time_module
-        
         # 1. 初始靜置，讓串口訊號穩定
-        time_module.sleep(delay)
+        time.sleep(delay)
 
         for i in range(max_retries):
             # 2. 清空緩衝區 (確保讀到最新狀態，而非堆積的 Busy 訊號)
@@ -1566,11 +1617,11 @@ class MycobotServer(object):
                 return angles
             
             self.logger.warning(f"角度讀取重試 {i+1}/{max_retries}...")
-            time_module.sleep(delay)
+            time.sleep(delay)
             
         return None
 
-    def _generate_click_sequence(self, target_6dof: List[float], approach_height: float = 30.0) -> List[Dict]:
+    def _generate_click_sequence(self, target_6dof: List[float], approach_height: float = DEFAULT_APPROACH_HEIGHT_MM) -> List[Dict]:
         """
         生成點擊序列
 
@@ -1593,10 +1644,10 @@ class MycobotServer(object):
 
     def _execute_click_with_fallback(self, target_6dof: List[float],
                                       fallback_angles: Optional[List[float]] = None,
-                                      fallback_lift_offset: List[float] = [10.0, 15.0],
-                                      approach_height: float = 30.0,
+                                      fallback_lift_offset: List[float] = [DEFAULT_LIFT_OFFSET_J2, DEFAULT_LIFT_OFFSET_J3],
+                                      approach_height: float = DEFAULT_APPROACH_HEIGHT_MM,
                                       click_duration: float = 0.1,
-                                      speed: int = 20,
+                                      speed: int = DEFAULT_CLICK_SPEED,
                                       z_offset: float = 0.0,
                                       initial_angles: Optional[List[float]] = None,
                                       wrist_first: bool = False) -> Dict:
@@ -1617,8 +1668,7 @@ class MycobotServer(object):
         Returns:
             dict: 執行結果
         """
-        import time as time_module
-        start_time = time_module.time()
+        start_time = time.time()
 
         # 應用 z_offset
         adjusted_target = list(target_6dof)
@@ -1671,7 +1721,7 @@ class MycobotServer(object):
                     raise ValueError(f"IK 求解失敗 (error: {ik_error:.2f}mm)")
 
                 # 檢查 IK 誤差 (Phase 12 目標 < 5mm)
-                if ik_error > 5.0:
+                if ik_error > IK_ERROR_THRESHOLD_MM:
                     raise ValueError(f"IK 誤差過大: {ik_error:.2f}mm")
 
                 solved_sequences.append({
@@ -1715,25 +1765,25 @@ class MycobotServer(object):
                     step['angles'][3], step['angles'][4], step['angles'][5]
                 ]
                 self._send_angles_internal(intermediate_angles, speed)
-                self._wait_for_arrival(intermediate_angles, threshold=2.0)
-                time_module.sleep(0.2)
+                self._wait_for_arrival(intermediate_angles, threshold=ARRIVAL_WARNING_THRESHOLD_DEG)
+                time.sleep(0.2)
 
             # 發送角度命令
             self._send_angles_internal(step['angles'], speed)
 
             # 等待到達
-            self._wait_for_arrival(step['angles'], threshold=1.5)
+            self._wait_for_arrival(step['angles'], threshold=DEFAULT_ARRIVAL_THRESHOLD_DEG)
 
             # 點擊動作需要停留
             if step['action'] == 'click':
-                time_module.sleep(click_duration)
+                time.sleep(click_duration)
 
             steps_completed += 1
 
-        total_time = time_module.time() - start_time
+        total_time = time.time() - start_time
         
         # 最終確認：強制讀取當前位置
-        final_angles = self._get_angles_with_retry(max_retries=3)
+        final_angles = self._get_angles_with_retry(max_retries=DEFAULT_MAX_RETRIES)
         final_coords = None
         
         if final_angles:
@@ -1742,7 +1792,7 @@ class MycobotServer(object):
                     xyz = self.fk_calculator.forward_kinematics(final_angles)
                     # 轉換為標準 Python float 避免 JSON 序列化問題
                     final_coords = [float(c) for c in xyz] + [0.0, 0.0, 0.0]
-                except:
+                except Exception:
                     pass
         
         self.logger.info(f"✅ 點擊完成 (IK 模式, 耗時: {total_time:.2f}s)")
@@ -1763,9 +1813,9 @@ class MycobotServer(object):
         return result
 
     def _execute_fallback_click(self, fallback_angles: List[float],
-                                 lift_offset: List[float] = [10.0, 15.0],
+                                 lift_offset: List[float] = [DEFAULT_LIFT_OFFSET_J2, DEFAULT_LIFT_OFFSET_J3],
                                  click_duration: float = 0.1,
-                                 speed: int = 20) -> Dict:
+                                 speed: int = DEFAULT_CLICK_SPEED) -> Dict:
         """
         執行 Fallback 模式點擊（使用預錄角度 + J2/J3 調整抬高）
 
@@ -1778,8 +1828,7 @@ class MycobotServer(object):
         Returns:
             dict: 執行結果
         """
-        import time as time_module
-        start_time = time_module.time()
+        start_time = time.time()
 
         # 計算抬高位置的角度
         approach_angles = list(fallback_angles)
@@ -1792,29 +1841,29 @@ class MycobotServer(object):
         # 1. Approach: 移動到抬高位置
         self.logger.info("  [1/3] 移動到抬高位置")
         self._send_angles_internal(approach_angles, speed)
-        self._wait_for_arrival(approach_angles, threshold=1.5)
+        self._wait_for_arrival(approach_angles, threshold=DEFAULT_ARRIVAL_THRESHOLD_DEG)
 
         # 2. Click: 下壓到目標位置
         self.logger.info("  [2/3] 下壓點擊")
         self._send_angles_internal(fallback_angles, speed)
-        self._wait_for_arrival(fallback_angles, threshold=1.5)
-        time_module.sleep(click_duration)
+        self._wait_for_arrival(fallback_angles, threshold=DEFAULT_ARRIVAL_THRESHOLD_DEG)
+        time.sleep(click_duration)
 
         # 3. Retract: 抬起
         self.logger.info("  [3/3] 抬起")
         self._send_angles_internal(approach_angles, speed)
-        self._wait_for_arrival(approach_angles, threshold=1.5)
+        self._wait_for_arrival(approach_angles, threshold=DEFAULT_ARRIVAL_THRESHOLD_DEG)
 
-        total_time = time_module.time() - start_time
+        total_time = time.time() - start_time
         
         # 最終確認
-        final_angles = self._get_angles_with_retry(max_retries=3)
+        final_angles = self._get_angles_with_retry(max_retries=DEFAULT_MAX_RETRIES)
         final_coords = None
         if final_angles and self.fk_calculator:
             try:
                 xyz = self.fk_calculator.forward_kinematics(final_angles)
                 final_coords = list(xyz) + [0.0, 0.0, 0.0]
-            except:
+            except Exception:
                 pass
 
         self.logger.info(f"✅ 點擊完成 (Fallback 模式, 耗時: {total_time:.2f}s)")
@@ -2095,7 +2144,7 @@ class MycobotServer(object):
                 coords = [float(c) for c in xyz] + [0.0, 0.0, 0.0] # Fallback
                 
                 if isinstance(fk_result, dict) and 'rpy' in fk_result:
-                     coords = [float(c) for c in xyz] + [float(r) for c in fk_result['rpy']]
+                     coords = [float(c) for c in xyz] + [float(r) for r in fk_result['rpy']]
                 
             except Exception:
                 # 如果沒有 full 方法，就只回傳 XYZ + 000
@@ -2115,8 +2164,7 @@ class MycobotServer(object):
     def _cmd_power_on(self, cmd: dict) -> dict:
         """開啟伺服馬達 (Power On)"""
         try:
-            power_on_command = [0xfe, 0xfe, 0x02, 0x10, 0xfa]
-            self.write(power_on_command)
+            self.write(CMD_POWER_ON)
             time.sleep(0.1) # Wait for effect
             self.logger.info("已執行 Power On 指令")
             return {"status": "success", "message": "已開啟伺服馬達"}
@@ -2127,8 +2175,7 @@ class MycobotServer(object):
     def _cmd_power_off(self, cmd: dict) -> dict:
         """關閉伺服馬達 (Power Off / Release)"""
         try:
-            power_off_command = [0xfe, 0xfe, 0x02, 0x11, 0xfa]
-            self.write(power_off_command)
+            self.write(CMD_POWER_OFF)
             time.sleep(0.1)
             self.logger.info("已執行 Power Off 指令")
             return {"status": "success", "message": "已關閉伺服馬達"}
@@ -2146,7 +2193,7 @@ class MycobotServer(object):
             if not angles or len(angles) != 6:
                 return {"status": "error", "message": "angles 參數必須包含 6 個關節角度"}
 
-            speed = cmd.get("speed", 50)
+            speed = cmd.get("speed", DEFAULT_MOVE_SPEED)
 
             self.logger.info(f"移動到角度: {angles}, 速度: {speed}")
 
@@ -2181,7 +2228,7 @@ class MycobotServer(object):
             if not up_angles or len(up_angles) != 6:
                 return {"status": "error", "message": "up_angles 參數錯誤"}
                 
-            speed = cmd.get("speed", 50)
+            speed = cmd.get("speed", DEFAULT_MOVE_SPEED)
             press_duration = float(cmd.get("press_duration", 0.1))
             lift_duration = float(cmd.get("lift_duration", 0.1))
             
@@ -2193,7 +2240,7 @@ class MycobotServer(object):
                 return {"status": "error", "message": "發送下壓指令失敗"}
             
             # 等待到達 (嚴格模式)
-            if not self._wait_for_arrival(down_angles, threshold=2.0):
+            if not self._wait_for_arrival(down_angles, threshold=ARRIVAL_WARNING_THRESHOLD_DEG):
                 self.logger.warning("  ⚠️ 下壓未準確到達，但繼續執行")
                 
             # 2. Press Wait
@@ -2206,7 +2253,7 @@ class MycobotServer(object):
                 return {"status": "error", "message": "發送抬起指令失敗"}
                 
             # 等待到達
-            if not self._wait_for_arrival(up_angles, threshold=2.0):
+            if not self._wait_for_arrival(up_angles, threshold=ARRIVAL_WARNING_THRESHOLD_DEG):
                 self.logger.warning("  ⚠️ 抬起未準確到達")
                 
             # 4. Lift Wait
@@ -2245,7 +2292,7 @@ class MycobotServer(object):
             import base64
 
             # 多幀平均截圖
-            num_frames = cmd.get("num_frames", 5)
+            num_frames = cmd.get("num_frames", DEFAULT_NUM_FRAMES)
             image = self.camera_capture.capture_multi_frame_average(num_frames)
 
             # 編碼為指定格式
@@ -2320,7 +2367,7 @@ class MycobotServer(object):
             import time
 
             # 解析參數
-            num_frames = cmd.get("num_frames", 5)
+            num_frames = cmd.get("num_frames", DEFAULT_NUM_FRAMES)
             confidence = cmd.get("confidence", None)  # None 表示使用模型預設值
             save_image = cmd.get("save_image", True)
             return_image = cmd.get("return_image", False)
@@ -2335,6 +2382,10 @@ class MycobotServer(object):
             # 2. 執行 YOLO 檢測
             start_time = time.time()
             detections = self.yolo_detector.detect(image, confidence=confidence)
+            
+            # 解決檢測衝突：同一物件保留信心度最高者
+            detections = resolve_detection_conflicts(detections)
+            
             inference_time = (time.time() - start_time) * 1000  # 毫秒
 
             self.logger.info(f"YOLO 檢測完成：檢測到 {len(detections)} 個物件")
@@ -2413,7 +2464,7 @@ class MycobotServer(object):
         """
         marker_id = cmd.get("marker_id", 0)
         reference_pos = cmd.get("reference_position", [150.0, 80.0, 120.0])
-        num_frames = cmd.get("num_frames", 5)
+        num_frames = cmd.get("num_frames", DEFAULT_NUM_FRAMES)
 
         # 檢查 STag 檢測器是否可用
         if not self.stag_detector:
@@ -2608,8 +2659,8 @@ class MycobotServer(object):
                 self.logger.info(f"🔧 IK 求解誤差: {ik_error:.2f}mm")
 
                 # 3.4 錯誤檢查：IK 失敗或誤差過大時回退
-                if ik_error > 5.0:  # Phase 12 IK 精度目標 < 5mm
-                    self.logger.warning(f"⚠️ IK 誤差過大 ({ik_error:.2f}mm > 5mm)，回退到原始角度")
+                if ik_error > IK_ERROR_THRESHOLD_MM:  # Phase 12 IK 精度目標 < 5mm
+                    self.logger.warning(f"⚠️ IK 誤差過大 ({ik_error:.2f}mm > {IK_ERROR_THRESHOLD_MM}mm)，回退到原始角度")
                     result = self._cmd_move_to_angles(cmd)
                     result["stag_applied"] = False
                     result["fallback"] = True
@@ -2659,8 +2710,6 @@ class MycobotServer(object):
                 "enabled": bool
             }
         """
-        import math
-
         offset = self.stag_offset
         magnitude = math.sqrt(sum(o**2 for o in offset))
 
@@ -2713,7 +2762,7 @@ class MycobotServer(object):
             if not coords or len(coords) != 6:
                 return {"status": "error", "message": "coords 參數必須包含 6 個座標值 [x, y, z, rx, ry, rz]"}
 
-            speed = cmd.get("speed", 20)
+            speed = cmd.get("speed", DEFAULT_CLICK_SPEED)
             wrist_first = bool(cmd.get("wrist_first", False))
             
             # 獲取當前角度作為 IK 初始猜測
@@ -2750,7 +2799,7 @@ class MycobotServer(object):
                     return {"status": "error", "message": f"IK 求解失敗: 無解 (誤差: {ik_error:.2f}mm)"}
                 
                 # 檢查 IK 誤差 (Phase 12 目標 < 5mm)
-                if ik_error > 5.0:
+                if ik_error > IK_ERROR_THRESHOLD_MM:
                     self.logger.warning(f"⚠️ IK 誤差過大: {ik_error:.2f}mm")
                     
             except Exception as e:
@@ -2768,15 +2817,15 @@ class MycobotServer(object):
                     solved_angles[3], solved_angles[4], solved_angles[5]
                 ]
                 self._send_angles_internal(intermediate_angles, speed)
-                self._wait_for_arrival(intermediate_angles, threshold=2.0)
+                self._wait_for_arrival(intermediate_angles, threshold=ARRIVAL_WARNING_THRESHOLD_DEG)
                 time.sleep(0.2)
 
             self.logger.info("第二階段: 移動到目標位置")
             self._send_angles_internal(solved_angles, speed)
-            self._wait_for_arrival(solved_angles, threshold=1.5)
+            self._wait_for_arrival(solved_angles, threshold=DEFAULT_ARRIVAL_THRESHOLD_DEG)
 
             # 最終確認：強制讀取當前位置
-            final_angles = self._get_angles_with_retry(max_retries=3)
+            final_angles = self._get_angles_with_retry(max_retries=DEFAULT_MAX_RETRIES)
             final_coords = None
             
             if final_angles:
@@ -2787,7 +2836,7 @@ class MycobotServer(object):
                         # 轉換為標準 Python float 避免 JSON 序列化問題
                         final_coords = [float(c) for c in xyz] + [0.0, 0.0, 0.0]
                         self.logger.info(f"📍 最終確認位置: {[round(c, 2) for c in final_coords[:3]]}")
-                    except:
+                    except Exception:
                         pass
             else:
                 self.logger.warning("⚠️ 無法確認最終位置")
@@ -2846,10 +2895,10 @@ class MycobotServer(object):
 
             # 解析參數
             fallback_angles = cmd.get("fallback_angles")
-            fallback_lift_offset = cmd.get("fallback_lift_offset", [10.0, 15.0])
-            approach_height = cmd.get("approach_height", 30.0)
+            fallback_lift_offset = cmd.get("fallback_lift_offset", [DEFAULT_LIFT_OFFSET_J2, DEFAULT_LIFT_OFFSET_J3])
+            approach_height = cmd.get("approach_height", DEFAULT_APPROACH_HEIGHT_MM)
             click_duration = cmd.get("click_duration", 0.1)
-            speed = cmd.get("speed", 20)
+            speed = cmd.get("speed", DEFAULT_CLICK_SPEED)
             z_offset = cmd.get("z_offset", 0.0)
             initial_angles = cmd.get("initial_angles")
             wrist_first = bool(cmd.get("wrist_first", False))
@@ -2926,9 +2975,9 @@ class MycobotServer(object):
 
             # 解析參數
             target_rpy = cmd.get("target_rpy") or list(zone['rpy'])
-            approach_height = cmd.get("approach_height", 30.0)
+            approach_height = cmd.get("approach_height", DEFAULT_APPROACH_HEIGHT_MM)
             click_duration = cmd.get("click_duration", 0.1)
-            speed = cmd.get("speed", 20)
+            speed = cmd.get("speed", DEFAULT_CLICK_SPEED)
             z_offset = cmd.get("z_offset", 0.0)
             wrist_first = bool(cmd.get("wrist_first", False))
 
@@ -2949,7 +2998,7 @@ class MycobotServer(object):
             # 使用 Zone 中的角度作為 fallback
             # ⚠️ 注意：fallback_angles 是 Zone 中心點的角度，不包含 offset 偏移
             fallback_angles = zone.get('angles')
-            fallback_lift_offset = cmd.get("fallback_lift_offset", [10.0, 15.0])
+            fallback_lift_offset = cmd.get("fallback_lift_offset", [DEFAULT_LIFT_OFFSET_J2, DEFAULT_LIFT_OFFSET_J3])
 
             # 檢查是否有非零偏移量
             has_offset = any(abs(o) > 0.1 for o in offset)
@@ -3014,8 +3063,8 @@ class MycobotServer(object):
             if not angles or len(angles) != 6:
                 return {"status": "error", "message": "angles 參數必須包含 6 個角度值"}
 
-            speed = cmd.get("speed", 50)
-            timeout = cmd.get("timeout", 15.0)
+            speed = cmd.get("speed", DEFAULT_SCAN_SPEED)
+            timeout = cmd.get("timeout", MOVEMENT_TIMEOUT_SEC)
 
             self.logger.info(f"🔍 執行掃描與偵測，目標角度: {[round(a, 2) for a in angles]}")
 
@@ -3036,7 +3085,7 @@ class MycobotServer(object):
             # _cmd_move_to_angles 已經包含了 wait_for_arrival，但為了視覺穩定，這裡額外等待一小段時間
             # 由於移除了相機預熱 (約0.7s)，需要增加此等待時間以避免手臂晃動導致影像模糊
             # Update: Add explicit wait_for_arrival to ensure physical stop
-            if not self._wait_for_arrival(angles, threshold=2.0):
+            if not self._wait_for_arrival(angles, threshold=ARRIVAL_WARNING_THRESHOLD_DEG):
                  self.logger.warning("⚠️ 掃描移動未準確到達，但繼續執行")
 
             time.sleep(1.0)
@@ -3090,6 +3139,9 @@ class MycobotServer(object):
                     "box": det.get("box") or det.get("bbox")
                 })
 
+            # 解決檢測衝突：同一物件保留信心度最高者
+            formatted_detections = resolve_detection_conflicts(formatted_detections)
+
             self.logger.info(f"✅ 偵測完成，發現 {len(formatted_detections)} 個物件")
             if formatted_detections:
                 det_details = ", ".join([f"{d['class']}({d['confidence']:.2f})" for d in formatted_detections])
@@ -3122,7 +3174,8 @@ class MycobotServer(object):
                                 else:
                                     x, y, w, h = [int(float(v)) for v in box]
                                 cv2.rectangle(annotated_img_mem, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                            except: pass
+                            except Exception:
+                                pass
                             
                     _, buffer = cv2.imencode('.jpg', annotated_img_mem)
                     annotated_image_base64 = base64.b64encode(buffer).decode('utf-8')
@@ -3361,7 +3414,7 @@ class MycobotServer(object):
                             self.logger.error(f"命令處理錯誤: {traceback.format_exc()}")
                             try:
                                 conn.sendall(str.encode(f"錯誤: {str(e)}"))
-                            except:
+                            except Exception:
                                 pass
                             break
                 finally: # This finally block ensures camera is closed when client disconnects
@@ -3381,7 +3434,7 @@ class MycobotServer(object):
                     try:
                         conn.close()
                         self.logger.info("客戶端連接已關閉")
-                    except:
+                    except Exception:
                         pass
 
         # 清理資源
@@ -3400,7 +3453,7 @@ class MycobotServer(object):
                 self.logger.error(f"寫入失敗: {e}")
                 raise
 
-    def read(self, command, max_retries=3):
+    def read(self, command, max_retries=DEFAULT_MAX_RETRIES):
         """讀取串口回應，增加錯誤處理、重試和指令碼驗證機制"""
         with self.serial_lock:
             if not self.mc or not self.mc.is_open:
@@ -3503,8 +3556,7 @@ class MycobotServer(object):
             if self.mc and self.mc.is_open:
                 # 釋放伺服馬達
                 try:
-                    power_off_command = [0xfe, 0xfe, 0x02, 0x11, 0xfa] # power_off 指令
-                    self.write(power_off_command)
+                    self.write(CMD_POWER_OFF)
                     self.logger.info("已發送伺服馬達斷電指令 (power_off)")
                     time.sleep(0.5)
                 except Exception as e:
