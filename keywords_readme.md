@@ -1,5 +1,28 @@
 # Robot Framework 關鍵字說明文件 - Gherkin 風格 (最新更新)
 
+## 🚀 新增功能 (2026-02-09) - 任意移動與拍攝輔助關鍵字
+
+為了解決定義新觀測點的需求，新增了兩個輔助關鍵字，允許直接控制機器手臂移動到指定角度並拍攝影像。
+
+### ✅ 新增關鍵字 (RobotArmKeywords.py)
+
+| 關鍵字 | 參數 | 說明 |
+| :--- | :--- | :--- |
+| `移動機器手臂到指定角度` | `angles` (list), `speed` (int=30) | 移動機器手臂到指定角度 (6個關節角度列表) |
+| `拍攝並儲存影像` | `filename_tag` (str="capture") | 拍攝當前影像並儲存到 `output/debug_images/`，檔名包含時間戳記。 |
+
+**使用範例:**
+```robotframework
+*** Variables ***
+@{TARGET_ANGLES}    43.9    18.7    -92.5    -19.2    -4.7    -5.1
+
+*** Test Cases ***
+Move And Capture
+    Given 連接機器手臂
+    When 移動機器手臂到指定角度    ${TARGET_ANGLES}
+    Then 拍攝並儲存影像    filename_tag=observation_pos_2
+```
+
 ## 🚀 重大更新 (2026-02-02) - v2.0.0 SwitchBot 模組重構
 
 ### ✅ SwitchBot 智慧插座控制 - 改用官方 HTTP API

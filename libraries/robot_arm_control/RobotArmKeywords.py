@@ -159,6 +159,24 @@ class RobotArmKeywords:
 
         logger.info("✅ 機器手臂連接成功")
 
+        # v4.0.0 fix: 將建立好的 Socket 分享給 ImageSourceManager
+        # 避免 ImageSourceManager 嘗試建立第二個連接導致衝突
+        if self.image_source_manager and self.controller.is_connected():
+            try:
+                shared_socket = self.controller.socket
+                # 直接更新 SocketImageSource 的 socket
+                # 注意: 這裡假設 image_source_manager 擁有 socket_source 屬性
+                if hasattr(self.image_source_manager, 'socket_source'):
+                    self.image_source_manager.socket_source.socket = shared_socket
+                    self.image_source_manager.socket_source.is_shared_socket = True
+                    # 如果當前是 socket 模式，也更新 host/port 以防萬一
+                    if self.image_source_manager.socket_source.host is None:
+                        self.image_source_manager.socket_source.host = host
+                        self.image_source_manager.socket_source.port = int(port)
+                    logger.info("已將控制器 Socket 分享給視覺模組 (ImageSourceManager)")
+            except Exception as e:
+                logger.warning(f"無法更新視覺模組 Socket: {e}")
+
     @keyword("斷開機器手臂連接")
     def disconnect_robot_arm(self):
         """
@@ -1757,28 +1775,196 @@ class RobotArmKeywords:
             raise RuntimeError(f"YOLO 偵測指令失敗: {result.get('message')}")
             
         # 處理回傳圖片
+        debug_image_path = None
         if save_debug_image:
-             self._save_returned_yolo_image(result, button_id, prefix="yolo_valid")
+            debug_image_path = self._save_returned_yolo_image(result, button_id, prefix="yolo_valid")
 
         detections = result.get("detections", [])
 
         # 3. 驗證結果
-        # 檢查是否有任何偵測結果的 class 等於 expected_state
+        # 檢查是否有任何偵測結果的 class 等於 button_id_expected_state 格式
+        expected_class = f"{button_id}_{expected_state}"
         found = False
         detected_classes = []
         for d in detections:
             detected_classes.append(d['class'])
-            if d['class'] == expected_state:
+            if d['class'] == expected_class:
                 found = True
                 break
 
         if not found:
-            raise AssertionError(f"YOLO 未檢測到按鈕 '{button_id}' 為 '{expected_state}'。檢測到的物件: {detected_classes}")
+            error_msg = f"YOLO 未檢測到按鈕 '{button_id}' 為 '{expected_state}'。檢測到的物件: {detected_classes}"
+            if debug_image_path:
+                error_msg += f"\n📷 Debug 圖片: {debug_image_path}"
+            raise AssertionError(error_msg)
 
         logger.info(f"✅ YOLO 成功檢測到按鈕 '{button_id}' 為 '{expected_state}'")
 
-    def _save_returned_yolo_image(self, result: dict, tag: str, prefix: str = "yolo"):
-        """(Internal) 儲存 Server 回傳的 YOLO 截圖"""
+    @keyword('Then 雙重驗證面板按鈕 "${button_id}" 狀態應為 "${expected_state}"')
+    @keyword('Then 雙重驗證面板按鈕 "${button_id}" 狀態應為 "${expected_state}" (模式: ${mode})')
+    def verify_panel_light_dual_check(self, button_id: str, expected_state: str, mode: str = 'loose'):
+        """
+        雙重驗證：同時使用 YOLO 和 ROI 顏色/亮度檢測來確認按鈕狀態。
+        """
+        # Remove quotes if present in mode (from embedded argument)
+        mode = mode.strip('"').strip("'")
+
+        """
+        雙重驗證：同時使用 YOLO 和 ROI 顏色/亮度檢測來確認按鈕狀態。
+        
+        Args:
+            button_id: 按鈕 ID
+            expected_state: 預期狀態 ('on', 'off', 'red', 'x')
+                - on: 白色背光
+                - off: 藍色背光
+                - red: 紅色背光
+                - x: 無背光 (文字白)
+            mode: 
+                - 'loose' (寬鬆模式: 預設, 任一通過即通過)
+                - 'strict' (嚴格模式: 兩者皆須通過)
+        """
+        self._ensure_connected()
+
+        # 1. 取得按鈕配置與觀測角度
+        config = self._get_button_config(button_id)
+        if "vision" not in config or "observe_angles" not in config["vision"]:
+            raise ValueError(f"按鈕 '{button_id}' 未配置觀測角度 (vision.observe_angles)")
+        
+        observe_angles = config["vision"]["observe_angles"]
+        logger.info(f"雙重驗證: 移動到觀測角度 {observe_angles}...")
+
+        # 2. 發送 scan_and_detect 指令 (強制回傳圖片)
+        cmd = {
+            "command": "scan_and_detect",
+            "angles": observe_angles,
+            "timeout": 20.0,
+            "filename_tags": {
+                "exp": expected_state,
+                "tag": f"{button_id}_dual"
+            },
+            "return_image": True
+        }
+        
+        result = self._send_vision_command(cmd, timeout=30.0)
+        
+        if result.get("status") != "success":
+            raise RuntimeError(f"YOLO 偵測指令失敗: {result.get('message')}")
+
+        # 3. 解析結果
+        detections = result.get("detections", [])
+        image_base64 = result.get("image_base64")
+        
+        if not image_base64:
+            raise RuntimeError("Server 未回傳影像，無法進行 ROI 分析")
+
+        # --- A. YOLO 驗證 ---
+        yolo_pass = False
+        detected_classes = [d['class'] for d in detections]
+        expected_class = f"{button_id}_{expected_state}"
+        
+        # 狀態對應邏輯: 
+        # YOLO class 通常是 "{button_id}_{state}" (e.g. "light1_on")
+        # 如果 expected_state 是 "x", YOLO 可能檢測為 "light1_x" 或根本沒檢測到 (視模型而定)
+        # 這裡假設 YOLO 有訓練 "x" 狀態
+        
+        if expected_class in detected_classes:
+            yolo_pass = True
+            logger.info(f"✅ [YOLO] 檢測通過: {expected_class}")
+        else:
+            logger.info(f"❌ [YOLO] 檢測失敗: 預期 {expected_class}, 實際 {detected_classes}")
+
+        # --- B. ROI 影像分析驗證 ---
+        roi_pass = False
+        roi_details = {}
+        
+        try:
+            # 解碼影像
+            import base64
+            import numpy as np
+            import cv2
+            
+            img_data = base64.b64decode(image_base64)
+            nparr = np.frombuffer(img_data, np.uint8)
+            image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+            if image is None:
+                raise RuntimeError("影像解碼失敗")
+
+            # 執行 ROI 分析 (使用 analyze_roi_from_image)
+            roi_result = self.local_vision.analyze_roi_from_image(
+                image=image,
+                roi_config=config['vision'],
+                button_id=button_id
+            )
+            
+            roi_details = roi_result
+            actual_color = roi_result['color'] # white, blue, red, off/none
+            actual_brightness = roi_result['brightness_level']
+            
+            # ROI 狀態對應
+            # expected 'on' -> white
+            # expected 'off' -> blue
+            # expected 'red' -> red
+            # expected 'x' -> white (but low confidence? or specific definition) -> User said: "有沒有背光 文字是白色"
+            # 這裡簡單對應顏色
+            
+            check_color = ""
+            if expected_state == 'on':
+                check_color = 'white'
+            elif expected_state == 'off':
+                check_color = 'blue'
+            elif expected_state == 'red':
+                check_color = 'red'
+            elif expected_state == 'x':
+                check_color = 'white' # 假設 x 也是白色文字
+            
+            # 對於 'x' 和 'on' 都是 white，可能需要亮度區分，或者暫時視為相同顏色 (ROI 分辨不出圖案)
+            # 根據用戶描述: on -> 有背光白色, x -> 無背光 文字白色
+            # 所以 x 的亮度應該比 on 低? 
+            # 暫時只比對顏色，若需進階判斷需調整
+            
+            if actual_color == check_color:
+                # 針對 x 和 on 的亮度區分 (假設)
+                if expected_state == 'on' and actual_brightness < 10:
+                     logger.warning(f"⚠️ [ROI] 顏色正確但亮度過低 ({actual_brightness}%)，可能不是 ON")
+                     # 視情況是否讓它失敗
+                
+                roi_pass = True
+                logger.info(f"✅ [ROI] 分析通過: 顏色 {actual_color}, 亮度 {actual_brightness}%")
+            else:
+                 logger.info(f"❌ [ROI] 分析失敗: 預期 {check_color}, 實際 {actual_color}")
+
+        except Exception as e:
+            logger.error(f"ROI 分析過程發生錯誤: {e}")
+            roi_details['error'] = str(e)
+
+        # --- C. 綜合判定 ---
+        logger.info(f"📊 雙重驗證結果 (模式: {mode}): YOLO={yolo_pass}, ROI={roi_pass}")
+        
+        final_pass = False
+        if mode == 'strict':
+            final_pass = yolo_pass and roi_pass
+        else: # loose
+            final_pass = yolo_pass or roi_pass
+            
+        if not final_pass:
+             # 儲存失敗截圖
+            self._save_returned_yolo_image(result, f"{button_id}_dual_fail", prefix="dual_fail")
+            
+            msg = (f"雙重驗證失敗 ({mode} mode)!\n"
+                   f"  - YOLO: {'PASS' if yolo_pass else 'FAIL'} (Found: {detected_classes})\n"
+                   f"  - ROI : {'PASS' if roi_pass else 'FAIL'} (Color: {roi_details.get('color')}, Brightness: {roi_details.get('brightness_level')}%)"
+            )
+            raise AssertionError(msg)
+            
+        logger.info(f"🏆 雙重驗證成功!")
+
+    def _save_returned_yolo_image(self, result: dict, tag: str, prefix: str = "yolo") -> Optional[str]:
+        """(Internal) 儲存 Server 回傳的 YOLO 截圖
+        
+        Returns:
+            str: 圖片絕對路徑，失敗時返回 None
+        """
         try:
             import base64
             import numpy as np
@@ -1803,9 +1989,13 @@ class RobotArmKeywords:
                     filepath = debug_dir / filename
                     
                     cv2.imwrite(str(filepath), img)
-                    logger.info(f"📷 YOLO 截圖已儲存到本機: {filepath}")
+                    abs_path = str(filepath.absolute())
+                    logger.info(f"📷 YOLO 截圖已儲存到本機: {abs_path}")
+                    return abs_path
         except Exception as e:
             logger.warning(f"儲存 YOLO 回傳圖片失敗: {e}")
+        
+        return None
     @keyword('YOLO 僅檢測並儲存按鈕影像 "${button_id}" 預期狀態 "${expected_state}"')
     def then_yolo_only_detect_and_save_image(self, button_id: str, expected_state: str):
         """
@@ -2365,43 +2555,190 @@ class RobotArmKeywords:
             if not detections:
                 return "none"
 
-            # 回傳第一個檢測到的物件 class (假設只有一個主要物件，或者取信心度最高的)
-            # 這裡簡單取第一個，若有多個可能需要過濾
-            # 通常 scan_and_detect 會回傳列表 [ {class, confidence, bbox}, ... ]
-            # 為了穩定性，我們可以排序信心度
-            sorted_dets = sorted(detections, key=lambda x: x.get('confidence', 0), reverse=True)
+            # 過濾出屬於該 button_id 的檢測結果
+            # 例如：button_id="light1"，只保留 class 為 "light1_on", "light1_off", "light1_x" 等
+            button_detections = []
+            for det in detections:
+                class_name = det.get('class', '')
+                # 檢查 class 是否以 button_id + "_" 開頭
+                if class_name.startswith(f"{button_id}_"):
+                    button_detections.append(det)
+            
+            if not button_detections:
+                logger.warning(f"未檢測到任何屬於 '{button_id}' 的物件。所有檢測: {[d.get('class') for d in detections]}")
+                return "none"
+
+            # 從屬於該按鈕的檢測中取信心度最高的
+            sorted_dets = sorted(button_detections, key=lambda x: x.get('confidence', 0), reverse=True)
             top_class = sorted_dets[0]['class']
-            logger.info(f"YOLO 檢測狀態: {top_class} (信心度: {sorted_dets[0].get('confidence', 0):.2f})")
-            return top_class
+            
+            # 解析狀態：從 "light1_x" 提取 "x"，從 "light1_on" 提取 "on"
+            if '_' in top_class:
+                parsed_state = top_class.rsplit('_', 1)[-1]  # 取最後一個底線後的部分
+            else:
+                parsed_state = top_class
+            
+            logger.info(f"YOLO 檢測狀態: {top_class} -> 解析為: {parsed_state} (信心度: {sorted_dets[0].get('confidence', 0):.2f})")
+            return parsed_state
 
         except Exception as e:
             logger.error(f"獲取 YOLO 狀態發生錯誤: {e}")
             return "error"
 
-    @keyword('若 YOLO 檢測到按鈕 "${button_id}" 為 "${target_state}" 則點擊喚醒')
+    @keyword('若 YOLO 檢測到按鈕 \"${button_id}\" 為 \"${target_state}\" 則點擊喚醒')
     def given_if_yolo_detects_state_then_wakeup(self, button_id: str, target_state: str):
         """
-        Given: 如果 YOLO 檢測到特定狀態（如 "x" 或 "off"），則執行點擊喚醒
+        Given: 如果 YOLO 檢測到特定狀態（如 \"x\" 或 \"off\"），或檢測到 \"panel_off\"，則執行點擊喚醒
 
-        這用於處理面板休眠的情況。如果檢測到休眠狀態 (x) 或關閉狀態 (off)，
-        可能需要多點擊一次來喚醒面板。
+        這用於處理面板休眠的情況。喚醒條件：
+        1. 檢測到目標按鈕的指定狀態 (例如 \"light1_x\")
+        2. 檢測到全域面板關閉訊號 \"panel_off\"
 
         Args:
             button_id: 按鈕 ID
-            target_state: 觸發喚醒的目標狀態 (例如 "x")
+            target_state: 觸發喚醒的目標狀態 (例如 \"x\")
         """
-        logger.info(f"檢查是否需要喚醒點擊: 當 {button_id} 為 {target_state} 時...")
+        logger.info(f"檢查是否需要喚醒點擊: 當 {button_id} 為 {target_state} 或檢測到 panel_off 時...")
+        
+        # 1. 取得按鈕配置
+        config = self._get_button_config(button_id)
+        if "vision" not in config or "observe_angles" not in config["vision"]:
+            raise ValueError(f"按鈕 '{button_id}' 未配置觀測角度")
 
-        current_state = self.get_yolo_detection_status(button_id)
+        observe_angles = config["vision"]["observe_angles"]
 
-        if current_state == target_state:
-            logger.info(f"⚠️ 檢測到狀態為 '{target_state}'，執行喚醒點擊！")
-            self._press_button(button_id)
-            # 點擊後等待一下讓面板反應
-            time.sleep(1.0)
-            self._last_operation_success = True
-        else:
-            logger.info(f"當前狀態為 '{current_state}' (非 '{target_state}')，無需喚醒。")
+        # 2. 發送 scan_and_detect 指令（與 get_yolo_detection_status 相同）
+        cmd = {
+            "command": "scan_and_detect",
+            "angles": observe_angles,
+            "timeout": 20.0,
+            "filename_tags": {
+                "exp": "wakeup_check",
+                "tag": button_id
+            }
+        }
+
+        try:
+            result = self._send_vision_command(cmd, timeout=30.0)
+            if result.get("status") != "success":
+                logger.warning(f"YOLO 偵測指令失敗: {result.get('message')}")
+                return
+
+            detections = result.get("detections", [])
+            if not detections:
+                logger.info("未檢測到任何物件，無需喚醒")
+                return
+
+            # 3. 分析檢測結果，檢查是否需要喚醒
+            need_wakeup = False
+            wakeup_reason = ""
+            
+            # 期望的完整 class 名稱：button_id + "_" + target_state
+            expected_full_class = f"{button_id}_{target_state}"
+            
+            detected_classes = [d.get("class", "") for d in detections]
+            logger.info(f"檢測到的物件: {detected_classes}")
+
+            # 條件 1: 檢測到目標按鈕的指定狀態
+            if expected_full_class in detected_classes:
+                need_wakeup = True
+                wakeup_reason = f"檢測到 '{expected_full_class}'"
+            
+            # 條件 2: 檢測到 panel_off
+            if "panel_off" in detected_classes:
+                need_wakeup = True
+                wakeup_reason = f"檢測到 'panel_off'"
+                if expected_full_class in detected_classes:
+                    wakeup_reason = f"檢測到 '{expected_full_class}' 和 'panel_off'"
+
+            # 4. 執行喚醒（如果需要）
+            if need_wakeup:
+                logger.info(f"⚠️ {wakeup_reason}，執行喚醒點擊！")
+                self._press_button(button_id)
+                # 點擊後等待一下讓面板反應
+                time.sleep(1.0)
+                self._last_operation_success = True
+            else:
+                logger.info(f"當前檢測結果無需喚醒（未檢測到 '{expected_full_class}' 或 'panel_off'）")
+
+        except Exception as e:
+            logger.error(f"喚醒檢查發生錯誤: {e}")
+            return
+
+
+    # ==================== 新增關鍵字 - 任意移動與拍攝 (Task) ====================
+
+    @keyword("移動機器手臂到指定角度")
+    def move_robot_arm_to_specified_angles(self, angles: List[Any], speed: int = 30):
+        """移動機器手臂到指定角度
+        
+        Args:
+            angles: 角度列表 (6個角度)
+            speed: 移動速度 (1-100)，預設 30
+        
+        Example:
+            | @{angles} | Create List | 0 | 0 | 0 | 0 | 0 | 0 |
+            | 移動機器手臂到指定角度 | ${angles} |
+        """
+        self._ensure_connected()
+        
+        # 轉換為 float list
+        try:
+            target_angles = [float(a) for a in angles]
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"角度列表格式錯誤: {angles}, Error: {e}")
+
+        if len(target_angles) != 6:
+            raise ValueError(f"必須提供 6 個角度值，收到 {len(target_angles)} 個: {angles}")
+
+        logger.info(f"🦾 移動機器手臂到角度: {target_angles} (速度: {speed})")
+        self.controller.send_angles(target_angles, int(speed))
+        self.controller.wait_for_movement()
+        logger.info("✅ 移動完成")
+
+    @keyword("拍攝並儲存影像")
+    def capture_and_save_image(self, filename_tag: str = "capture") -> str:
+        """拍攝並儲存影像到 output/debug_images
+        
+        Args:
+            filename_tag: 檔名標籤 (預設 "capture")
+
+        Returns:
+            str: 儲存的檔案絕對路徑
+        """
+        if self.image_source_manager is None:
+             # 嘗試初始化 (如果尚未設定環境，可能需要依賴預設或手動設定)
+             # 但通常 Given 測試環境... 應該已經呼叫
+             raise RuntimeError("ImageSourceManager 未初始化，請先使用 'Given 測試環境設定為...' 關鍵字")
+             
+        logger.info(f"📸 正在拍攝影像 (tag={filename_tag})...")
+        image = self.image_source_manager.capture_image()
+        
+        if image is None:
+            raise RuntimeError("拍攝失敗: 無法取得影像")
+
+        try:
+            import cv2
+            from datetime import datetime
+            
+            # 使用專案根目錄下的 output/debug_images
+            # 假設當前工作目錄是專案根目錄，或者透過 __file__ 定位
+            output_dir = Path("output/debug_images")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            filename = f"{filename_tag}_{timestamp}.jpg"
+            filepath = output_dir / filename
+            
+            cv2.imwrite(str(filepath), image)
+            abs_path = str(filepath.absolute())
+            logger.info(f"💾 影像已儲存: {abs_path}")
+            return abs_path
+            
+        except ImportError:
+             raise RuntimeError("缺少 cv2 模組，無法儲存影像")
+        except Exception as e:
+             raise RuntimeError(f"儲存影像失敗: {e}")
 
 
 # 測試用例

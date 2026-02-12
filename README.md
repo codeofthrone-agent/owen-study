@@ -368,7 +368,7 @@ print(f"亮度: {brightness}, 燈光: {'開啟' if is_on else '關閉'}")
 
 本專案提供兩款強大的 Web 介面工具，協助進行 ROI 校準與即時監控：
 
-#### 1. ROI 校準工具 (Web ROI Calibrator)
+#### 1. ROI 校準工具 (Web ROI Calibrator) — v5.0.0
 用於設定與校準影像感興趣區域 (ROI)，支援多環境切換與機器手臂動態連線。
 
 ```bash
@@ -381,6 +381,9 @@ uv run python scripts/web_roi_calibrator.py
 - ✅ **動態連線**: 支援機器手臂與 IP Camera 的動態連線與斷線
 - ✅ **視覺化標註**: 透過 Web 介面直接拖拉設定 ROI 區域
 - ✅ **即時預覽**: 結合 RTSP 串流與靜態影像擷取
+- ✅ **面板分組 (v5.0.0)**: 按鈕依 `panel_section` 分組顯示，提升校準效率
+- ✅ **觀測角度導航 (v5.0.0)**: 🎯 一鍵移動手臂到按鈕的 `observe_angles` 觀測位置
+- ✅ **YAML 格式保留 (v5.0.0)**: 使用 `ruamel.yaml` 保留 flow style、註解與排序
 
 #### 2. 多路串流監控 (Multi RTSP Viewer)
 用於同時監控多個 IP Camera 串流，支援自動佈局調整。

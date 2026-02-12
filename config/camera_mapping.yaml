@@ -1,0 +1,123 @@
+# SwitchBot Camera 與 RTSP 影像源映射配置
+# 用於將 SwitchBot API 設備 ID 映射到 RTSP 串流
+#
+# 用途:
+# - 統一管理 SwitchBot Camera 設備資訊與 RTSP 連線資訊
+# - 提供設備 ID 到 IP 地址的自動轉換
+# - 支援設備狀態查詢與影像分析整合
+#
+# 最後更新: 2026-02-02
+
+# 台北實驗室 Camera 映射
+taipei_lab:
+  level1:
+    # SwitchBot API 資訊
+    switchbot_device_id: "B0E9FE00E194"
+    switchbot_device_name: "Level1"
+    switchbot_device_type: "Pan/Tilt Cam Plus 3K"
+    
+    # RTSP 連線資訊
+    rtsp_ip: "192.168.165.184"
+    rtsp_port: 554
+    rtsp_stream_path: "/live0"
+    rtsp_transport: "tcp"
+    
+    # 環境配置對應
+    ipcam_config_key: "taipei_lab.level1"
+    description: "Level 1 監控攝影機"
+
+  level2:
+    switchbot_device_id: "B0E9FE019CE9"
+    switchbot_device_name: "Level2"
+    switchbot_device_type: "Pan/Tilt Cam Plus 3K"
+    
+    rtsp_ip: "192.168.165.127"
+    rtsp_port: 554
+    rtsp_stream_path: "/live0"
+    rtsp_transport: "tcp"
+    
+    ipcam_config_key: "taipei_lab.level2"
+    description: "Level 2 監控攝影機"
+
+  motor:
+    switchbot_device_id: "B0E9FE01FCFC"
+    switchbot_device_name: "Motor"
+    switchbot_device_type: "Pan/Tilt Cam Plus 3K"
+    
+    rtsp_ip: "192.168.165.136"
+    rtsp_port: 554
+    rtsp_stream_path: "/live0"
+    rtsp_transport: "tcp"
+    
+    ipcam_config_key: "taipei_lab.motor"
+    description: "馬達區域監控攝影機"
+
+# RV Car Camera 映射
+rv_car:
+  cam1:
+    switchbot_device_id: "B0E9FE01FD2E"
+    switchbot_device_name: "Camera 1"
+    switchbot_device_type: "Pan/Tilt Cam Plus 3K"
+    
+    rtsp_ip: "192.168.166.187"
+    rtsp_port: 554
+    rtsp_stream_path: "/live0"
+    rtsp_transport: "udp"
+    
+    ipcam_config_key: "rv_car.cam1"
+    description: "燈光區域一監控攝影機"
+
+  cam2:
+    switchbot_device_id: "B0E9FE00E17F"
+    switchbot_device_name: "Camera 2"
+    switchbot_device_type: "Pan/Tilt Cam Plus 3K"
+    
+    rtsp_ip: "192.168.166.177"
+    rtsp_port: 554
+    rtsp_stream_path: "/live0"
+    rtsp_transport: "udp"
+    
+    ipcam_config_key: "rv_car.cam2"
+    description: "燈光區域二監控攝影機"
+
+  cam3:
+    switchbot_device_id: "B0E9FE00E1DC"
+    switchbot_device_name: "Camera 3"
+    switchbot_device_type: "Pan/Tilt Cam Plus 3K"
+    
+    rtsp_ip: "192.168.166.172"
+    rtsp_port: 554
+    rtsp_stream_path: "/live0"
+    rtsp_transport: "udp"
+    
+    ipcam_config_key: "rv_car.cam3"
+    description: "燈光區域三監控攝影機"
+
+# 未分類 Camera（需要進一步配置）
+uncategorized:
+  panel:
+    switchbot_device_id: "B0E9FE00E1A8"
+    switchbot_device_name: "Panel"
+    switchbot_device_type: "Pan/Tilt Cam Plus 3K"
+    description: "面板監控攝影機（待配置 IP 地址）"
+    status: "pending_configuration"
+  
+  4f:
+    switchbot_device_id: "B0E9FE00E1CC"
+    switchbot_device_name: "4F"
+    switchbot_device_type: "Pan/Tilt Cam Plus 3K"
+    description: "4樓監控攝影機（待配置 IP 地址）"
+    status: "pending_configuration"
+  
+  motorfix:
+    switchbot_device_id: "B0E9FE02067C"
+    switchbot_device_name: "Motorfix"
+    switchbot_device_type: "Pan/Tilt Cam Plus 3K"
+    description: "馬達修復區攝影機（待配置 IP 地址）"
+    status: "pending_configuration"
+
+# 注意事項:
+# 1. SwitchBot API 不提供影像串流，僅用於設備管理與事件通知
+# 2. 影像分析必須透過 RTSP 協定直接存取 Camera
+# 3. 認證資訊請在 .env 中設定 IPCAM_USERNAME 和 IPCAM_PASSWORD
+# 4. 未分類 Camera 需要先確認 IP 地址後才能進行影像分析

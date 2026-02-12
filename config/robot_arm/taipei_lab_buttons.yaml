@@ -313,6 +313,126 @@ buttons:
     vision:
       observe_angles: [31.7, 13.5, -79.6, -20.2, -10.7, 159.3]
       roi: {x: 368, y: 209, width: 70, height: 62}
+  lcd_a:
+    name: A 按鈕
+    description: 快捷按鈕 A
+    type: lcd_light
+    environment_light: level1_light_1
+    panel_section: 3611c
+    down_angles: [1.5, -58.5, -81.5, 22, 0, 159.3]
+    up_angles: [1.5, -25, -80, 22, 0, 159.3]
+    speed: 30
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.4, 6.8, -64.2, -27.2, -4.3, -5]
+      roi: {x: 306, y: 213, width: 66, height: 60}
+  lcd_b:
+    name: B 按鈕
+    description: 快捷按鈕 B
+    type: lcd_light
+    environment_light: level1_light_2
+    panel_section: 3611c
+    down_angles: [1.5, -58.5, -81.5, 22, 0, 159.3]
+    up_angles: [1.5, -25, -80, 22, 0, 159.3]
+    speed: 30
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.4, 6.8, -64.2, -27.2, -4.3, -5]
+      roi: {x: 306, y: 213, width: 66, height: 60}
+  lcd_left:
+    name: 左按鈕
+    description: 快捷按鈕 左
+    type: lcd_light
+    environment_light: level1_light_1
+    panel_section: 3611c
+    down_angles: [1.5, -58.5, -81.5, 22, 0, 159.3]
+    up_angles: [1.5, -25, -80, 22, 0, 159.3]
+    speed: 30
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.4, 6.8, -64.2, -27.2, -4.3, -5]
+      roi: {x: 306, y: 213, width: 66, height: 60}
+  lcd_right:
+    name: 右按鈕
+    description: 快捷按鈕 右
+    type: lcd_light
+    environment_light: level1_light_2
+    panel_section: 3611c
+    down_angles: [1.5, -58.5, -81.5, 22, 0, 159.3]
+    up_angles: [1.5, -25, -80, 22, 0, 159.3]
+    speed: 30
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.4, 6.8, -64.2, -27.2, -4.3, -5]
+      roi: {x: 306, y: 213, width: 66, height: 60}
+  lcd_up:
+    name: 上按鈕
+    description: 快捷按鈕 上
+    type: lcd_light
+    environment_light: level1_light_1
+    panel_section: 3611c
+    down_angles: [1.5, -58.5, -81.5, 22, 0, 159.3]
+    up_angles: [1.5, -25, -80, 22, 0, 159.3]
+    speed: 30
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.4, 6.8, -64.2, -27.2, -4.3, -5]
+      roi: {x: 306, y: 213, width: 66, height: 60}
+  lcd_down:
+    name: 下按鈕
+    description: 快捷按鈕 下
+    type: lcd_light
+    environment_light: level1_light_2
+    panel_section: 3611c
+    down_angles: [1.5, -58.5, -81.5, 22, 0, 159.3]
+    up_angles: [1.5, -25, -80, 22, 0, 159.3]
+    speed: 30
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.4, 6.8, -64.2, -27.2, -4.3, -5]
+      roi: {x: 306, y: 213, width: 66, height: 60}
+  lcd_select:
+    name: 選擇按鈕
+    description: 快捷按鈕 選擇
+    type: lcd_light
+    environment_light: level1_light_1
+    panel_section: 3611c
+    down_angles: [1.5, -58.5, -81.5, 22, 0, 159.3]
+    up_angles: [1.5, -25, -80, 22, 0, 159.3]
+    speed: 30
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.4, 6.8, -64.2, -27.2, -4.3, -5]
+      roi: {x: 306, y: 213, width: 66, height: 60}
+  lcd_back:
+    name: 返回按鈕
+    description: 快捷按鈕 返回
+    type: lcd_light
+    environment_light: level1_light_2
+    panel_section: 3611c
+    down_angles: [1.5, -58.5, -81.5, 22, 0, 159.3]
+    up_angles: [1.5, -25, -80, 22, 0, 159.3]
+    speed: 30
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.4, 6.8, -64.2, -27.2, -4.3, -5]
+      roi: {x: 306, y: 213, width: 66, height: 60}
 environment_lights:
   level1_light_1:
     name: Level1 燈泡 1

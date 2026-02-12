@@ -900,6 +900,32 @@ Monitor LED Status Changes
     
     RETURN    ${status_history}
 
+# =================== 面板燈號雙重驗證關鍵字 ===================
+Verify Panel Light Dual Check
+    [Documentation]    雙重驗證面板按鈕狀態 (YOLO + ROI)
+    [Arguments]    ${button_id}    ${expected_state}    ${mode}=loose
+    
+    # 1. 執行 YOLO 偵測並獲取影像
+    ${image_base64}=    Scan And Detect    ${button_id}    return_image=True
+    
+    # 2. 驗證 YOLO 結果
+    ${yolo_result}=    Check YOLO Detection    ${button_id}    ${expected_state}
+    
+    # 3. 執行 ROI 影像分析 (使用回傳影像)
+    ${roi_result}=    Analyze ROI From Image    ${image_base64}    ${button_id}
+    
+    # 4. 驗證 ROI 結果 (顏色/亮度)
+    ${roi_pass}=    Check ROI Status    ${roi_result}    ${expected_state}
+    
+    # 5. 綜合判定
+    IF    '${mode}' == 'strict'
+        Should Be True    ${yolo_result} and ${roi_pass}
+    ELSE
+        Should Be True    ${yolo_result} or ${roi_pass}
+    END
+    
+    RETURN    ${True}
+
 # =================== 動態角度變化檢測關鍵字 ===================
 Initialize Marker Tracking System
     [Documentation]    初始化標記追蹤系統

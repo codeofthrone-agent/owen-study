@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 🔌 SwitchBot 智慧插座電源管理
 - 🤖 **機器手臂視覺檢測系統 (✅ Phase 1-3 已完成, 2025-11-13)**
   - MyCobot 280 按鈕 LED 顏色檢測（HSV 色彩空間）
-  - ROI 互動式校準工具
+  - ROI 互動式校準工具（✅ v5.0.0 增強：panel_section 分組、觀測角度移動）
   - 26 個 BDD 中文關鍵字
   - 17 個完整測試案例（快速測試、功能測試、整合測試）
 - 🎯 **本機化視覺檢測系統 (✅ 已完成 - v4.1.1, 2025-11-18)**
@@ -334,7 +334,7 @@ robot-multiplatform-automation/
 │   └── test_environment_config.py  # 環境配置單元測試
 │
 ├── scripts/                     # 輔助腳本
-│   ├── web_roi_calibrator.py   # ROI 校準工具（✅ v4.0.0）
+│   ├── web_roi_calibrator.py   # ROI 校準工具（✅ v5.0.0，ruamel.yaml 格式保留）
 │   ├── robot_arm_server.py     # 機器手臂 Server（Jetson Nano）
 │   └── verify_environment.sh   # 環境驗證腳本
 │
@@ -733,7 +733,7 @@ Log    1. Open Application 使用 http://localhost:4723 和 capabilities 字典
 
 ### 版本控制
 
-**當前狀態 (2025-11-18):**
+**當前狀態 (2026-02-12):**
 - Phase 1 基礎架構：✅ 完成
 - iOS 真機測試環境：✅ 完成（2025-06-27）
   - 支援 iPhone 13 系列（已測試：iPhone 13 mini, iOS 18.6.2）
@@ -777,8 +777,20 @@ Log    1. Open Application 使用 http://localhost:4723 和 capabilities 字典
     - `RobotArmKeywords`: 智能檢測並傳遞 `controller.socket`
   - **向後兼容：** 保持獨立模式（無參數調用）
   - **新增功能：** TCP 粘包防護（`time.sleep(0.05)`）
+- **ROI 校準工具增強：✅ 完成（2026-02-12, v5.0.0）**
+  - **YAML 格式保留：** 使用 `ruamel.yaml` 取代 PyYAML，完整保留 flow style、註解、排序
+  - **UI 面板分組：** 按鈕依 `panel_section` 分組顯示（如「面板 3611A」、「面板 3611C」）
+  - **觀測角度移動：** 新增 🎯「觀測」按鈕，可移動手臂到按鈕設定的 `observe_angles`
+  - **新增 API：** `POST /api/robot/move_to_observe` — 依 button_id 移動手臂至觀測位置
+  - **修改檔案：**
+    - `scripts/web_roi_calibrator.py`: `load_config`/`save_config` 改用 ruamel.yaml；`get_button_list` 回傳 panel_section/observe_angles；新增 move_to_observe 路由
+    - `scripts/templates/roi_annotator.html`: displayButtons 依 panel_section 分組；新增 moveToObservePosition() JS 函式
+  - **Socket 控制架構確認：** 整個系統統一透過 TCP Socket (port 9000) 控制，`MyCobotSocketController` → `pymycobot.MyCobot280Socket` → 遠端 `robot_arm_server.py`
 
 **下一階段重點:**
+- **v5.1.0: ROI 校準工具進階功能**（規劃中）
+  - 觀測角度微調與儲存
+  - 即時影像預覽整合
 - **v4.2.0: HTTP API Server 重構**（規劃中）
   - Socket (9000) 專注機器手臂控制
   - HTTP API (8000) 專注影像傳輸

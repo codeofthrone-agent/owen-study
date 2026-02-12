@@ -222,6 +222,56 @@
             color: #28a745;
         }
 
+        .btn-observe {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            align-self: center;
+        }
+
+        .btn-capture {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            align-self: center;
+            margin-left: 4px;
+        }
+
+        .btn-capture:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(33, 150, 243, 0.4);
+        }
+
+        .btn-capture:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-observe:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
+        }
+
+        .btn-observe:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .main-area {
             padding: 20px;
             display: flex;
@@ -725,31 +775,33 @@
             }
         }
 
-        // 顯示按鈕列表（樹狀結構）
+        // 顯示按鈕列表（樹狀結構，依 panel_section 分組）
         function displayButtons(buttons) {
             const listContainer = document.getElementById('buttonList');
             listContainer.innerHTML = '';
 
-            // 分組按鈕
-            const groups = {
-                robot_arm: { title: '🤖 機器手臂', items: [], count: 0 }
-            };
+            // 分組按鈕（依 panel_section）
+            const groups = {};
 
             // 分類所有按鈕
             buttons.forEach(button => {
                 if (button.type === 'button') {
-                    groups.robot_arm.items.push(button);
-                    groups.robot_arm.count += 1;
+                    // 依 panel_section 分組
+                    const section = button.panel_section || 'unknown';
+                    const groupId = `panel_${section}`;
+                    if (!groups[groupId]) {
+                        groups[groupId] = { title: `🤖 面板 ${section.toUpperCase()}`, items: [], count: 0 };
+                    }
+                    groups[groupId].items.push(button);
+                    groups[groupId].count += 1;
                 } else if (button.type === 'environment_light') {
                     // 解析 Camera ID
-                    // image_source 格式: "rtsp (camera_id)"
                     const match = button.image_source.match(/rtsp \((.+)\)/);
                     let groupId = 'unknown';
                     let groupTitle = '📷 未知來源';
 
                     if (match) {
                         groupId = match[1];
-                        // 根據 Camera ID 產生友善標題
                         if (groupId === 'level1') groupTitle = '📷 Level1 Camera';
                         else if (groupId === 'level2') groupTitle = '📷 Level2 Camera';
                         else if (groupId === 'motor') groupTitle = '📷 Motor Camera';
@@ -757,14 +809,12 @@
                         else groupTitle = `📷 Camera: ${groupId}`;
                     }
 
-                    // 動態建立群組
                     if (!groups[groupId]) {
                         groups[groupId] = { title: groupTitle, items: [], count: 0 };
                     }
 
-                    const subCount = button.sub_count || 0;  // 子燈泡數量
-                    const totalCount = 1 + subCount;  // 1 個陣列外框 + N 個子燈泡
-
+                    const subCount = button.sub_count || 0;
+                    const totalCount = 1 + subCount;
                     groups[groupId].items.push(button);
                     groups[groupId].count += totalCount;
                 }
@@ -775,12 +825,10 @@
                 const group = groups[groupKey];
                 if (group.items.length === 0) return;
 
-                // 建立群組容器
                 const groupDiv = document.createElement('div');
                 groupDiv.className = 'tree-group collapsed';
                 groupDiv.id = `group-${groupKey}`;
 
-                // 建立群組標題
                 const headerDiv = document.createElement('div');
                 headerDiv.className = 'tree-header';
                 headerDiv.innerHTML = `
@@ -792,7 +840,6 @@
                 `;
                 headerDiv.onclick = () => toggleGroup(groupKey);
 
-                // 建立項目容器
                 const itemsDiv = document.createElement('div');
                 itemsDiv.className = 'tree-items';
 
@@ -801,18 +848,41 @@
                     const item = document.createElement('div');
                     item.className = 'button-item' + (button.has_roi ? ' calibrated' : '');
 
-                    // 如果是燈泡陣列，顯示子燈泡數量
                     let subInfo = '';
                     if (button.sub_count && button.sub_count > 0) {
                         subInfo = `<div class="button-type">💡 燈泡陣列 (${button.sub_count} 個燈泡)</div>`;
                     }
 
+                    // 觀測角度按鈕 + 拍照按鈕
+                    let observeBtn = '';
+                    let captureBtn = '';
+                    if (button.observe_angles) {
+                        const anglesStr = button.observe_angles.map(a => a.toFixed(1)).join(', ');
+                        observeBtn = `<button class="btn-observe" title="移動到觀測位置: [${anglesStr}]" 
+                            onclick="event.stopPropagation(); moveToObservePosition('${button.name}')">
+                            🎯 觀測
+                        </button>`;
+                    }
+                    // 拍照按鈕：移動到觀測角度後擷取當前影像
+                    captureBtn = `<button class="btn-capture" title="擷取當前攝影機影像" 
+                        onclick="event.stopPropagation(); captureFromObservePosition('${button.name}', '${button.type || 'button'}', '${button.image_source}')">
+                        📷 拍照
+                    </button>`;
+
                     item.innerHTML = `
-                        <div class="button-name">${button.name}</div>
-                        <div class="button-desc">${button.description}</div>
-                        ${subInfo}
-                        <div class="button-source">📷 ${button.image_source}</div>
-                        ${button.has_roi ? '<div class="button-status">✅ 已校準</div>' : ''}
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <div class="button-name">${button.name}</div>
+                                <div class="button-desc">${button.description}</div>
+                                ${subInfo}
+                                <div class="button-source">📷 ${button.image_source}</div>
+                                ${button.has_roi ? '<div class="button-status">✅ 已校準</div>' : ''}
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                ${observeBtn}
+                                ${captureBtn}
+                            </div>
+                        </div>
                     `;
                     item.addEventListener('click', () => selectButton(button.name, button.has_roi, button.type, button.image_source));
                     itemsDiv.appendChild(item);
@@ -829,6 +899,66 @@
             const group = document.getElementById(`group-${groupKey}`);
             if (group) {
                 group.classList.toggle('collapsed');
+            }
+        }
+
+        // 移動手臂到指定按鈕的觀測位置
+        async function moveToObservePosition(buttonId) {
+            const env = document.getElementById('envSelect').value;
+            showMessage(`🎯 正在移動到 ${buttonId} 的觀測位置...`, 'info');
+
+            try {
+                const response = await fetch('/api/robot/move_to_observe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        button_id: buttonId,
+                        environment: env
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    const anglesStr = data.target_angles ? data.target_angles.join(', ') : 'N/A';
+                    showMessage(`✅ 已移動到 ${buttonId} 觀測位置 [${anglesStr}]`, 'success');
+                    // 更新角度輸入框
+                    if (data.target_angles) {
+                        document.getElementById('anglesInput').value = data.target_angles.join(', ');
+                    }
+                } else {
+                    showMessage(`❌ 移動失敗: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showMessage(`❌ 網路錯誤: ${error.message}`, 'error');
+            }
+        }
+
+        // 從當前位置擷取影像（拍照按鈕）
+        async function captureFromObservePosition(buttonName, itemType, imageSource) {
+            showMessage(`📷 正在擷取 ${buttonName} 的影像...`, 'info');
+
+            try {
+                // 先選中該按鈕
+                selectedButton = buttonName;
+                selectedItemType = itemType;
+                selectedImageSource = imageSource;
+                document.getElementById('currentButton').textContent = buttonName;
+
+                // 高亮選中的按鈕
+                document.querySelectorAll('.button-item').forEach(item => {
+                    item.classList.remove('active');
+                    if (item.querySelector('.button-name').textContent === buttonName) {
+                        item.classList.add('active');
+                    }
+                });
+
+                // 啟用擷取按鈕
+                document.getElementById('captureBtn').disabled = false;
+
+                // 執行截圖（複用現有 captureImage 邏輯）
+                await captureImage();
+            } catch (error) {
+                showMessage(`❌ 拍照失敗: ${error.message}`, 'error');
             }
         }
 

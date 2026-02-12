@@ -27,5 +27,6 @@ dependencies = [
     "robotframework-appiumlibrary>=2.0",
     "robotframework-requests>=0.9.0",
     "robotframework-seleniumlibrary>=6.0",
+    "ruamel-yaml>=0.18.16",
     "soundfile>=0.12.0",
 ]

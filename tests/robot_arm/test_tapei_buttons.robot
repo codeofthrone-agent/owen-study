@@ -17,6 +17,8 @@ Test Teardown    Teardown Test Environment
 *** Variables ***
 ${SUITE_START_TIME}    ${EMPTY}
 ${SUITE_END_TIME}      ${EMPTY}
+# 環境燈光穩定等待時間（秒）- 讓光暈/餘暉消散
+${ENV_LIGHT_SETTLE_TIME}    1
 
 *** Keywords ***
 Setup Suite Environment
@@ -81,17 +83,24 @@ Teardown Suite Environment
 執行環境燈光循環測試
     [Arguments]    ${button_id}    ${env_id}
     [Documentation]    環境燈光驗證模式 (OFF -> ON -> OFF)
+    ...                同時驗證環境燈光 (RTSP) 和面板燈光 (YOLO)
 
-    Log    [模式 A] 執行環境燈光驗證: ${env_id}    console=True
+    Log    [模式 A] 執行雙重燈光驗證: ${env_id} (環境) + ${button_id} (面板)    console=True
 
-    # 步驟 1: 驗證初始狀態為 off
+    # 步驟 0: 若檢測到 x status 則多點一下喚醒
+    若 YOLO 檢測到按鈕 "${button_id}" 為 "x" 則點擊喚醒
+
+    # 步驟 1: 驗證初始狀態為 off (環境燈光 + 面板燈光)
     ${t0}=    Get Current Date    result_format=epoch
     ${result1}=    When 用戶檢測環境燈光亮度 "${env_id}"    save_debug_image=${True}    step_prefix=step1_off
     ${t1}=    Get Current Date    result_format=epoch
     ${d1}=    Evaluate    round(${t1} - ${t0}, 1)
-    Log    ⏱️ [Step1] 檢測初始狀態: ${d1}s    console=True
+    Log    ⏱️ [Step1] 檢測環境燈光初始狀態: ${d1}s    console=True
     列出最新 Debug 圖片    step1_off
     Then 環境燈光狀態應該為 "off"
+    # 雙重驗證: YOLO 檢測面板燈光
+    YOLO 應該檢測到按鈕 "${button_id}" 為 "off"    save_debug_image=${True}
+    列出最新 Debug 圖片    yolo_valid
 
     # 步驟 2: 按壓按鈕開啟
     ${t2}=    Get Current Date    result_format=epoch
@@ -100,15 +109,21 @@ Teardown Suite Environment
     ${d2}=    Evaluate    round(${t3} - ${t2}, 1)
     Log    ⏱️ [Step2] 按壓按鈕開啟: ${d2}s    console=True
     Then 機器手臂操作應該成功完成
+    # 等待環境燈光穩定（讓光暈消散）
+    Log    ⏳ 等待環境燈光穩定 ${ENV_LIGHT_SETTLE_TIME}s...    console=True
+    Sleep    ${ENV_LIGHT_SETTLE_TIME}
 
-    # 步驟 3: 驗證狀態變為 on
+    # 步驟 3: 驗證狀態變為 on (環境燈光 + 面板燈光)
     ${t4}=    Get Current Date    result_format=epoch
     ${result2}=    When 用戶檢測環境燈光亮度 "${env_id}"    save_debug_image=${True}    step_prefix=step2_on
     ${t5}=    Get Current Date    result_format=epoch
     ${d3}=    Evaluate    round(${t5} - ${t4}, 1)
-    Log    ⏱️ [Step3] 檢測開啟狀態: ${d3}s    console=True
+    Log    ⏱️ [Step3] 檢測環境燈光開啟狀態: ${d3}s    console=True
     列出最新 Debug 圖片    step2_on
     Then 環境燈光狀態應該為 "on"
+    # 雙重驗證: YOLO 檢測面板燈光
+    YOLO 應該檢測到按鈕 "${button_id}" 為 "on"    save_debug_image=${True}
+    列出最新 Debug 圖片    yolo_valid
 
     # 步驟 4: 再次按壓按鈕關閉
     ${t6}=    Get Current Date    result_format=epoch
@@ -117,19 +132,26 @@ Teardown Suite Environment
     ${d4}=    Evaluate    round(${t7} - ${t6}, 1)
     Log    ⏱️ [Step4] 按壓按鈕關閉: ${d4}s    console=True
     Then 機器手臂操作應該成功完成
+    # 等待環境燈光穩定（讓光暈/餘暉消散）
+    Log    ⏳ 等待環境燈光穩定 ${ENV_LIGHT_SETTLE_TIME}s...    console=True
+    Sleep    ${ENV_LIGHT_SETTLE_TIME}
 
-    # 步驟 5: 驗證狀態變回 off
+    # 步驟 5: 驗證狀態變回 off (環境燈光 + 面板燈光)
     ${t8}=    Get Current Date    result_format=epoch
     ${result3}=    When 用戶檢測環境燈光亮度 "${env_id}"    save_debug_image=${True}    step_prefix=step3_off
     ${t9}=    Get Current Date    result_format=epoch
     ${d5}=    Evaluate    round(${t9} - ${t8}, 1)
-    Log    ⏱️ [Step5] 檢測關閉狀態: ${d5}s    console=True
+    Log    ⏱️ [Step5] 檢測環境燈光關閉狀態: ${d5}s    console=True
     列出最新 Debug 圖片    step3_off
     Then 環境燈光狀態應該為 "off"
+    # 雙重驗證: YOLO 檢測面板燈光
+    YOLO 應該檢測到按鈕 "${button_id}" 為 "off"    save_debug_image=${True}
+    列出最新 Debug 圖片    yolo_valid
 
     # 總結
     ${total}=    Evaluate    round(${t9} - ${t0}, 1)
     Log    ⏱️ [總計] 循環測試: ${total}s (檢測=${d1}+${d3}+${d5}, 按壓=${d2}+${d4})    console=True
+    Log    ✅ 雙重驗證完成: 環境燈光 (RTSP) ✓ 面板燈光 (YOLO) ✓    console=True
 
 執行面板燈光循環測試
     [Arguments]    ${button_id}
@@ -139,23 +161,23 @@ Teardown Suite Environment
     
     # 步驟 0: 若檢測到 x status 則多點一下喚醒
     Given 若 YOLO 檢測到按鈕 "${button_id}" 為 "x" 則點擊喚醒
-    
+
     # 步驟 1: 驗證初始狀態為 off
-    Given YOLO 應該檢測到按鈕 "${button_id}" 為 "off"
-    
+    Given YOLO 應該檢測到按鈕 "${button_id}" 為 "off"    save_debug_image=${True}
+
     # 步驟 2: 按壓按鈕開啟
     When 用戶按壓第 "${button_id}" 按鈕
     Then 機器手臂操作應該成功完成
-    
+
     # 步驟 3: 驗證狀態變為 on
-    And YOLO 應該檢測到按鈕 "${button_id}" 為 "on"
-    
+    And YOLO 應該檢測到按鈕 "${button_id}" 為 "on"    save_debug_image=${True}
+
     # 步驟 4: 再次按壓按鈕關閉
     When 用戶按壓第 "${button_id}" 按鈕
     Then 機器手臂操作應該成功完成
-    
+
     # 步驟 5: 驗證狀態變回 off
-    And YOLO 應該檢測到按鈕 "${button_id}" 為 "off"
+    And YOLO 應該檢測到按鈕 "${button_id}" 為 "off"    save_debug_image=${True}
     
 
 連續按壓按鈕並拍照

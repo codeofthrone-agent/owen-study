@@ -14,6 +14,8 @@
 """
 
 import cv2
+import os
+import time
 import numpy as np
 from pathlib import Path
 from typing import Optional, Tuple, Dict, List
@@ -55,6 +57,10 @@ class LocalVisionAnalyzer:
 
         # 初始化亮度閾值
         self.brightness_thresholds = self._init_brightness_thresholds()
+
+        # 初始化除錯輸出目錄
+        self.debug_output_dir = "output/debug_images"
+        os.makedirs(self.debug_output_dir, exist_ok=True)
 
         logger.info("LocalVisionAnalyzer 初始化完成")
         logger.debug(f"支援顏色: {list(self.color_ranges.keys())}")
@@ -791,6 +797,113 @@ class LocalVisionAnalyzer:
         except Exception as e:
             logger.error(f"按鈕檢測失敗 ({button_id}): {e}")
             raise RuntimeError(f"檢測失敗: {e}")
+
+    def analyze_roi_from_image(
+        self,
+        image: np.ndarray,
+        roi_config: dict,
+        button_id: str,
+        apply_aruco_offset: bool = True,
+        save_debug_image: bool = True  # Default to True for calibration feedback
+    ) -> dict:
+        """從給定的影像中分析 ROI (不重新擷取)
+
+        此方法用於雙重驗證，直接使伺服器回傳的影像進行分析，確保影像一致性。
+
+        Args:
+            image: BGR 格式的輸入影像
+            roi_config: 完整的 vision 配置字典 (包含 roi 和 aruco_markers)
+            button_id: 按鈕 ID (用於日誌記錄)
+            apply_aruco_offset: 是否應用 ArUco offset 校正 (預設 True)
+            save_debug_image: 是否儲存帶有 ROI 標註的除錯影像 (預設 True)
+
+        Returns:
+            dict: 檢測結果
+                {
+                    "color": str,  # 顏色名稱
+                    "brightness_level": int,  # 0-100%
+                    "confidence": float,  # 0.0-1.0
+                    "raw_brightness": float,  # 0-255
+                    "aruco_offset": [float, float]  # ArUco offset (如有應用)
+                }
+        """
+        try:
+            # 1. 動態 ArUco offset 計算
+            offset_x, offset_y = 0.0, 0.0
+            
+            if apply_aruco_offset and 'aruco_markers' in roi_config:
+                try:
+                    offset_x, offset_y = self._calculate_aruco_offset(
+                        image, 
+                        roi_config['aruco_markers']
+                    )
+                except Exception as e:
+                    logger.warning(f"ArUco offset 計算失敗: {e}, 使用原始 ROI 座標")
+                    offset_x, offset_y = 0.0, 0.0
+            
+            if offset_x != 0.0 or offset_y != 0.0:
+                logger.info(f"應用 ArUco offset 校正: ({offset_x:.1f}, {offset_y:.1f}) 像素")
+
+            # 2. 提取 ROI (應用 offset)
+            if 'roi' in roi_config:
+                roi = roi_config['roi']
+            else:
+                roi = roi_config
+            
+            x = int(roi['x'] + offset_x)
+            y = int(roi['y'] + offset_y)
+            w, h = roi['width'], roi['height']
+            
+            # 確保 ROI 在影像範圍內
+            x = max(0, min(x, image.shape[1] - w))
+            y = max(0, min(y, image.shape[0] - h))
+            
+            roi_image = image[y:y+h, x:x+w]
+
+            # 3. 檢測色彩
+            color, conf, hsv_mean = self._detect_color_hsv(roi_image)
+
+            # 4. 檢測亮度
+            brightness_level, brightness_value = self._detect_brightness(roi_image)
+
+            # 5. 儲存除錯影像 (若啟用)
+            if save_debug_image:
+                try:
+                    debug_img = image.copy()
+                    # 繪製 ROI 框 (綠色)
+                    cv2.rectangle(debug_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                    
+                    # 標註資訊
+                    label = f"{button_id}: {color} ({brightness_level}%)"
+                    cv2.putText(debug_img, label, (x, y - 10), 
+                              cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                    
+                    # 儲存
+                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                    filename = f"roi_debug_{button_id}_{timestamp}.jpg"
+                    filepath = os.path.join(self.debug_output_dir, filename)
+                    cv2.imwrite(filepath, debug_img)
+                    logger.info(f"💾 ROI 除錯影像已儲存: {filepath}")
+                except Exception as e:
+                    logger.warning(f"儲存 ROI 除錯影像失敗: {e}")
+
+            # 6. 組合結果
+            result = {
+                "color": color,
+                "brightness_level": brightness_level,
+                "confidence": conf,
+                "raw_brightness": brightness_value
+            }
+            
+            if offset_x != 0.0 or offset_y != 0.0:
+                result["aruco_offset"] = [offset_x, offset_y]
+
+            logger.info(f"按鈕 {button_id} (影像重用) 檢測完成: 顏色={color}, 亮度={brightness_level}%, 信心度={conf:.2f}")
+            return result
+
+        except Exception as e:
+            logger.error(f"按鈕 ROI 分析失敗 ({button_id}): {e}")
+            raise RuntimeError(f"分析失敗: {e}")
 
     def _detect_aruco_markers(self, image: np.ndarray) -> List[Dict]:
         """檢測影像中的ArUco markers

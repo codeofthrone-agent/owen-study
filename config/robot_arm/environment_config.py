@@ -106,7 +106,7 @@ class EnvironmentConfig:
             "robot_arm_host": "192.168.165.100",
             "robot_arm_port": 9000,
             "robot_arm_http_port": 8000,  # ✨ 新增：HTTP API Port
-            "robot_arm_image_source": "http",  # Switched to http per user request
+            "robot_arm_image_source": "socket",  # Fallback to socket as http (port 8000) is unreachable
 
             "panel_types": ["3510a", "3611a", "3611c"],
             "button_config_path": "config/robot_arm/taipei_lab_buttons.yaml",

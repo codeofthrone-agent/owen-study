@@ -674,37 +674,73 @@ class WebButtonROICalibrator:
         self.client = client
 
     def load_config(self) -> bool:
+        """載入配置檔案 (使用 ruamel.yaml 保留格式)"""
         try:
+            from ruamel.yaml import YAML
+            ryaml = YAML()
+            ryaml.preserve_quotes = True
             with open(self.config_path, 'r', encoding='utf-8') as f:
-                self.config = yaml.safe_load(f)
-            self.buttons = self.config.get('buttons', {})
-            self.environment_lights = self.config.get('environment_lights', {})
+                self.config = ryaml.load(f)
+            # 將 ruamel 的 CommentedMap 轉為普通 dict 供內部使用
+            # 但保留 self.config 為原始 ruamel 物件以便儲存時保持格式
+            self.buttons = dict(self.config.get('buttons', {}))
+            self.environment_lights = dict(self.config.get('environment_lights', {}))
             print(f"✅ 載入配置成功: {len(self.buttons)} 個按鈕, {len(self.environment_lights)} 個環境燈光")
             return True
         except Exception as e:
             print(f"載入配置失敗: {e}")
             return False
 
+    @staticmethod
+    def _to_flow_style(obj):
+        """將普通 dict/list 轉為 ruamel.yaml 的 flow style 物件
+        
+        確保儲存時保持單行格式，例如：
+          roi: {x: 306, y: 213, width: 66, height: 60}
+          observe_angles: [31.7, 13.5, -79.6, -20.2, -10.7, 159.3]
+        """
+        from ruamel.yaml.comments import CommentedMap, CommentedSeq
+        if isinstance(obj, dict):
+            cm = CommentedMap(obj)
+            cm.fa.set_flow_style()
+            return cm
+        elif isinstance(obj, list):
+            cs = CommentedSeq(obj)
+            cs.fa.set_flow_style()
+            return cs
+        return obj
+
     def save_config(self) -> bool:
+        """儲存配置檔案 (使用 ruamel.yaml 保留原始格式: flow style, 註解, 排序)"""
         try:
+            from ruamel.yaml import YAML
+            ryaml = YAML()
+            ryaml.preserve_quotes = True
+            ryaml.default_flow_style = False
             with open(self.config_path, 'w', encoding='utf-8') as f:
-                yaml.dump(self.config, f, allow_unicode=True, default_flow_style=None, sort_keys=False)
+                ryaml.dump(self.config, f)
             return True
         except Exception as e:
             print(f"儲存配置失敗: {e}")
             return False
 
     def get_button_list(self) -> List[Dict]:
+        """取得按鈕列表 (包含 panel_section 與 observe_angles)"""
         item_list = []
         for name, config in self.buttons.items():
             vision_config = config.get('vision')
             has_roi = vision_config is not None and 'roi' in vision_config
+            observe_angles = None
+            if vision_config and 'observe_angles' in vision_config:
+                observe_angles = vision_config['observe_angles']
             item_list.append({
                 'name': name,
                 'type': 'button',
                 'description': config.get('description', 'N/A'),
                 'has_roi': has_roi,
-                'image_source': 'socket'
+                'image_source': 'socket',
+                'panel_section': config.get('panel_section', 'unknown'),
+                'observe_angles': observe_angles
             })
         for name, config in self.environment_lights.items():
             has_roi = 'roi' in config and config['roi']  # ✅ 修正：確保 roi 不為空
@@ -870,10 +906,8 @@ class WebButtonROICalibrator:
 
         self.current_image = image
 
-        # ArUco 標記檢測（僅按鈕需要）
+        # 注意：已停用 ArUco 標記檢測（系統已遷移至 STag 標記）
         aruco_result = None
-        if item_type == 'button' and image is not None:
-            aruco_result = self.detect_aruco_and_adjust_position(image, button_config)
 
         try:
             if image is not None:
@@ -918,11 +952,15 @@ class WebButtonROICalibrator:
 
         if item_type == 'button':
             if 'vision' not in config: config['vision'] = {}
-            config['vision']['observe_angles'] = [round(a, 2) for a in observe_angles] if observe_angles else None
-            config['vision']['roi'] = {'x': int(roi['x']), 'y': int(roi['y']), 'width': int(roi['width']), 'height': int(roi['height'])} # Changed to int
+            config['vision']['observe_angles'] = self._to_flow_style(
+                [round(a, 2) for a in observe_angles]) if observe_angles else None
+            config['vision']['roi'] = self._to_flow_style(
+                {'x': int(roi['x']), 'y': int(roi['y']), 'width': int(roi['width']), 'height': int(roi['height'])})
         else:
-            config['roi'] = {'x': int(roi['x']), 'y': int(roi['y']), 'width': int(roi['width']), 'height': int(roi['height'])} # Changed to int
-            if observe_angles: config['observe_angles'] = [round(a, 2) for a in observe_angles]
+            config['roi'] = self._to_flow_style(
+                {'x': int(roi['x']), 'y': int(roi['y']), 'width': int(roi['width']), 'height': int(roi['height'])})
+            if observe_angles:
+                config['observe_angles'] = self._to_flow_style([round(a, 2) for a in observe_angles])
 
         if self.save_config(): return {"success": True, "message": f"{item_type.capitalize()} '{button_name}' 的 ROI 已儲存"}
         return {"success": False, "error": "儲存配置失敗"}
@@ -1174,6 +1212,75 @@ def disconnect_robot_arm():
         
     except Exception as e:
         return jsonify({'success': False, 'error': f'斷線失敗: {str(e)}'})
+
+@app.route('/api/robot/move_to_observe', methods=['POST'])
+def move_to_observe():
+    """移動手臂到指定按鈕的觀測角度 (observe_angles)"""
+    global global_client, global_calibrators, current_environment
+
+    if global_client is None:
+        return jsonify({"success": False, "error": "客戶端未初始化，請先連線"})
+
+    data = request.json
+    button_id = data.get('button_id')
+    env_name = data.get('environment', current_environment)
+    speed = data.get('speed', 30)
+
+    if not button_id:
+        return jsonify({"success": False, "error": "缺少 button_id 參數"})
+
+    calibrator = global_calibrators.get(env_name)
+    if calibrator is None:
+        return jsonify({"success": False, "error": f"環境 {env_name} 校準器未初始化"})
+
+    # 從設定中查找按鈕的觀測角度
+    button_config = calibrator.buttons.get(button_id)
+    if button_config is None:
+        return jsonify({"success": False, "error": f"找不到按鈕 '{button_id}'"})
+
+    vision_config = button_config.get('vision', {})
+    observe_angles = vision_config.get('observe_angles')
+
+    if not observe_angles:
+        return jsonify({"success": False, "error": f"按鈕 '{button_id}' 未設定觀測角度 (observe_angles)"})
+
+    try:
+        angles = [float(a) for a in observe_angles]
+        print(f"🎯 移動到按鈕 '{button_id}' 的觀測位置: {angles}")
+
+        # 檢查電源狀態
+        try:
+            power_status = global_client.is_power_on()
+            if not power_status:
+                return jsonify({"success": False, "error": "手臂電源未開啟，請先開啟電源"})
+        except Exception as e:
+            print(f"⚠️  無法確認電源狀態: {e}，嘗試繼續移動...")
+
+        success = global_client.send_angles(angles, speed)
+        if success:
+            print("✅ 移動指令發送成功，等待手臂到位...")
+            time.sleep(3)
+            try:
+                current_angles = global_client.get_angles()
+                angles_formatted = [round(a, 2) for a in current_angles] if current_angles else None
+                return jsonify({
+                    "success": True,
+                    "message": f"已移動到按鈕 '{button_id}' 的觀測位置",
+                    "target_angles": [round(a, 2) for a in angles],
+                    "current_angles": angles_formatted,
+                    "button_id": button_id
+                })
+            except Exception:
+                return jsonify({
+                    "success": True,
+                    "message": f"移動指令已發送，但無法確認最終位置",
+                    "target_angles": [round(a, 2) for a in angles],
+                    "button_id": button_id
+                })
+        else:
+            return jsonify({"success": False, "error": "發送移動指令失敗"})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"移動手臂時發生錯誤: {str(e)}"})
 
 @app.route('/api/arm/move', methods=['POST'])
 def move_arm():
