@@ -108,7 +108,6 @@ class EnvironmentConfig:
             "robot_arm_http_port": 8000,  # ✨ 新增：HTTP API Port
             "robot_arm_image_source": "socket",  # Fallback to socket as http (port 8000) is unreachable
 
-            "panel_types": ["3510a", "3611a", "3611c"],
             "button_config_path": "config/robot_arm/taipei_lab_buttons.yaml",
             "hsv_adjustments": {
                 # 環境專屬 HSV 調整（台北實驗室光源特性）
@@ -131,7 +130,6 @@ class EnvironmentConfig:
             "robot_arm_http_port": 8000,
             "robot_arm_image_source": "http",
 
-            "panel_types": ["3510a", "3611a"],
             "button_config_path": "config/robot_arm/taoyuan_lab_buttons.yaml",
             "hsv_adjustments": {},
             "description": "桃園實驗室，使用 Socket 影像源（從機器手臂 Server 請求影像）"
@@ -148,7 +146,6 @@ class EnvironmentConfig:
             "robot_arm_http_port": 8000,
             "robot_arm_image_source": "http",
 
-            "panel_types": ["3611a", "3611c"],
             "button_config_path": "config/robot_arm/rv_car_buttons.yaml",
             "hsv_adjustments": {},
             "description": "RV Car 車載測試環境，使用 Socket 影像源"
@@ -169,7 +166,6 @@ class EnvironmentConfig:
                 - rtsp_url (str): RTSP URL（僅 RTSP 影像源）
                 - robot_arm_host (str): 機器手臂主機位址
                 - robot_arm_port (int): 機器手臂端口
-                - panel_types (list): 支援的面板類型
                 - button_config_path (str): 按鈕配置檔案路徑
                 - hsv_adjustments (dict): HSV 調整參數（選填）
                 - description (str): 環境描述
@@ -183,8 +179,8 @@ class EnvironmentConfig:
             '台北實驗室'
             >>> print(config["image_source"])
             'rtsp'
-            >>> print(config["panel_types"])
-            ['3510a', '3611a', '3611c']
+            >>> print(config["button_config_path"])
+            'config/robot_arm/taipei_lab_buttons.yaml'
         """
         if env_name not in EnvironmentConfig.ENVIRONMENTS:
             available = ", ".join(EnvironmentConfig.ENVIRONMENTS.keys())
@@ -493,7 +489,6 @@ if __name__ == "__main__":
         print(f"  名稱: {config['name']}")
         print(f"  影像源: {config['image_source']}")
         print(f"  機器手臂: {config['robot_arm_host']}:{config['robot_arm_port']}")
-        print(f"  面板類型: {', '.join(config['panel_types'])}")
         print(f"  配置檔案: {config['button_config_path']}")
         print(f"  描述: {config['description']}")
 

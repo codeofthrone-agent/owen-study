@@ -208,9 +208,8 @@ v4.0.0（新版）: Client（本機影像判定）+ Server（僅提供影像截�
 
 **新增 BDD 關鍵字（32+）:**
 
-**Given 關鍵字（前置條件）- 4 個:**
-- `Given 測試環境設定為 "${environment}"` - 設定測試環境（taipei_lab / taoyuan_lab / rv_car）
-- `Given 面板類型設定為 "${panel_type}"` - 設定面板類型（3510a / 3611a / 3611c）
+**Given 關鍵字（前置條件）- 3 個:**
+- `Given 測試環境設定為 "${environment}"` - 設定測試環境並自動載入全部按鈕配置（taipei_lab / taoyuan_lab / rv_car）
 - `Given TTS 引擎已設定為 "${engine}"` - 設定 TTS 引擎
 - `Given API 服務已在端點 "${endpoint}" 運行` - API 服務前置條件
 - `Given 若 YOLO 檢測到按鈕 "${button_id}" 為 "${target_state}" 則點擊喚醒` - 條件式喚醒 (若狀態符合則點擊)
@@ -614,8 +613,8 @@ robot --reporttitle "Gherkin Style Test Report" tests/
 
 ### 文檔完整性
 - **基本描述**: 100% 覆蓋
-- **詳細說明**: 100% 覆蓋  
-- **使用範例**: 100% 覆蓋
+- **YOLO 驗證優化**: 可指定 `mandatory=${False}`，讓尚未訓練的物件（如 LCD 快捷鍵）能執行測試並採集影像。
+- **LCD 測試擴展**: 支援 `lcd_a` 等按鈕的自動非強制偵測模式。
 - **雙語支援**: 100% 覆蓋
 
 ### 規範符合性

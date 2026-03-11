@@ -98,8 +98,7 @@ class RobotArmKeywords:
         self.current_environment: Optional[str] = None  # 當前環境名稱
         self.env_config: Optional[Dict[str, Any]] = None  # 當前環境配置
         self.image_source_config: Optional[Dict[str, Any]] = None  # 影像源配置
-        self.current_panel_type: Optional[str] = None  # 當前面板類型
-        self.panel_button_config: Optional[Dict[str, Any]] = None  # 面板按鈕配置
+        self.panel_button_config: Optional[Dict[str, Any]] = None  # 按鈕配置
         self.image_source_manager: Optional[ImageSourceManager] = None  # 影像源管理器
         self.local_vision: Optional[LocalVisionAnalyzer] = None  # 本機視覺分析器
 
@@ -439,99 +438,58 @@ class RobotArmKeywords:
             except Exception as e:
                 logger.warning(f"更新 Config Loader 失敗: {e}，將使用預設配置或 EnvironmentConfig")
 
+        # 載入按鈕配置（所有面板的按鈕統一載入）
+        if "button_config_path" in self.env_config:
+            try:
+                self.panel_button_config = self._load_button_config(
+                    self.env_config["button_config_path"]
+                )
+                button_count = len(self.panel_button_config.get("buttons", {}))
+                logger.info(f"   按鈕配置已載入: {button_count} 個按鈕")
+            except Exception as e:
+                logger.warning(f"載入按鈕配置失敗: {e}")
+
     @keyword('Given 面板類型設定為 "${panel_type}"')
     def given_panel_type_is(self, panel_type: str):
-        """Given: 面板類型設定為指定型號
+        """[已棄用] 面板類型設定為 — 按鈕配置已在設定測試環境時自動載入。
 
-        設定面板類型並載入對應的按鈕配置。
+        保留此關鍵字僅為向後相容，呼叫時僅輸出警告，不執行任何動作。
 
         Args:
-            panel_type: 面板型號 ("3510a" | "3611a" | "3611c")
-
-        Examples:
-            | Given | 面板類型設定為 "3611a" |
-            | Given | 面板類型設定為 "3611c" |
-
-        Raises:
-            RuntimeError: 尚未設定測試環境
-            ValueError: 當前環境不支援該面板類型
+            panel_type: 面板型號（已忽略）
         """
-        if self.current_environment is None or self.env_config is None:
-            raise RuntimeError(
-                "尚未設定測試環境，請先使用 'Given 測試環境設定為 \"${environment}\"' 關鍵字"
-            )
+        logger.warn(
+            f"⚠️ 'Given 面板類型設定為' 已棄用，按鈕配置已在 "
+            f"'Given 測試環境設定為' 時自動載入全部按鈕。請從測試案例中移除此行。"
+        )
 
-        # 驗證面板類型
-        if panel_type not in self.env_config["panel_types"]:
-            raise ValueError(
-                f"當前環境 '{self.current_environment}' 不支援面板類型: {panel_type}\n"
-                f"支援的面板: {', '.join(self.env_config['panel_types'])}"
-            )
-
-        self.current_panel_type = panel_type
-
-        # 載入對應的按鈕配置
-        config_path = self.env_config["button_config_path"]
-        self.panel_button_config = self._load_panel_button_config(config_path, panel_type)
-
-        logger.info(f"✅ 面板類型已設定為: {panel_type}")
-        logger.info(f"   載入配置: {config_path}")
-        logger.info(f"   按鈕數量: {len(self.panel_button_config)}")
-
-    def _load_panel_button_config(self, config_path: str, panel_type: str) -> Dict[str, Any]:
-        """載入面板按鈕配置（從 YAML 檔案）
+    def _load_button_config(self, config_path: str) -> Dict[str, Any]:
+        """載入按鈕配置（從 YAML 檔案，載入全部按鈕）
 
         Args:
             config_path: YAML 配置檔案路徑
-            panel_type: 面板類型
 
         Returns:
             dict: 按鈕配置字典
 
         Raises:
             FileNotFoundError: 配置檔案不存在
-            ValueError: 面板類型不存在於配置中
         """
-        # 支援相對路徑和絕對路徑
         config_file = Path(config_path)
         if not config_file.is_absolute():
-            # 相對於專案根目錄
             project_root = Path(__file__).parent.parent.parent
             config_file = project_root / config_path
 
         if not config_file.exists():
             raise FileNotFoundError(f"配置檔案不存在: {config_file}")
 
-        # 載入 YAML 配置
         with open(config_file, 'r', encoding='utf-8') as f:
             config_data = yaml.safe_load(f)
 
-        # 取得面板配置
-        # 檢查新格式（有 panels 結構）還是舊格式（直接的 buttons）
-        if "panels" in config_data and panel_type in config_data["panels"]:
-            # 新格式：支援多面板
-            panel_config = config_data["panels"][panel_type]
-            result = {
-                "buttons": panel_config.get("buttons", {}),
-                "physical_lights": config_data.get("physical_lights", {})
-            }
-        elif "buttons" in config_data:
-            # 舊格式（現有格式）：單一面板配置
-            # 驗證面板類型是否匹配
-            if "environment" in config_data and config_data["environment"].get("panel_type") != panel_type:
-                raise ValueError(
-                    f"配置檔案的面板類型 '{config_data['environment'].get('panel_type')}' "
-                    f"與請求的面板類型 '{panel_type}' 不匹配"
-                )
-            
-            result = {
-                "buttons": config_data.get("buttons", {}),
-                "environment_lights": config_data.get("environment_lights", {})
-            }
-        else:
-            raise ValueError(f"配置檔案中找不到面板類型或按鈕配置")
-
-        return result
+        return {
+            "buttons": config_data.get("buttons", {}),
+            "environment_lights": config_data.get("environment_lights", {}),
+        }
 
     # ==================== BDD When 關鍵字 ====================
 
@@ -730,7 +688,7 @@ class RobotArmKeywords:
             | When | 用戶檢測面板按鈕 "bluetooth" 的顏色 |
 
         Raises:
-            RuntimeError: 尚未設定測試環境或面板類型
+            RuntimeError: 尚未設定測試環境
             ValueError: 按鈕不存在
             RuntimeError: 檢測失敗
 
@@ -738,11 +696,10 @@ class RobotArmKeywords:
             檢測結果會儲存在 self._last_detection_result，供 Then 關鍵字驗證使用
         """
         # 驗證前置條件
-        if self.current_environment is None or self.current_panel_type is None:
+        if self.current_environment is None or self.panel_button_config is None:
             raise RuntimeError(
-                "尚未設定測試環境或面板類型，請先使用:\n"
-                "  'Given 測試環境設定為 \"${environment}\"'\n"
-                "  'Given 面板類型設定為 \"${panel_type}\"'"
+                "尚未設定測試環境，請先使用:\n"
+                "  'Given 測試環境設定為 \"${environment}\"'"
             )
 
         # 取得按鈕配置
@@ -771,7 +728,7 @@ class RobotArmKeywords:
         # 本機執行視覺檢測
         try:
             results = self.local_vision.detect_panel_light(
-                panel_type=self.current_panel_type,
+                panel_type=self.current_environment,
                 roi_config=roi_config,
                 image_source_config=self.image_source_manager.get_current_source()["config"],
                 num_frames=5,
@@ -812,7 +769,9 @@ class RobotArmKeywords:
             ValueError: 按鈕不存在
         """
         if self.panel_button_config is None:
-            raise RuntimeError("尚未載入面板按鈕配置")
+            raise RuntimeError(
+                "尚未載入按鈕配置，請先使用 'Given 測試環境設定為 \"${environment}\"'"
+            )
 
         buttons = self.panel_button_config.get("buttons", {})
         if button_id not in buttons:
@@ -923,7 +882,7 @@ class RobotArmKeywords:
             | When | 用戶檢測環境燈光亮度 "desk_lamp" |
 
         Raises:
-            RuntimeError: 尚未設定測試環境或面板類型
+            RuntimeError: 尚未設定測試環境
             ValueError: 燈光不存在
             RuntimeError: 檢測失敗
 
@@ -1026,7 +985,9 @@ class RobotArmKeywords:
 
         # 直接從已載入的面板配置中取得環境燈光
         if self.panel_button_config is None:
-            raise RuntimeError("尚未載入面板按鈕配置")
+            raise RuntimeError(
+                "尚未載入按鈕配置，請先使用 'Given 測試環境設定為 \"${environment}\"'"
+            )
 
         environment_lights = self.panel_button_config.get("environment_lights", {})
 
@@ -1723,7 +1684,7 @@ class RobotArmKeywords:
         return True
 
     @keyword('YOLO 應該檢測到按鈕 "${button_id}" 為 "${expected_state}"')
-    def then_yolo_should_detect_button_state(self, button_id: str, expected_state: str, confidence_threshold: float = 0.5, save_debug_image: bool = False):
+    def then_yolo_should_detect_button_state(self, button_id: str, expected_state: str, confidence_threshold: float = 0.5, save_debug_image: bool = False, mandatory: bool = True):
         """
         YOLO 應該檢測到按鈕為指定狀態
         (支援 Given/When/Then/And 前綴)
@@ -1738,13 +1699,15 @@ class RobotArmKeywords:
             expected_state: 預期狀態 ("on", "off", "x")
             confidence_threshold: 信心度閾值 (預設 0.5)
             save_debug_image: 是否將偵測影像傳回並儲存於本機 (預設 False)
+            mandatory: 是否強制驗證成功 (預設 True)。若為 False，則偵測失敗僅記錄警告。
 
         Examples:
             | Given | YOLO 應該檢測到按鈕 "light1" 為 "x" |
             | Then  | YOLO 應該檢測到按鈕 "light1" 為 "on" | save_debug_image=True |
+            | Then  | YOLO 應該檢測到按鈕 "lcd_a" 為 "on"  | mandatory=${False} | save_debug_image=True |
 
         Raises:
-            AssertionError: 如果未檢測到符合的物件
+            AssertionError: 如果未檢測到符合的物件且 mandatory 為 True
             RuntimeError: 如果執行失敗
         """
         self._ensure_connected()
@@ -1755,7 +1718,7 @@ class RobotArmKeywords:
             raise ValueError(f"按鈕 '{button_id}' 未配置觀測角度 (vision.observe_angles)")
         
         observe_angles = config["vision"]["observe_angles"]
-        logger.info(f"YOLO 驗證: 移動到觀測角度 {observe_angles} 並執行偵測...")
+        logger.info(f"YOLO 驗證: 移動到觀測角度 {observe_angles} 並執行偵測 (mandatory={mandatory})...")
 
         # 2. 發送 scan_and_detect 指令
         cmd = {
@@ -1796,9 +1759,13 @@ class RobotArmKeywords:
             error_msg = f"YOLO 未檢測到按鈕 '{button_id}' 為 '{expected_state}'。檢測到的物件: {detected_classes}"
             if debug_image_path:
                 error_msg += f"\n📷 Debug 圖片: {debug_image_path}"
-            raise AssertionError(error_msg)
-
-        logger.info(f"✅ YOLO 成功檢測到按鈕 '{button_id}' 為 '{expected_state}'")
+            
+            if mandatory:
+                raise AssertionError(error_msg)
+            else:
+                logger.warn(f"⚠️ [非強制檢測] {error_msg}")
+        else:
+            logger.info(f"✅ YOLO 成功檢測到按鈕 '{button_id}' 為 '{expected_state}'")
 
     @keyword('Then 雙重驗證面板按鈕 "${button_id}" 狀態應為 "${expected_state}"')
     @keyword('Then 雙重驗證面板按鈕 "${button_id}" 狀態應為 "${expected_state}" (模式: ${mode})')
