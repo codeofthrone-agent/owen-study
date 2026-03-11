@@ -292,3 +292,4 @@
 | 2025-06-27 | v1.4 | 修復 Robot Framework 語法錯誤，更新 todo.md 進度 | System |
 | 2025-07-10 | v1.5 | iOS/Android 環境檢查與配置驗證完成，新增 Android 環境設置腳本 | System |
 | 2025-11-13 | v1.6 | 更新待辦事項清單，明確當前任務與未來規劃 | System |
+| 2026-03-11 | v1.7 | 完成 android-physical-device-control Stage 4-7, 9-10；新增45個android-only BDD測試案例 | System |

@@ -759,6 +759,9 @@ ANDROID_APP_ACTIVITY=.MainActivity
 - **相關文件**:
   - [AudioKeywords 文檔](keywords_readme.md#audiokeywords---音訊硬體控制關鍵字-librariesvoice_controlaudiokeywordspy)
   - [詳細模組說明](libraries/voice_control/README.md)
+  - [DeviceControlKeywords API 文件](docs/DeviceControlKeywords.html) — 裝置控制完整關鍵字清單
+  - [GestureControlKeywords API 文件](docs/GestureControlKeywords.html) — 手勢控制完整關鍵字清單
+  - [Android 裝置控制關鍵字](keywords_readme.md#-裝置系統控制關鍵字stage-4-6藍牙wifiwifi飛航音量app-生命週期) — keywords_readme.md
 
 ## 📹 IP Camera 燈光檢測系統 ✅
 
@@ -845,11 +848,29 @@ brightness = detector.get_current_brightness()
   - 推播通知和背景處理測試
   - 網路條件模擬和測試
 
-- [ ] **Android 應用測試 - 完整實現**
-  - 系統設定與權限管理
-  - 硬體功能測試 (感測器、藍牙、NFC)
-  - 效能監控 (CPU、記憶體、電池)
-  - ADB 進階控制功能
+- [x] **Android 裝置系統控制** ✅ 2026-03-11 完成
+  - 藍牙/WiFi/行動數據/飛航模式控制（ADB shell）
+  - 音量控制（調高/調低/靜音/設定）
+  - App 生命週期管理（置入背景/恢復/強制停止/清除最近應用）
+  - 前景 App 查詢驗證
+  - 20 個 BDD 測試案例：`tests/mobile/android/android_device_control_test.robot`
+  - API 文件：`docs/DeviceControlKeywords.html`
+
+- [x] **Android 進階手勢控制** ✅ 2026-03-11 完成
+  - 長按元素/座標（mobile: longClickGesture）
+  - 精確滑動（全螢幕 / 指定區域）
+  - 座標點擊（mobile: clickGesture）
+  - 雙擊元素（mobile: doubleClickGesture）
+  - 拖曳元素（mobile: dragGesture）
+  - 16 個 BDD 測試案例：`tests/mobile/android/android_gesture_test.robot`
+  - API 文件：`docs/GestureControlKeywords.html`
+
+- [x] **Android 語音輸入整合** ✅ 2026-03-11 完成
+  - Scarlett 4i4 音訊硬體就緒檢查
+  - App 語音輸入按鈕觸發
+  - 系統語音搜尋（ADB Intent）
+  - 語音辨識結果驗證
+  - 9 個 BDD 測試案例：`tests/mobile/android/android_voice_input_test.robot`
 
 #### 🤖 機器手臂控制模組
 - [ ] **MyCobot 280 控制**

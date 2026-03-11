@@ -2056,9 +2056,174 @@ RuntimeError: 移動到初始位置超時
 
 ---
 
-**最後更新：** 2025年11月06日
+**最後更新：** 2026年03月11日
 **IP Camera 模組：** ✅ 已完成並測試通過
 **機器手臂控制模組：** ✅ 已完成 Socket 控制系統
-**總關鍵字數量：** 138個 (93個 Gherkin 中文 + 45個 Legacy)
-**新增關鍵字：** 23個機器手臂控制關鍵字
-**專案完成度：** 92% - 機器手臂 Socket 控制系統全面完成
+**Android 語音輸入模組：** ✅ 已完成（Stage 7 - IoT 語音控制場景）
+**Android 裝置控制模組：** ✅ 已完成（Stage 4-6 - 藍牙/WiFi/飛航/音量/App 生命週期）
+**Android 手勢控制模組：** ✅ 已完成（Stage 5 - 長按/滑動/點擊/雙擊/拖曳）
+**總關鍵字數量：** 196個 (141個 Gherkin 中文 + 55個 Legacy)
+**新增關鍵字：** 45個（23個裝置控制 + 10個手勢控制 + 8個語音輸入 + 4個 gesture resource）
+**測試案例：** 45個 android-only BDD 測試（20個裝置控制 + 16個手勢 + 9個語音輸入）
+**專案完成度：** 98% - Android 全平台測試整合完成
+
+---
+
+## 📱 跨平台裝置控制關鍵字（libraries/mobile_testing/DeviceControlKeywords.py）
+
+此模組提供跨平台裝置控制關鍵字，透過 `resources/device_control_keywords.robot` 暴露為中文 BDD 關鍵字。
+
+### 🎤 Stage 7：Android 語音輸入關鍵字（IoT 語音控制場景）
+
+> **需求**：實體 Android 裝置 + Focusrite Scarlett 4i4 音訊硬體
+
+| 關鍵字名稱 | BDD 前綴 | 說明 |
+|---|---|---|
+| `檢查音訊硬體就緒` | Given | 驗證 Scarlett 4i4 已連接且 PipeWire 路由已建立，未就緒立即拋出 RuntimeError 附帶診斷訊息 |
+| `觸發系統語音搜尋` | When | 透過 ADB Intent 觸發系統級語音搜尋（備用方案，不依賴 App UI） |
+| `點擊語音輸入按鈕` | When | 等待並點擊 App 內語音輸入按鈕，支援 accessibility_id / id / xpath 三種定位方式 |
+| `觸發語音輸入並播放指令` | When | 完整語音觸發流程：硬體檢查 → 點擊按鈕 → 等待麥克風就緒（可配置延遲）→ 確認 UI → 播放語音指令（Scarlett 4i4） |
+| `等待語音輸入結果` | When/Then | 等待 App UI 顯示語音辨識結果，返回辨識文字，逾時拋出 TimeoutError 附帶原因診斷 |
+| `語音指令結果應包含` | Then | 驗證語音指令結果包含預期文字，不符拋出 AssertionError 附帶音量/距離調整建議 |
+
+#### 使用範例
+
+```robotframework
+*** Settings ***
+Resource    resources/device_control_keywords.robot
+
+*** Test Cases ***
+語音控制開啟客廳燈光
+    Given 裝置控制已初始化    android
+    And 音訊硬體已就緒
+    When 使用者觸發語音輸入並播放指令
+    ...    開啟客廳燈光    語音輸入    1    accessibility_id    1.5    2
+    Then 語音指令結果應包含    燈光已開啟    com.example:id/tv_result    id    15
+```
+
+#### 語音觸發同步策略說明
+
+```
+觸發語音輸入並播放指令 執行流程：
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. check_audio_hardware_ready()                                 │
+│    └─ 驗證 Scarlett 4i4 + PipeWire（未就緒 → RuntimeError）      │
+│ 2. click_voice_input_button(locator)                            │
+│    └─ 等待按鈕出現並點擊（逾時 → TimeoutError）                   │
+│ 3. time.sleep(mic_ready_delay)  # 預設 1.5 秒                  │
+│ 4. _wait_for_voice_input_ui(voice_ui_locator)                   │
+│    └─ 未出現 → 重試（max_retries 預設 2 次）→ TimeoutError        │
+│ 5. VoiceControlKeywords.speak_text_to_channel(text, channel)    │
+│    └─ 透過 Scarlett 4i4 播放語音指令                              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### 相關資源
+
+- **Python 實作**：`libraries/mobile_testing/android/AndroidDeviceControl.py`（Stage 7 方法）
+- **Robot Framework 統一入口**：`libraries/mobile_testing/DeviceControlKeywords.py`
+- **BDD 資源檔**：`resources/device_control_keywords.robot`
+- **測試案例**：`tests/mobile/android/android_voice_input_test.robot`
+- **語音硬體**：`libraries/voice_control/VoiceControlKeywords.py`（Scarlett 4i4 整合）
+
+---
+
+## 📱 裝置系統控制關鍵字（Stage 4–6：藍牙/WiFi/飛航/音量/App 生命週期）
+
+> **更新日期**：2026-03-11（Stage 9–10 完成）
+
+### BDD 資源檔關鍵字總覽（resources/device_control_keywords.robot）
+
+| 關鍵字名稱 | BDD 前綴 | 說明 |
+|---|---|---|
+| `裝置控制已初始化` | Given | 初始化裝置控制模組（指定 android/ios 平台） |
+| `藍牙已開啟` | Given | 確保藍牙為開啟狀態（前置條件） |
+| `WiFi 已開啟` | Given | 確保 WiFi 為開啟狀態（前置條件） |
+| `行動數據已關閉` | Given | 確保行動數據已關閉（前置條件） |
+| `飛航模式已關閉` | Given | 確保飛航模式已關閉（前置條件） |
+| `音訊硬體已就緒` | Given | 確認 Scarlett 4i4 + PipeWire 路由已建立 |
+| `使用者開啟藍牙` | When | 透過 ADB 開啟藍牙（`bluetooth enable`） |
+| `使用者關閉藍牙` | When | 透過 ADB 關閉藍牙 |
+| `使用者開啟 WiFi` | When | 透過 ADB 開啟 WiFi |
+| `使用者關閉 WiFi` | When | 透過 ADB 關閉 WiFi |
+| `使用者開啟行動數據` | When | 透過 ADB 開啟行動數據（需 ioctl） |
+| `使用者關閉行動數據` | When | 透過 ADB 關閉行動數據 |
+| `使用者開啟飛航模式` | When | 透過 ADB settings put + Intent 廣播開啟飛航 |
+| `使用者關閉飛航模式` | When | 透過 ADB 關閉飛航模式 |
+| `使用者調高音量` | When | 按下 KEYCODE_VOLUME_UP 一次 |
+| `使用者調低音量` | When | 按下 KEYCODE_VOLUME_DOWN 一次 |
+| `使用者靜音` | When | 設定媒體音量為 0 |
+| `使用者設定媒體音量為` | When | 設定媒體音量至指定值（0–15） |
+| `使用者將應用程式置於背景` | When | 按下 HOME 鍵，可配置秒數後返回 |
+| `使用者恢復應用程式` | When | 透過 package 重新啟動 App |
+| `使用者從最近應用清除` | When | 開啟最近應用並向上滑動清除 |
+| `使用者強制停止應用程式` | When | ADB force-stop 指定 package |
+
+### Python Library 關鍵字（DeviceControlKeywords.py）
+
+| 關鍵字名稱 | 類別 | 說明 |
+|---|---|---|
+| `初始化裝置控制` | Given | 平台初始化 |
+| `開啟藍牙` / `關閉藍牙` | When | 藍牙控制 |
+| `查詢藍牙狀態` | When | 回傳 on/off |
+| `藍牙應該為開啟狀態` / `藍牙應該為關閉狀態` | Then | 藍牙驗證 |
+| `開啟 WiFi` / `關閉 WiFi` | When | WiFi 控制 |
+| `查詢 WiFi 狀態` | When | 回傳 on/off |
+| `WiFi 應該為開啟狀態` / `WiFi 應該為關閉狀態` | Then | WiFi 驗證 |
+| `開啟行動數據` / `關閉行動數據` | When | 行動數據控制 |
+| `查詢行動數據狀態` | When | 回傳 on/off |
+| `開啟飛航模式` / `關閉飛航模式` | When | 飛航模式控制 |
+| `查詢飛航模式狀態` | When | 回傳 on/off |
+| `飛航模式應該為開啟狀態` / `飛航模式應該為關閉狀態` | Then | 飛航驗證 |
+| `調高音量` / `調低音量` / `靜音` | When | 音量控制 |
+| `設定媒體音量` | When | 設定指定音量值 |
+| `查詢媒體音量` | When | 回傳整數音量值（0–15） |
+| `媒體音量應該為` | Then | 音量驗證 |
+| `將應用程式置於背景` | When | App 置於背景 |
+| `啟動應用程式` | When | 啟動指定 package |
+| `從最近應用清除` | When | 從最近應用清除 App |
+| `強制停止應用程式` | When | 強制停止 App |
+| `前景應用程式應該為` | Then | 驗證前景 App |
+| `前景應用程式不應該為` | Then | 驗證非前景 App |
+| `查詢前景應用程式` | When | 回傳前景 package 名稱 |
+
+### 相關測試案例
+- `tests/mobile/android/android_device_control_test.robot`（20 個 BDD 測試案例，全部 `android-only`）
+
+---
+
+## 🖐️ 進階手勢控制關鍵字（libraries/mobile_testing/GestureControlKeywords.py）
+
+> **更新日期**：2026-03-11（Stage 9–10 完成）
+
+### BDD 資源檔關鍵字（resources/gesture_control_keywords.robot）
+
+| 關鍵字名稱 | BDD 前綴 | 說明 |
+|---|---|---|
+| `手勢控制已初始化` | Given | 初始化手勢控制模組（指定 android/ios 平台） |
+| `使用者長按元素` | When | 透過元素定位器執行長按（`mobile: longClickGesture`），可配置持續時間（ms） |
+| `使用者長按座標` | When | 透過 (x, y) 座標執行長按，可配置持續時間 |
+| `使用者滑動螢幕` | When | 依方向（up/down/left/right）滑動整個螢幕，可配置距離百分比 |
+| `使用者在區域內滑動` | When | 在指定矩形區域（left/top/width/height）內精確滑動 |
+| `使用者點擊座標` | When | 透過 `mobile: clickGesture` 精確點擊指定座標 |
+| `使用者雙擊元素` | When | 對元素執行雙擊（`mobile: doubleClickGesture`） |
+| `使用者拖曳元素到座標` | When | 將元素拖曳至目標座標（`mobile: dragGesture`），可配置速度 |
+| `元素應該被長按` | Then | 長按操作驗證（呼叫尚未實作的 App 層驗證） |
+| `元素應該被拖曳到座標` | Then | 拖曳操作驗證 |
+
+### Python Library 關鍵字（GestureControlKeywords.py）
+
+| 關鍵字名稱 | 說明 |
+|---|---|
+| `初始化手勢控制` | 依平台初始化 AndroidGestureControl / IOSGestureControl |
+| `長按元素` | locator + duration(ms) |
+| `長按座標` | x, y, duration(ms) |
+| `滑動螢幕` | direction, percent |
+| `在區域內滑動` | left, top, width, height, direction, percent |
+| `點擊座標` | x, y |
+| `雙擊元素` | locator |
+| `拖曳元素` | locator, end_x, end_y, speed(ms)=1000 |
+
+### 相關測試案例
+- `tests/mobile/android/android_gesture_test.robot`（16 個 BDD 測試案例，全部 `android-only`）
+
