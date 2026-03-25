@@ -34,7 +34,6 @@ Suite Teardown    測試套件清理
     And Given IP 攝影機已連接到攝影機    rv_car    cam2
     And Given IP 攝影機已連接到攝影機    rv_car    cam3
     And Given 測試環境設定為 "rv_car"
-    And Given 面板類型設定為 "3611a"
     And Given UART 日誌監控器已初始化
     When 使用者啟動 UART 背景監控
     Log    ✓ 測試套件初始化完成

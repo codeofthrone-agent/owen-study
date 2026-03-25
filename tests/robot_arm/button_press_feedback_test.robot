@@ -85,7 +85,6 @@ ${TEST_ENVIRONMENT}   taipei_lab    # 測試環境：taipei_lab / taoyuan_lab / 
 
     # 設定測試環境
     Given 測試環境設定為 "${TEST_ENVIRONMENT}"
-    Given 面板類型設定為 "3611a"
 
     # 步驟 1: 移動到面板觀測位置
     Log To Console    ${\n}🤖 步驟 1/6: 移動到面板觀測位置...
@@ -99,7 +98,7 @@ ${TEST_ENVIRONMENT}   taipei_lab    # 測試環境：taipei_lab / taoyuan_lab / 
 
     # 步驟 3: 檢查環境燈光 light2 (燈泡陣列) - 保存RTSP圖像
     Log To Console    ${\n}💡 步驟 3/6: 檢查環境燈光 level1_light_2 (燈泡陣列，保存RTSP截圖)...
-    ${before_environment_result}=    When 用戶檢測實體燈光亮度 "level1_light_2"    save_debug_image=${True}    step_prefix=step3_before
+    ${before_environment_result}=    When 用戶檢測環境燈光亮度 "level1_light_2"    save_debug_image=${True}    step_prefix=step3_before
     Log To Console    ✓ 環境燈光按壓前狀態: 亮度=${before_environment_result['brightness_level']}%, 狀態=${before_environment_result['light_state']}
 
     # 步驟 4: 執行按鈕按壓
@@ -118,7 +117,7 @@ ${TEST_ENVIRONMENT}   taipei_lab    # 測試環境：taipei_lab / taoyuan_lab / 
 
     # 步驟 6: 檢查環境燈光 light2 (燈泡陣列) - 保存RTSP圖像
     Log To Console    ${\n}💡 步驟 6/6: 檢查環境燈光 level1_light_2 (燈泡陣列，保存RTSP截圖)...
-    ${after_environment_result}=    When 用戶檢測實體燈光亮度 "level1_light_2"    save_debug_image=${True}    step_prefix=step6_after
+    ${after_environment_result}=    When 用戶檢測環境燈光亮度 "level1_light_2"    save_debug_image=${True}    step_prefix=step6_after
     Log To Console    ✓ 環境燈光按壓後狀態: 亮度=${after_environment_result['brightness_level']}%, 狀態=${after_environment_result['light_state']}
 
     # 步驟 7: 比較結果

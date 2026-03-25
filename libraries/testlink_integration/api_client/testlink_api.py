@@ -242,6 +242,72 @@ class TestLinkAPIClient:
         return self._call_api('createBuild', params)
 
     # ========================================================================
+    # 測試套件相關 API
+    # ========================================================================
+
+    def get_first_level_test_suites(self, project_id: int) -> List[Dict]:
+        """
+        取得專案的第一層測試套件
+
+        Args:
+            project_id (int): 專案 ID
+
+        Returns:
+            List[Dict]: 第一層測試套件列表，每個元素包含 id, name 等欄位
+
+        Raises:
+            RuntimeError: 當 API 呼叫失敗時
+        """
+        params = {'testprojectid': project_id}
+        result = self._call_api('getFirstLevelTestSuitesForTestProject', params)
+
+        # API 在無資料時可能回傳錯誤格式
+        if isinstance(result, list) and len(result) > 0:
+            first = result[0]
+            if isinstance(first, dict) and 'code' in first and 'message' in first:
+                logger.warning(f"取得第一層測試套件失敗: {first['message']}")
+                return []
+
+        if isinstance(result, dict) and 'code' in result and 'message' in result:
+            logger.warning(f"取得第一層測試套件失敗: {result['message']}")
+            return []
+
+        return result if isinstance(result, list) else []
+
+    def get_test_suites_for_test_plan(self, test_plan_id: int) -> List[Dict]:
+        """
+        取得測試計畫中的所有測試套件
+
+        Args:
+            test_plan_id (int): 測試計畫 ID
+
+        Returns:
+            List[Dict]: 測試套件列表
+
+        Raises:
+            RuntimeError: 當 API 呼叫失敗時
+        """
+        params = {'testplanid': test_plan_id}
+        result = self._call_api('getTestSuitesForTestPlan', params)
+
+        # API 在無資料時可能回傳錯誤格式
+        if isinstance(result, list) and len(result) > 0:
+            first = result[0]
+            if isinstance(first, dict) and 'code' in first and 'message' in first:
+                logger.warning(f"取得測試計畫套件失敗: {first['message']}")
+                return []
+
+        if isinstance(result, dict) and 'code' in result and 'message' in result:
+            logger.warning(f"取得測試計畫套件失敗: {result['message']}")
+            return []
+
+        # API 可能回傳 dict（以 suite_id 為 key），統一轉為 list
+        if isinstance(result, dict):
+            return list(result.values())
+
+        return result if isinstance(result, list) else []
+
+    # ========================================================================
     # 測試案例相關 API
     # ========================================================================
 
@@ -273,6 +339,140 @@ class TestLinkAPIClient:
             return None
 
         return result
+
+    def get_test_cases_for_test_plan(
+        self,
+        test_plan_id: int,
+        build_id: int = None,
+        get_step_info: bool = True,
+        execution_type: int = None,
+        execute_status: str = None,
+    ) -> Dict:
+        """
+        取得測試計畫中的所有測試案例（支援 build 篩選、含步驟）
+
+        Args:
+            test_plan_id (int): 測試計畫 ID
+            build_id (int, optional): Build ID，用於篩選特定 build 的測試案例
+            get_step_info (bool): 是否取得步驟資訊，預設 True
+            execution_type (int, optional): 執行類型篩選（1=手動, 2=自動）
+            execute_status (str, optional): 執行狀態篩選（如 'p', 'f', 'b', 'n'）
+
+        Returns:
+            Dict: 測試案例字典，以測試案例 ID 為 key
+
+        Raises:
+            RuntimeError: 當 API 呼叫失敗時
+        """
+        params = {
+            'testplanid': test_plan_id,
+            'getstepinfo': get_step_info,
+        }
+
+        if build_id is not None:
+            params['buildid'] = build_id
+
+        if execution_type is not None:
+            params['executiontype'] = execution_type
+
+        if execute_status is not None:
+            params['executestatus'] = execute_status
+
+        result = self._call_api('getTestCasesForTestPlan', params)
+
+        # API 在無資料時可能回傳錯誤格式
+        if isinstance(result, list) and len(result) > 0:
+            first = result[0]
+            if isinstance(first, dict) and 'code' in first and 'message' in first:
+                logger.warning(f"取得測試計畫案例失敗: {first['message']}")
+                return {}
+
+        if isinstance(result, dict) and 'code' in result and 'message' in result:
+            logger.warning(f"取得測試計畫案例失敗: {result['message']}")
+            return {}
+
+        return result if isinstance(result, dict) else {}
+
+    def get_test_cases_for_test_suite(
+        self,
+        test_suite_id: int,
+        deep: bool = True,
+        detail: str = 'full',
+    ) -> List[Dict]:
+        """
+        取得測試套件中的所有測試案例（含巢狀子套件）
+
+        Args:
+            test_suite_id (int): 測試套件 ID
+            deep (bool): 是否包含子套件中的測試案例，預設 True
+            detail (str): 回傳詳細程度，'full' 回傳含 steps，預設 'full'
+
+        Returns:
+            List[Dict]: 測試案例列表，detail='full' 時包含 steps 欄位
+
+        Raises:
+            RuntimeError: 當 API 呼叫失敗時
+        """
+        params = {
+            'testsuiteid': test_suite_id,
+            'deep': deep,
+            'details': detail,
+        }
+
+        result = self._call_api('getTestCasesForTestSuite', params)
+
+        # API 在無資料時可能回傳錯誤格式
+        if isinstance(result, list) and len(result) > 0:
+            first = result[0]
+            if isinstance(first, dict) and 'code' in first and 'message' in first:
+                logger.warning(f"取得測試套件案例失敗: {first['message']}")
+                return []
+
+        if isinstance(result, dict) and 'code' in result and 'message' in result:
+            logger.warning(f"取得測試套件案例失敗: {result['message']}")
+            return []
+
+        return result if isinstance(result, list) else []
+
+    def get_test_case_steps(self, external_id: str) -> List[Dict]:
+        """
+        取得指定測試案例的完整步驟列表
+
+        內部呼叫 get_test_case_by_external_id，提取 steps 欄位。
+
+        Args:
+            external_id (str): 測試案例外部 ID (例如: PROJECT-123)
+
+        Returns:
+            List[Dict]: 步驟列表，每個元素包含:
+                - step_number (int): 步驟編號
+                - actions (str): 步驟動作文字
+                - expected_results (str): 預期結果文字
+                - execution_type (int): 執行類型（1=手動, 2=自動）
+
+        Raises:
+            ValueError: 當找不到指定測試案例時
+        """
+        test_case = self.get_test_case_by_external_id(external_id)
+        if not test_case:
+            raise ValueError(f"找不到測試案例: {external_id}")
+
+        raw_steps = test_case.get('steps', [])
+        steps = []
+
+        for step in raw_steps:
+            steps.append({
+                'step_number': int(step.get('step_number', 0)),
+                'actions': step.get('actions', ''),
+                'expected_results': step.get('expected_results', ''),
+                'execution_type': int(step.get('execution_type', 1)),
+            })
+
+        # 依步驟編號排序
+        steps.sort(key=lambda s: s['step_number'])
+
+        logger.info(f"取得測試案例 {external_id} 的 {len(steps)} 個步驟")
+        return steps
 
     # ========================================================================
     # 測試結果相關 API

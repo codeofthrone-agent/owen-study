@@ -153,4 +153,4 @@ class GestureControlKeywords:
             end_y: 目標 Y 座標
             speed: 拖曳速度（毫秒，預設 1000）
         """
-        self._get_impl().drag_element(locator, int(end_x), int(end_y))
+        self._get_impl().drag_element(locator, int(end_x), int(end_y), int(speed))

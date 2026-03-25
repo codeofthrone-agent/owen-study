@@ -99,6 +99,7 @@ class AndroidDeviceControl(DeviceControlBase):
         """開啟藍牙。
 
         透過 ADB svc bluetooth enable 指令開啟裝置藍牙。
+        若 ADB 命令失敗（非 root 裝置權限不足），自動回退至 Settings UI 自動化。
 
         Prerequisites:
         - Appium session 已建立，relaxed-security 已啟用
@@ -106,19 +107,67 @@ class AndroidDeviceControl(DeviceControlBase):
         Examples:
         | enable_bluetooth |
         """
-        self._adb_shell('svc', ['bluetooth', 'enable'])
-        logger.info("藍牙已開啟")
+        try:
+            self._adb_shell('svc', ['bluetooth', 'enable'])
+            logger.info("藍牙已開啟（ADB）")
+        except Exception as e:
+            logger.warn(f"ADB 藍牙命令失敗，回退至 UI 自動化：{e}")
+            self._bluetooth_via_settings(enable=True)
 
     def disable_bluetooth(self):
         """關閉藍牙。
 
         透過 ADB svc bluetooth disable 指令關閉裝置藍牙。
+        若 ADB 命令失敗（非 root 裝置權限不足），自動回退至 Settings UI 自動化。
 
         Examples:
         | disable_bluetooth |
         """
-        self._adb_shell('svc', ['bluetooth', 'disable'])
-        logger.info("藍牙已關閉")
+        try:
+            self._adb_shell('svc', ['bluetooth', 'disable'])
+            logger.info("藍牙已關閉（ADB）")
+        except Exception as e:
+            logger.warn(f"ADB 藍牙命令失敗，回退至 UI 自動化：{e}")
+            self._bluetooth_via_settings(enable=False)
+
+    def _bluetooth_via_settings(self, enable: bool):
+        """透過 Android Settings UI 自動化操作藍牙開關（非 root 回退方案）。
+
+        🧑‍💻 注意：此方法依賴 Settings UI 佈局，需在實機上驗證並可能需要調整定位器。
+
+        Args:
+            enable: True 開啟藍牙，False 關閉藍牙
+        """
+        action = "開啟" if enable else "關閉"
+        logger.info(f"嘗試透過 Settings UI {action}藍牙")
+        # 開啟 Android 藍牙設定頁面
+        self._adb_shell('am', [
+            'start', '-a', 'android.settings.BLUETOOTH_SETTINGS'
+        ])
+        time.sleep(1.5)
+        # 🧑‍💻 以下定位器需在實機驗證：不同 Android 版本/廠牌的 Settings UI 不同
+        try:
+            switch = self.driver.find_element(
+                'android uiautomator',
+                'new UiSelector().className("android.widget.Switch")'
+            )
+            is_checked = switch.get_attribute('checked') == 'true'
+            if enable and not is_checked:
+                switch.click()
+                logger.info(f"藍牙已透過 UI 開啟")
+            elif not enable and is_checked:
+                switch.click()
+                logger.info(f"藍牙已透過 UI 關閉")
+            else:
+                logger.info(f"藍牙已經是{'開啟' if enable else '關閉'}狀態")
+        except Exception as ui_err:
+            raise RuntimeError(
+                f"藍牙 UI 自動化失敗：{ui_err}。"
+                "請確認裝置 Settings 介面佈局，或手動操作藍牙。"
+            ) from ui_err
+        finally:
+            # 返回前一頁面
+            self.driver.press_keycode(4)  # KEYCODE_BACK
 
     # =========================================================================
     # 網路控制（Stage 5.3-5.5）

@@ -29,7 +29,6 @@ Setup Suite Environment
     Log    ========== 測試開始時間: ${start} ==========    console=yes
     # 設定環境（只執行一次）
     Given 測試環境設定為 "taipei_lab"
-    Given 面板類型設定為 "3611a"
     Given 機器手臂已正確連接到控制面板
     # 預熱 IP Camera 連接（避免 HEVC codec 錯誤）
     Given 環境 IP Camera 已完成預熱連接    60
@@ -76,16 +75,22 @@ Teardown Suite Environment
     ${env_id}=    取得按鈕對應的環境燈光 ID    ${button_id}
     Log    按鈕 ${button_id} 對應的環境燈光 ID: ${env_id}    console=True
     
-    # 2. 執行驗證 (分支邏輯)
-    Run Keyword If    '${env_id}' != '${None}'    執行環境燈光循環測試    ${button_id}    ${env_id}
-    ...    ELSE    執行面板燈光循環測試    ${button_id}
+    # 2. 判斷是否為 LCD 按鈕 (非強制 YOLO 偵測)
+    ${mandatory}=    Set Variable    ${True}
+    # 檢查字串是否以 lcd_ 開頭
+    ${is_lcd}=    Run Keyword And Return Status    Should Start With    ${button_id}    lcd_
+    ${mandatory}=    Run Keyword If    ${is_lcd}    Set Variable    ${False}    ELSE    Set Variable    ${mandatory}
+    
+    # 3. 執行驗證 (分支邏輯)
+    Run Keyword If    '${env_id}' != '${None}'    執行環境燈光循環測試    ${button_id}    ${env_id}    mandatory=${mandatory}
+    ...    ELSE    執行面板燈光循環測試    ${button_id}    mandatory=${mandatory}
 
 執行環境燈光循環測試
-    [Arguments]    ${button_id}    ${env_id}
+    [Arguments]    ${button_id}    ${env_id}    ${mandatory}=${True}
     [Documentation]    環境燈光驗證模式 (OFF -> ON -> OFF)
     ...                同時驗證環境燈光 (RTSP) 和面板燈光 (YOLO)
 
-    Log    [模式 A] 執行雙重燈光驗證: ${env_id} (環境) + ${button_id} (面板)    console=True
+    Log    [模式 A] 執行雙重燈光驗證: ${env_id} (環境) + ${button_id} (面板) (強制=${mandatory})    console=True
 
     # 步驟 0: 若檢測到 x status 則多點一下喚醒
     若 YOLO 檢測到按鈕 "${button_id}" 為 "x" 則點擊喚醒
@@ -99,7 +104,7 @@ Teardown Suite Environment
     列出最新 Debug 圖片    step1_off
     Then 環境燈光狀態應該為 "off"
     # 雙重驗證: YOLO 檢測面板燈光
-    YOLO 應該檢測到按鈕 "${button_id}" 為 "off"    save_debug_image=${True}
+    YOLO 應該檢測到按鈕 "${button_id}" 為 "off"    save_debug_image=${True}    mandatory=${mandatory}
     列出最新 Debug 圖片    yolo_valid
 
     # 步驟 2: 按壓按鈕開啟
@@ -122,7 +127,7 @@ Teardown Suite Environment
     列出最新 Debug 圖片    step2_on
     Then 環境燈光狀態應該為 "on"
     # 雙重驗證: YOLO 檢測面板燈光
-    YOLO 應該檢測到按鈕 "${button_id}" 為 "on"    save_debug_image=${True}
+    YOLO 應該檢測到按鈕 "${button_id}" 為 "on"    save_debug_image=${True}    mandatory=${mandatory}
     列出最新 Debug 圖片    yolo_valid
 
     # 步驟 4: 再次按壓按鈕關閉
@@ -145,7 +150,7 @@ Teardown Suite Environment
     列出最新 Debug 圖片    step3_off
     Then 環境燈光狀態應該為 "off"
     # 雙重驗證: YOLO 檢測面板燈光
-    YOLO 應該檢測到按鈕 "${button_id}" 為 "off"    save_debug_image=${True}
+    YOLO 應該檢測到按鈕 "${button_id}" 為 "off"    save_debug_image=${True}    mandatory=${mandatory}
     列出最新 Debug 圖片    yolo_valid
 
     # 總結
@@ -154,30 +159,30 @@ Teardown Suite Environment
     Log    ✅ 雙重驗證完成: 環境燈光 (RTSP) ✓ 面板燈光 (YOLO) ✓    console=True
 
 執行面板燈光循環測試
-    [Arguments]    ${button_id}
+    [Arguments]    ${button_id}    ${mandatory}=${True}
     [Documentation]    面板燈光驗證模式 (OFF -> ON -> OFF)
     
-    Log    [模式 B] 執行面板LED驗證: ${button_id}    console=True
+    Log    [模式 B] 執行面板LED驗證: ${button_id} (強制=${mandatory})    console=True
     
     # 步驟 0: 若檢測到 x status 則多點一下喚醒
     Given 若 YOLO 檢測到按鈕 "${button_id}" 為 "x" 則點擊喚醒
 
     # 步驟 1: 驗證初始狀態為 off
-    Given YOLO 應該檢測到按鈕 "${button_id}" 為 "off"    save_debug_image=${True}
+    Given YOLO 應該檢測到按鈕 "${button_id}" 為 "off"    save_debug_image=${True}    mandatory=${mandatory}
 
     # 步驟 2: 按壓按鈕開啟
     When 用戶按壓第 "${button_id}" 按鈕
     Then 機器手臂操作應該成功完成
 
     # 步驟 3: 驗證狀態變為 on
-    And YOLO 應該檢測到按鈕 "${button_id}" 為 "on"    save_debug_image=${True}
+    And YOLO 應該檢測到按鈕 "${button_id}" 為 "on"    save_debug_image=${True}    mandatory=${mandatory}
 
     # 步驟 4: 再次按壓按鈕關閉
     When 用戶按壓第 "${button_id}" 按鈕
     Then 機器手臂操作應該成功完成
 
     # 步驟 5: 驗證狀態變回 off
-    And YOLO 應該檢測到按鈕 "${button_id}" 為 "off"    save_debug_image=${True}
+    And YOLO 應該檢測到按鈕 "${button_id}" 為 "off"    save_debug_image=${True}    mandatory=${mandatory}
     
 
 連續按壓按鈕並拍照
@@ -333,3 +338,13 @@ Teardown Suite Environment
     [Documentation]    測試 Select -> Extend -> Retract 循環 7 次
     [Tags]    taipei_lab    select    extend    retract    loop    complex
     執行 Select-Extend-Retract 測試循環    7
+
+測試 lcd_a 按鈕 ON-OFF 循環
+    [Documentation]    測試 lcd_a 按鈕: off -> on -> off
+    [Tags]    taipei_lab    lcd    button    cycle
+    按壓按鈕並驗證狀態變化    lcd_a
+
+測試 lcd_b 按鈕 ON-OFF 循環
+    [Documentation]    測試 lcd_b 按鈕: off -> on -> off
+    [Tags]    taipei_lab    lcd    button    cycle
+    按壓按鈕並驗證狀態變化    lcd_b

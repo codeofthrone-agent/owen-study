@@ -170,15 +170,49 @@ Then 行動數據應該為開啟狀態
 Then 行動數據應該為關閉狀態
     DeviceControl.行動數據應該為關閉狀態
 
-Then 飛航模式應該為啟用
+Then 飛航模式應該為開啟狀態
     DeviceControl.飛航模式應該為開啟狀態
 
-Then 飛航模式應該為關閉
+Then 飛航模式應該為關閉狀態
     DeviceControl.飛航模式應該為關閉狀態
 
-Then 應用程式應該回到前景
+Then 媒體音量應該為
+    [Documentation]    斷言媒體音量等級符合預期值。
+    [Arguments]    ${level}
+    DeviceControl.媒體音量應該為    ${level}
+
+Then 應用程式應該在前景
     [Arguments]    ${package}
     DeviceControl.應用程式應該在前景    ${package}
+
+# ============================================================================
+# 狀態查詢關鍵字
+# ============================================================================
+
+查詢藍牙狀態
+    [Documentation]    查詢藍牙目前的開關狀態，回傳 on 或 off。
+    ${state}=    DeviceControl.查詢藍牙狀態
+    RETURN    ${state}
+
+查詢 WiFi 狀態
+    [Documentation]    查詢 WiFi 目前的開關狀態，回傳 on 或 off。
+    ${state}=    DeviceControl.查詢 WiFi 狀態
+    RETURN    ${state}
+
+查詢飛航模式狀態
+    [Documentation]    查詢飛航模式目前的開關狀態，回傳 on 或 off。
+    ${state}=    DeviceControl.查詢飛航模式狀態
+    RETURN    ${state}
+
+查詢媒體音量
+    [Documentation]    查詢目前媒體音量等級（0-15）。
+    ${volume}=    DeviceControl.查詢媒體音量
+    RETURN    ${volume}
+
+查詢前景應用程式
+    [Documentation]    查詢目前前景應用程式的 package name。
+    ${pkg}=    DeviceControl.查詢前景應用程式
+    RETURN    ${pkg}
 
 Then 語音指令結果應包含
     [Documentation]    驗證語音指令執行結果包含預期文字；不符時拋出 AssertionError 附帶建議。
@@ -186,8 +220,15 @@ Then 語音指令結果應包含
     DeviceControl.語音指令結果應包含    ${expected_text}    ${result_locator}    ${result_locator_type}    ${timeout}
 
 Then 語音輸入結果應更新為
-    [Arguments]    ${expected_text}
-    驗證或等待尚未實作的關鍵字    驗證語音輸入結果    ${expected_text}
+    [Documentation]    等待語音輸入結果元素更新並與預期相符。
+    [Arguments]
+    ...    ${expected_text}
+    ...    ${result_locator}=id=rv_voice_result
+    ...    ${result_locator_type}=id
+    ...    ${timeout}=10
+    ${actual}=    DeviceControl.等待語音輸入結果    ${result_locator}    ${result_locator_type}    ${timeout}
+    Should Be Equal    ${actual}    ${expected_text}
+    Log    Then: 語音輸入結果為 ${actual}
 
 # ============================================================================
 # Helpers - 尚未實作的底層關鍵字代理

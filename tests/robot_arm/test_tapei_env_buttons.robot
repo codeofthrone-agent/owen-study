@@ -24,7 +24,6 @@ Setup Suite Environment
     Log    ========== 測試開始時間: ${start} ==========    console=yes
     # 設定環境（只執行一次）
     Given 測試環境設定為 "taipei_lab"
-    Given 面板類型設定為 "3611a"
     Given 機器手臂已正確連接到控制面板
 
 Teardown Suite Environment

@@ -2,7 +2,7 @@
 Documentation    平台無關手勢控制 BDD 關鍵字資源檔，封裝常見長按/滑動/
 ...              點擊/拖曳等操作，避免測試案例暴露 Appium 實作細節。
 Library          BuiltIn
-Library          ../libraries/mobile_testing/GestureControlKeywords.py
+Library          ../libraries/mobile_testing/GestureControlKeywords.py    WITH NAME    GestureControl
 
 *** Keywords ***
 # ============================================================================
@@ -12,7 +12,7 @@ Library          ../libraries/mobile_testing/GestureControlKeywords.py
 Given 手勢控制已初始化
     [Documentation]    初始化手勢控制模組，根據平台載入對應實作。
     [Arguments]    ${platform}
-    初始化手勢控制    ${platform}
+    GestureControl.初始化手勢控制    ${platform}
     Log    Given: ${platform} 手勢控制已準備
 
 # ============================================================================
@@ -22,37 +22,37 @@ Given 手勢控制已初始化
 When 使用者長按元素
     [Documentation]    針對指定元素執行長按。
     [Arguments]    ${locator}    ${duration}=1000
-    長按元素    ${locator}    ${duration}
+    GestureControl.長按元素    ${locator}    ${duration}
 
 When 使用者長按座標
     [Documentation]    針對指定座標執行長按。
     [Arguments]    ${x}    ${y}    ${duration}=1000
-    長按座標    ${x}    ${y}    ${duration}
+    GestureControl.長按座標    ${x}    ${y}    ${duration}
 
 When 使用者滑動螢幕
     [Documentation]    依方向滑動整個螢幕。
     [Arguments]    ${direction}    ${percent}=0.75
-    滑動螢幕    ${direction}    ${percent}
+    GestureControl.滑動螢幕    ${direction}    ${percent}
 
 When 使用者在區域內滑動
     [Documentation]    在指定矩形區域內滑動。
     [Arguments]    ${left}    ${top}    ${width}    ${height}    ${direction}    ${percent}=0.75
-    在區域內滑動    ${left}    ${top}    ${width}    ${height}    ${direction}    ${percent}
+    GestureControl.在區域內滑動    ${left}    ${top}    ${width}    ${height}    ${direction}    ${percent}
 
 When 使用者點擊座標
     [Documentation]    在指定座標單擊。
     [Arguments]    ${x}    ${y}
-    點擊座標    ${x}    ${y}
+    GestureControl.點擊座標    ${x}    ${y}
 
 When 使用者雙擊元素
     [Documentation]    對元素執行雙擊。
     [Arguments]    ${locator}
-    雙擊元素    ${locator}
+    GestureControl.雙擊元素    ${locator}
 
 When 使用者拖曳元素到座標
     [Documentation]    將元素拖曳至指定終點。
     [Arguments]    ${locator}    ${end_x}    ${end_y}    ${speed}=1000
-    拖曳元素    ${locator}    ${end_x}    ${end_y}    ${speed}
+    GestureControl.拖曳元素    ${locator}    ${end_x}    ${end_y}    ${speed}
 
 # ============================================================================
 # Then - 驗證

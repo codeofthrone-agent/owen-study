@@ -21,6 +21,12 @@ except ImportError:
     IOS_REAL_DEVICE_SUPPORT = False
     print("警告: iOS 真機支援不可用，將使用模擬器配置")
 
+# 匯入 Android 專用配置
+from .android_config import (
+    android_device_manager,
+    get_android_capabilities,
+)
+
 
 class AppiumConfig:
     """Appium 配置管理類別"""
@@ -37,6 +43,7 @@ class AppiumConfig:
 
         self.ios_config = self._get_ios_config()
         self.android_config = self._get_android_config()
+        android_device_manager.validate_relaxed_security()
     
     def _get_appium_server_config(self) -> Dict[str, Any]:
         """
@@ -96,24 +103,11 @@ class AppiumConfig:
     def _get_android_config(self) -> Dict[str, Any]:
         """
         獲取 Android 測試配置
-        
+
         Returns:
             Dict[str, Any]: Android 配置字典
         """
-        return {
-            'platformName': 'Android',
-            'automationName': 'UiAutomator2',
-            'deviceName': os.getenv('ANDROID_DEVICE_NAME', 'Android Emulator'),
-            'platformVersion': os.getenv('ANDROID_PLATFORM_VERSION', '11'),
-            'appPackage': os.getenv('ANDROID_APP_PACKAGE', ''),
-            'appActivity': os.getenv('ANDROID_APP_ACTIVITY', ''),
-            'app': os.getenv('ANDROID_APP_PATH', ''),
-            'udid': os.getenv('ANDROID_UDID', ''),
-            'newCommandTimeout': 60,
-            'autoGrantPermissions': True,
-            'noReset': False,
-            'fullReset': False,
-        }
+        return get_android_capabilities()
     
     def get_capability(self, platform: str, **kwargs) -> Dict[str, Any]:
         """

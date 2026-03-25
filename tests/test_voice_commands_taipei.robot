@@ -32,7 +32,6 @@ Suite Teardown    測試套件清理
     And Given TTS 引擎已設定為 "gtts"
     And Given IP 攝影機已連接到攝影機    taipei_lab    level1
     And Given 測試環境設定為 "taipei_lab"
-    And Given 面板類型設定為 "3611a"
     And Given UART 日誌監控器已初始化
     When 使用者啟動 UART 背景監控
     Log    ✓ 測試套件初始化完成

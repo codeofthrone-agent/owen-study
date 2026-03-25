@@ -94,12 +94,13 @@ class GestureControlBase(ABC):
     # === 拖曳 ===
 
     @abstractmethod
-    def drag_element(self, locator, end_x: int, end_y: int):
+    def drag_element(self, locator, end_x: int, end_y: int, speed: int = 1000):
         """拖曳元素到指定位置。
 
         Args:
             locator: 元素定位器
             end_x: 目標 X 座標
             end_y: 目標 Y 座標
+            speed: 拖曳速度（毫秒），預設 1000
         """
         ...

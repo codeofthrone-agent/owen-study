@@ -3,6 +3,8 @@
 使用 Appium 2.x mobile: 命令執行手勢操作。
 完整實作將在 Stage 6 由人類協作驗證。
 """
+from robot.api import logger
+
 from libraries.mobile_testing.base.gesture_control_base import GestureControlBase
 
 
@@ -16,6 +18,7 @@ class AndroidGestureControl(GestureControlBase):
             locator: 元素定位器
             duration: 長按持續時間（毫秒）
         """
+        logger.info(f"長按元素: {locator}，持續 {duration}ms")
         element = self.driver.find_element(*self._parse_locator(locator))
         self.driver.execute_script('mobile: longClickGesture', {
             'elementId': element.id,
@@ -30,6 +33,7 @@ class AndroidGestureControl(GestureControlBase):
             y: Y 座標
             duration: 長按持續時間（毫秒）
         """
+        logger.info(f"長按座標: ({x}, {y})，持續 {duration}ms")
         self.driver.execute_script('mobile: longClickGesture', {
             'x': int(x),
             'y': int(y),
@@ -43,6 +47,7 @@ class AndroidGestureControl(GestureControlBase):
             direction: 滑動方向（up/down/left/right）
             percent: 滑動距離百分比
         """
+        logger.info(f"滑動螢幕: 方向={direction}，百分比={percent}%")
         size = self.driver.get_window_size()
         self.driver.execute_script('mobile: swipeGesture', {
             'left': 0,
@@ -65,6 +70,7 @@ class AndroidGestureControl(GestureControlBase):
             direction: 滑動方向
             percent: 滑動距離百分比
         """
+        logger.info(f"區域滑動: 區域=({left},{top},{width},{height})，方向={direction}，百分比={percent}%")
         self.driver.execute_script('mobile: swipeGesture', {
             'left': int(left),
             'top': int(top),
@@ -81,6 +87,7 @@ class AndroidGestureControl(GestureControlBase):
             x: X 座標
             y: Y 座標
         """
+        logger.info(f"點擊座標: ({x}, {y})")
         self.driver.execute_script('mobile: clickGesture', {
             'x': int(x),
             'y': int(y),
@@ -92,6 +99,7 @@ class AndroidGestureControl(GestureControlBase):
         Args:
             locator: 元素定位器
         """
+        logger.info(f"雙擊元素: {locator}")
         element = self.driver.find_element(*self._parse_locator(locator))
         self.driver.execute_script('mobile: doubleClickGesture', {
             'elementId': element.id,
@@ -105,6 +113,7 @@ class AndroidGestureControl(GestureControlBase):
             end_x: 目標 X 座標
             end_y: 目標 Y 座標
         """
+        logger.info(f"拖曳元素: {locator} → ({end_x}, {end_y})，速度={speed}")
         element = self.driver.find_element(*self._parse_locator(locator))
         self.driver.execute_script('mobile: dragGesture', {
             'elementId': element.id,

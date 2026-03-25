@@ -1,7 +1,8 @@
 """裝置系統控制抽象基類。
 
 定義跨平台統一的裝置控制介面，包含藍牙、WiFi、行動數據、
-飛航模式、音量控制、App 生命週期管理共 16 個抽象方法。
+飛航模式、音量控制、App 生命週期管理的控制方法（16 個）、
+狀態查詢方法（6 個）與狀態斷言方法（7 個），共 29 個抽象方法。
 Android 和 iOS 實作類別 MUST 繼承此基類並實作所有抽象方法。
 """
 from abc import ABC, abstractmethod
@@ -119,5 +120,93 @@ class DeviceControlBase(ABC):
 
         Args:
             package_or_bundle: Android package name 或 iOS bundle ID
+        """
+        ...
+
+    # === 狀態查詢 ===
+
+    @abstractmethod
+    def get_bluetooth_state(self) -> str:
+        """查詢藍牙開關狀態。
+
+        Returns:
+            'on' 表示已開啟，'off' 表示已關閉
+        """
+        ...
+
+    @abstractmethod
+    def get_wifi_state(self) -> str:
+        """查詢 WiFi 開關狀態。
+
+        Returns:
+            'on' 表示已開啟，'off' 表示已關閉
+        """
+        ...
+
+    @abstractmethod
+    def get_airplane_mode_state(self) -> str:
+        """查詢飛航模式開關狀態。
+
+        Returns:
+            'on' 表示已開啟，'off' 表示已關閉
+        """
+        ...
+
+    @abstractmethod
+    def get_media_volume(self) -> int:
+        """查詢目前媒體音量等級。
+
+        Returns:
+            目前媒體音量等級（0-15）
+        """
+        ...
+
+    @abstractmethod
+    def get_foreground_app(self) -> str:
+        """查詢目前前景應用程式的 package name。
+
+        Returns:
+            前景應用程式的 package name
+        """
+        ...
+
+    # === 狀態斷言 ===
+
+    @abstractmethod
+    def assert_bluetooth_on(self):
+        """斷言藍牙目前為開啟狀態。失敗時拋出 AssertionError。"""
+        ...
+
+    @abstractmethod
+    def assert_bluetooth_off(self):
+        """斷言藍牙目前為關閉狀態。失敗時拋出 AssertionError。"""
+        ...
+
+    @abstractmethod
+    def assert_wifi_on(self):
+        """斷言 WiFi 目前為開啟狀態。失敗時拋出 AssertionError。"""
+        ...
+
+    @abstractmethod
+    def assert_wifi_off(self):
+        """斷言 WiFi 目前為關閉狀態。失敗時拋出 AssertionError。"""
+        ...
+
+    @abstractmethod
+    def assert_airplane_mode_on(self):
+        """斷言飛航模式目前為開啟狀態。失敗時拋出 AssertionError。"""
+        ...
+
+    @abstractmethod
+    def assert_airplane_mode_off(self):
+        """斷言飛航模式目前為關閉狀態。失敗時拋出 AssertionError。"""
+        ...
+
+    @abstractmethod
+    def assert_media_volume(self, expected: int):
+        """斷言媒體音量等級符合預期值。失敗時拋出 AssertionError。
+
+        Args:
+            expected: 預期媒體音量等級（0-15）
         """
         ...

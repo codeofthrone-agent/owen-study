@@ -6,8 +6,8 @@
 **當前階段**: Phase 1 - 基礎架構 + iOS 真機支援 (✅ 完成)  
 **完成進度**: 100% (基礎語音模組 + Appium 整合 + 全面中文關鍵字標準化 + SwitchBot 電源管理 + 配置系統整合 + iOS 真機測試完整支援)  
 **最新完成**: 2025-06-27 - iOS 真機測試環境完整建置 + 專案文檔最終整理  
-**最新更新**: 2025-11-13 - **MyCobot 280 Socket 控制系統完成度評估 (85% 完成)**  
-**修復狀態**: ✅ 完成 - iOS 真機環境完整，Android 環境已修復並增強，多燈號關鍵字模組正常運作，所有關鍵字已標準化為中文，**機器手臂控制系統基本完成**
+**最新更新**: 2026-03-11 - **Android 實體裝置控制架構完成（Stage 1-3, 5-8），待實機驗證**
+**修復狀態**: ✅ 完成 - iOS 真機環境完整，Android 環境已修復並增強，多燈號關鍵字模組正常運作，所有關鍵字已標準化為中文，**機器手臂控制系統基本完成**，**Android 裝置/手勢/語音控制架構已建立（56 架構測試 GREEN）**
 
 ---
 
@@ -242,7 +242,62 @@
 
 ---
 
-### 🚀 當前待辦事項 (2025-11-13 更新)
+### 🚀 當前待辦事項 (2026-03-11 更新)
+
+#### 0. Android 實體裝置控制 — 剩餘待辦 🧑‍💻
+
+> **OpenSpec**: `openspec/changes/android-physical-device-control/`
+> **完整任務清單**: `openspec/changes/android-physical-device-control/tasks.md`
+> **設計文件**: `openspec/changes/android-physical-device-control/design.md`
+> **規格書目錄**: `openspec/changes/android-physical-device-control/specs/`
+
+**已完成 (AI 可獨立完成)**:
+- ✅ Stage 1: TDD 架構層測試（56 tests GREEN）
+- ✅ Stage 2: 跨平台基礎架構（ABC + Strategy Pattern + iOS stub）
+- ✅ Stage 3: Android mock-based 單元測試
+- ✅ Stage 5-7: Android 裝置控制 / 手勢 / 語音輸入實作（程式碼）
+- ✅ Stage 8: Robot Framework BDD 關鍵字資源檔
+- ✅ Review 修正: C1-C4 Critical + M1-M4 Medium 全部修正完畢
+
+**待辦 — Stage 4: Android 環境設定 🧑‍💻**
+- [ ] 4.2 建立 `config/mobile/android_config.py`（ADB 設定、裝置偵測、relaxed security 驗證）
+- [ ] 4.3 🧑‍💻 更新 `scripts/start_appium.sh` 加入 `--relaxed-security` flag，實體驗證
+- [ ] 4.4 🧑‍💻 驗證 Appium UiAutomator2 driver 支援 Android 16，必要時升級
+- [ ] 4.5 🧑‍💻 連接實體 Android 裝置，確認 ADB 授權與 USB 調試正常
+
+**待辦 — Stage 5.12 / 6.8 / 7.9: 實體裝置驗證 🧑‍💻**
+- [ ] 5.12 🧑‍💻 在實體裝置上逐一驗證裝置控制功能，記錄兼容性結果
+- [ ] 6.8 🧑‍💻 在實體裝置上驗證手勢操作正確性
+- [ ] 7.9 🧑‍💻 端到端語音控制測試，調校 `mic_ready_delay` 與 `max_retries`
+
+**待辦 — Stage 9: Robot Framework 測試案例**
+- [ ] 9.1 建立 `tests/mobile/android/android_device_control_test.robot`
+- [ ] 9.2 建立 `tests/mobile/android/android_gesture_test.robot`
+- [ ] 9.3 建立 `tests/mobile/android/android_voice_input_test.robot`
+- [ ] 9.4 使用 `robot --dryrun` 驗證所有測試案例語法正確
+- [ ] 9.5 為 iOS 尚未支援的測試案例加上 `[Tags]  android-only`
+
+**待辦 — Stage 10: 文件與整合**
+- [ ] 10.1 更新 `keywords_readme.md`，新增跨平台裝置控制與手勢控制關鍵字清單
+- [ ] 10.2 使用 `robot.libdoc` 產生 DeviceControlKeywords / GestureControlKeywords API 文件
+- [ ] 10.3 更新 `resources/mobile_keywords.robot`，新增 import 引用
+
+**相關檔案清單**:
+| 類別 | 檔案路徑 |
+|------|----------|
+| Base ABC | `libraries/mobile_testing/base/device_control_base.py` |
+| Base ABC | `libraries/mobile_testing/base/gesture_control_base.py` |
+| Android 實作 | `libraries/mobile_testing/android/AndroidDeviceControl.py` |
+| Android 實作 | `libraries/mobile_testing/android/AndroidGestureControl.py` |
+| iOS Stub | `libraries/mobile_testing/ios/IOSDeviceControl.py` |
+| iOS Stub | `libraries/mobile_testing/ios/IOSGestureControl.py` |
+| RF Keywords | `libraries/mobile_testing/DeviceControlKeywords.py` |
+| RF Keywords | `libraries/mobile_testing/GestureControlKeywords.py` |
+| BDD Resource | `resources/device_control_keywords.robot` |
+| BDD Resource | `resources/gesture_control_keywords.robot` |
+| 架構測試 | `tests/mobile/test_architecture/test_*.py` (56 tests) |
+| Mock 測試 | `tests/test_android_device_control.py` |
+| Mock 測試 | `tests/test_android_gesture_control.py` |
 
 #### 1. 機器手臂控制模組 (剩餘 15%)
 - [ ] **硬體整合測試**: 需要使用實際的 MyCobot 280 硬體進行測試。
@@ -292,4 +347,4 @@
 | 2025-06-27 | v1.4 | 修復 Robot Framework 語法錯誤，更新 todo.md 進度 | System |
 | 2025-07-10 | v1.5 | iOS/Android 環境檢查與配置驗證完成，新增 Android 環境設置腳本 | System |
 | 2025-11-13 | v1.6 | 更新待辦事項清單，明確當前任務與未來規劃 | System |
-| 2026-03-11 | v1.7 | 完成 android-physical-device-control Stage 4-7, 9-10；新增45個android-only BDD測試案例 | System |
+| 2026-03-11 | v1.7 | 完成 android-physical-device-control Stage 1-3, 5-8 + Review 修正（C1-C4, M1-M4）；56 架構測試 GREEN；剩餘 Stage 4/9/10 + 實機驗證待辦寫入 todo.md | System |

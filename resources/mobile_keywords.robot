@@ -286,6 +286,25 @@ When 使用者等待元素
     AppiumLibrary.Wait Until Element Is Visible    ${locator}    timeout=${timeout}
     Log    When: 用戶等待元素 ${locator} 出現
 
+When 使用者切換至 Remote 模式
+    [Documentation]    切換至 Remote 模式主畫面。
+    [Arguments]    ${remote_button_locator}=accessibility_id=Remote    ${timeout}=10
+    AppiumLibrary.Wait Until Element Is Visible    ${remote_button_locator}    timeout=${timeout}
+    Click Element    ${remote_button_locator}    timeout=${timeout}
+    Log    When: 切換至 Remote 模式 (${remote_button_locator})
+
+When 使用者點擊 Forget RV Panel
+    [Documentation]    Remote 模式內開啟設定並執行 Forget RV Panel。
+    [Arguments]
+    ...    ${settings_locator}=accessibility_id=Settings
+    ...    ${forget_button_locator}=accessibility_id=Forget RV Panel
+    ...    ${timeout}=10
+    AppiumLibrary.Wait Until Element Is Visible    ${settings_locator}    timeout=${timeout}
+    Click Element    ${settings_locator}    timeout=${timeout}
+    AppiumLibrary.Wait Until Element Is Visible    ${forget_button_locator}    timeout=${timeout}
+    Click Element    ${forget_button_locator}    timeout=${timeout}
+    Log    When: Remote 模式執行 Forget RV Panel
+
 # ============================================================================
 # THEN Keywords (Assertions) - 驗證關鍵字
 # ============================================================================
@@ -322,6 +341,38 @@ Then 元素應該可見
     
     AppiumLibrary.Element Should Be Visible    ${locator}    timeout=${timeout}
     Log    Then: 元素 ${locator} 已成功驗證為可見
+
+Then RV 控制頁面應顯示
+    [Documentation]    驗證 RV 控制頁面主要元素已顯示。
+    [Arguments]    ${control_locator}=id=rv_control_container    ${timeout}=15
+    AppiumLibrary.Wait Until Element Is Visible    ${control_locator}    timeout=${timeout}
+    Log    Then: RV 控制頁顯示 (${control_locator})
+
+Then APP 應顯示斷線提示
+    [Documentation]    驗證應用程式顯示斷線或錯誤提示。
+    [Arguments]    ${prompt_locator}=id=rv_disconnect_banner    ${timeout}=10
+    AppiumLibrary.Wait Until Element Is Visible    ${prompt_locator}    timeout=${timeout}
+    Log    Then: 斷線提示顯示 (${prompt_locator})
+
+Then 面板廣播列表應顯示 ID
+    [Documentation]    驗證廣播列表文本包含指定面板 ID。
+    [Arguments]
+    ...    ${panel_id}
+    ...    ${list_locator}=id=rv_broadcast_list
+    ...    ${timeout}=10
+    ${list_text}=    Get Text    ${list_locator}    timeout=${timeout}
+    Should Contain    ${list_text}    ${panel_id}
+    Log    Then: 廣播列表包含 ${panel_id}
+
+Then 語音結果應顯示
+    [Documentation]    驗證語音結果元素文字包含預期內容。
+    [Arguments]
+    ...    ${expected_text}
+    ...    ${result_locator}=id=rv_voice_result
+    ...    ${timeout}=10
+    ${result_text}=    Get Text    ${result_locator}    timeout=${timeout}
+    Should Contain    ${result_text}    ${expected_text}
+    Log    Then: 語音結果包含 ${expected_text}
 
 Then 應用程式應該已關閉
     [Documentation]    驗證：應用程式應該已關閉
@@ -546,5 +597,4 @@ Login To Mobile App
     
     Page Should Not Contain Element    ${locator}
     Log    行動應用程式頁面不包含元素: ${locator}
-
 

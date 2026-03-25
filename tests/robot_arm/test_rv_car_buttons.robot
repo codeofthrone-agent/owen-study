@@ -14,9 +14,7 @@ Test Teardown    Teardown Test Environment
 Setup Test Environment
     # 1. 設定環境為 RV Car
     Given 測試環境設定為 "rv_car"
-    # 2. 設定面板類型
-    Given 面板類型設定為 "3611a"
-    # 3. 連接機器手臂 (如果尚未連接)
+    # 2. 連接機器手臂 (如果尚未連接)
     Given 機器手臂已正確連接到控制面板
 
 Teardown Test Environment
