@@ -58,14 +58,14 @@
 
 ```bash
 # 需要執行的操作
-mkdir -p ../../tests/audio_hardware/
-mv audio_test.robot ../../tests/audio_hardware/
-mv advanced_audio_test.robot ../../tests/audio_hardware/
+mkdir -p ../../tests/voice_control/
+mv audio_test.robot ../../tests/voice_control/
+mv advanced_audio_test.robot ../../tests/voice_control/
 ```
 
 **影響檔案：**
-- [ ] `audio_test.robot` → `tests/audio_hardware/audio_test.robot`
-- [ ] `advanced_audio_test.robot` → `tests/audio_hardware/advanced_audio_test.robot`
+- [ ] `audio_test.robot` → `tests/voice_control/audio_test.robot`
+- [ ] `advanced_audio_test.robot` → `tests/voice_control/advanced_audio_test.robot`
 
 **注意事項：**
 - 移動後需更新檔案中的相對路徑
@@ -268,7 +268,7 @@ python3 ultimate_play.py file_example_WAV_2MG.wav 4
 
 **執行 Robot Framework 測試：**
 ```bash
-robot tests/audio_hardware/advanced_audio_test.robot
+robot tests/voice_control/advanced_audio_test.robot
 ```
 ```
 
@@ -316,7 +316,7 @@ robot tests/audio_hardware/advanced_audio_test.robot
 ### 第一階段：配置與結構（1-2 天）
 1. 建立 `config/audio_config.py`
 2. 修改 Python 模組使用新配置
-3. 移動測試案例到 `tests/audio_hardware/`
+3. 移動測試案例到 `tests/voice_control/`
 4. 建立 `resources/audio_keywords.robot`
 
 ### 第二階段：編碼規範（2-3 天）

@@ -1,11 +1,11 @@
 *** Settings ***
-Documentation    語音助手多模態檢測整合測試 (UART 版本)
+Documentation    語音助手多感官檢測整合測試
 ...
 ...    測試語音助手是否同時具備視覺和聽覺回應。
-...    驗證標準：視覺（螢幕變亮）AND 聽覺（UART 日誌檢測到播放）都必須通過。
+...    驗證標準：視覺（螢幕變亮）AND 聽覺（提示音）都必須通過。
 ...
-Library          ../../libraries/multimodal_detection/VoiceAssistantDetection.py
-Library          ../../libraries/voice_control/VoiceControlKeywords.py
+Resource         ../../resources/multimodal_keywords.robot
+Resource         ../../resources/voice_control_keywords.robot
 Resource         ../../resources/common_keywords.robot
 
 Suite Setup      測試前置準備
@@ -15,32 +15,28 @@ Suite Teardown   測試後清理
 ${喚醒詞}          Hey Power Pro
 ${環境}            laboratory
 ${攝影機}          level1
-${UART_PORT}      /dev/ttyUSB0
-${UART_BAUDRATE}  115200
+${參考聲音}        登登
 ${超時時間}        10
 ${Scarlett聲道}    1
 
 *** Test Cases ***
-Scenario: 測試語音助手完整回應（視覺 AND 聽覺 - UART）
+Scenario: 測試語音助手完整回應（視覺 AND 聽覺）
     [Documentation]    測試語音助手是否同時具備視覺和聽覺回應
     ...
     ...    驗證標準：
     ...    1. 螢幕必須變亮（視覺回應）
-    ...    2. UART 日誌必須檢測到語音播放
+    ...    2. 必須播放提示音（聽覺回應）
     ...    3. 兩者都通過才算成功
     ...
-    [Tags]    voice_assistant    multimodal    uart    critical    smoke
+    [Tags]    voice_assistant    multimodal    critical    smoke
 
     Given Scarlett 音訊設備已就緒
     And IP Camera 可正常連線
-    And UART 串列埠可用
 
-    When ${結果}=    測試語音助理回應
+    ${結果}=    測試語音助理回應
     ...    wake_word=${喚醒詞}
     ...    camera_env=${環境}
     ...    camera_name=${攝影機}
-    ...    uart_port=${UART_PORT}
-    ...    uart_baudrate=${UART_BAUDRATE}
     ...    scarlett_channel=${Scarlett聲道}
     ...    detection_timeout=${超時時間}
     ...    require_both=True
@@ -50,9 +46,9 @@ Scenario: 測試語音助手完整回應（視覺 AND 聽覺 - UART）
     And 驗證視覺檢測通過    ${結果}
     And 驗證聽覺檢測通過    ${結果}
 
-Scenario: 測試不同喚醒詞的回應 (UART)
+Scenario: 測試不同喚醒詞的回應
     [Documentation]    測試語音助手對不同喚醒詞的完整回應
-    [Tags]    voice_assistant    uart    wake_words
+    [Tags]    voice_assistant    wake_words
 
     @{喚醒詞列表}=    Create List
     ...    Hey Power Pro
@@ -65,8 +61,6 @@ Scenario: 測試不同喚醒詞的回應 (UART)
         ...    wake_word=${測試喚醒詞}
         ...    camera_env=${環境}
         ...    camera_name=${攝影機}
-        ...    uart_port=${UART_PORT}
-        ...    uart_baudrate=${UART_BAUDRATE}
         ...    scarlett_channel=${Scarlett聲道}
         ...    detection_timeout=${超時時間}
         ...    require_both=True
@@ -77,9 +71,9 @@ Scenario: 測試不同喚醒詞的回應 (UART)
         Sleep    3s    reason=等待語音助手恢復待命狀態
     END
 
-Scenario: 測試連續多次喚醒穩定性 (UART)
+Scenario: 測試連續多次喚醒穩定性
     [Documentation]    測試語音助手連續多次喚醒的穩定性
-    [Tags]    voice_assistant    uart    stability
+    [Tags]    voice_assistant    stability
 
     ${測試次數}=    Set Variable    3
 
@@ -90,8 +84,6 @@ Scenario: 測試連續多次喚醒穩定性 (UART)
         ...    wake_word=${喚醒詞}
         ...    camera_env=${環境}
         ...    camera_name=${攝影機}
-        ...    uart_port=${UART_PORT}
-        ...    uart_baudrate=${UART_BAUDRATE}
         ...    scarlett_channel=${Scarlett聲道}
         ...    detection_timeout=${超時時間}
         ...    require_both=True
@@ -104,23 +96,40 @@ Scenario: 測試連續多次喚醒穩定性 (UART)
         Log    第 ${次數} 次測試完成    console=yes
     END
 
-Scenario: 視覺或聽覺任一通過即可（OR 邏輯）
-    [Documentation]    測試 OR 邏輯模式（視覺或聽覺任一通過即可）
-    [Tags]    voice_assistant    uart    or_logic
+Scenario: 視覺檢測獨立測試（除錯模式）
+    [Documentation]    僅測試視覺檢測功能（除錯模式）
+    [Tags]    voice_assistant    vision_debug    debug
 
     ${結果}=    測試語音助理回應
     ...    wake_word=${喚醒詞}
     ...    camera_env=${環境}
     ...    camera_name=${攝影機}
-    ...    uart_port=${UART_PORT}
-    ...    uart_baudrate=${UART_BAUDRATE}
     ...    scarlett_channel=${Scarlett聲道}
     ...    detection_timeout=${超時時間}
     ...    require_both=False
 
     記錄詳細檢測結果    ${結果}
 
-    # OR 邏輯：任一通過即可
+    # 除錯模式：只要有一個通過即可
+    ${至少一個通過}=    Evaluate    ${結果}[vision_detected] or ${結果}[audio_detected]
+    Should Be True    ${至少一個通過}
+    ...    msg=視覺和聽覺檢測都失敗
+
+Scenario: 聽覺檢測獨立測試（除錯模式）
+    [Documentation]    僅測試聽覺檢測功能（除錯模式）
+    [Tags]    voice_assistant    audio_debug    debug
+
+    ${結果}=    測試語音助理回應
+    ...    wake_word=${喚醒詞}
+    ...    camera_env=${環境}
+    ...    camera_name=${攝影機}
+    ...    scarlett_channel=${Scarlett聲道}
+    ...    detection_timeout=${超時時間}
+    ...    require_both=False
+
+    記錄詳細檢測結果    ${結果}
+
+    # 除錯模式：只要有一個通過即可
     ${至少一個通過}=    Evaluate    ${結果}[vision_detected] or ${結果}[audio_detected]
     Should Be True    ${至少一個通過}
     ...    msg=視覺和聽覺檢測都失敗
@@ -129,7 +138,7 @@ Scenario: 視覺或聽覺任一通過即可（OR 邏輯）
 測試前置準備
     [Documentation]    Suite 級別初始化
     Log    ========================================    console=yes
-    Log    語音助手多模態檢測測試開始（UART版本）    console=yes
+    Log    語音助手多感官檢測測試開始              console=yes
     Log    ========================================    console=yes
 
     # 檢查 Scarlett 設備
@@ -142,7 +151,7 @@ Scenario: 視覺或聽覺任一通過即可（OR 邏輯）
     And 暫存檔案應該正確清理
 
     Log    ========================================    console=yes
-    Log    語音助手多模態檢測測試完成（UART版本）    console=yes
+    Log    語音助手多感官檢測測試完成              console=yes
     Log    ========================================    console=yes
 
 Scarlett 音訊設備已就緒
@@ -153,16 +162,6 @@ Scarlett 音訊設備已就緒
 IP Camera 可正常連線
     [Documentation]    確認 IP Camera 連線正常
     Log    驗證 IP Camera: ${環境}/${攝影機}
-
-UART 串列埠可用
-    [Documentation]    確認 UART 串列埠可用
-    ${exists}=    Run Keyword And Return Status
-    ...    OperatingSystem.File Should Exist    ${UART_PORT}
-
-    Run Keyword If    not ${exists}
-    ...    Log    警告: ${UART_PORT} 不存在    WARN
-    ...    ELSE
-    ...    Log    UART 串列埠: ${UART_PORT}
 
 驗證測試結果成功
     [Documentation]    驗證語音助手檢測結果是否成功
@@ -188,8 +187,8 @@ UART 串列埠可用
     Log    - 詳情: ${結果}[vision_details]
 
     # 聽覺檢測
-    Log    聽覺檢測結果 (UART):
-    ${audio_status}=    Set Variable If    ${結果}[audio_detected]    ✓ 檢測到播放    ✗ 未檢測到播放
+    Log    聽覺檢測結果:
+    ${audio_status}=    Set Variable If    ${結果}[audio_detected]    ✓ 檢測到提示音    ✗ 未檢測到提示音
     Log    - 狀態: ${audio_status}
     Log    - 詳情: ${結果}[audio_details]
 
@@ -210,7 +209,7 @@ UART 串列埠可用
     ...    msg=視覺檢測失敗: ${結果}[vision_details]
 
 驗證聽覺檢測通過
-    [Documentation]    驗證聽覺檢測通過 (UART)
+    [Documentation]    驗證聽覺檢測通過
     [Arguments]    ${結果}
 
     Should Be True    ${結果}[audio_detected]

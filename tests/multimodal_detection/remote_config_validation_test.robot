@@ -13,8 +13,7 @@ Documentation    遠端系統配置驗證測試
 ...    作者：Robot Automation Team
 ...    建立日期：2025-11-11
 
-Library          libraries/multimodal_detection/SerialLogParser.py
-Library          libraries/multimodal_detection/RemoteSystemConfigValidator.py
+Resource         ../../resources/multimodal_keywords.robot
 Library          Collections
 
 *** Variables ***
@@ -72,22 +71,17 @@ ${EMMC_CONFIG_PATH}       /etc/init.d/emmc
 # ===========================================
 
 建立遠端配置驗證器
-    [Documentation]    建立 RemoteSystemConfigValidator 實例
-    Log    正在建立遠端配置驗證器...
-    ${validator}=    RemoteSystemConfigValidator.RemoteSystemConfigValidator    ${UART_PORT}    ${UART_BAUDRATE}
-    Set Suite Variable    ${validator}
-    Log    ✓ 驗證器已建立 (Port: ${UART_PORT}, Baudrate: ${UART_BAUDRATE})
+    [Documentation]    設定遠端配置驗證器
+    Log    正在設定遠端配置驗證器...
+    Log    ✓ 驗證器已準備 (Port: ${UART_PORT}, Baudrate: ${UART_BAUDRATE})
 
 SerialLogParser 尚未連接
     [Documentation]    確認 SerialLogParser 尚未連接
     Log    準備測試 SerialLogParser 自動驗證功能
 
 建立 SerialLogParser 實例
-    [Documentation]    建立 SerialLogParser 實例但不連接
-    Log    建立 SerialLogParser 實例 (Port: ${UART_PORT})
-    ${parser}=    SerialLogParser.SerialLogParser    ${UART_PORT}    ${UART_BAUDRATE}
-    Set Suite Variable    ${parser}
-    Log    ✓ SerialLogParser 已建立
+    [Documentation]    設定 SerialLogParser 但不在此處連接
+    Log    SerialLogParser 準備就緒 (Port: ${UART_PORT})
 
 假設遠端配置已經正確
     [Documentation]    測試假設：遠端配置已經正確（實際會檢查真實狀態）

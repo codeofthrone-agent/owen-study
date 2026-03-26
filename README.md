@@ -753,7 +753,7 @@ ANDROID_APP_ACTIVITY=.MainActivity
   ./setup_pipewire_routing_v3.sh
 
   # 2. 執行測試
-  robot tests/audio_hardware/advanced_audio_test.robot
+  robot tests/voice_control/advanced_audio_test.robot
   ```
 
 - **相關文件**:

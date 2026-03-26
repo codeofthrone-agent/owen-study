@@ -1,7 +1,7 @@
 *** Settings ***
 Documentation    TTS 語速設定測試案例 - Gherkin 風格
 ...              TTS Speed Setting Test Cases - Gherkin Style
-Library    ../../libraries/voice_control/VoiceControlKeywords.py
+Resource    ../../resources/voice_control_keywords.robot
 Library    BuiltIn
 
 *** Test Cases ***

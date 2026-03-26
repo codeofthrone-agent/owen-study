@@ -8,7 +8,7 @@ Documentation    UART 日誌語音檢測測試
 ...    - 整合 RemoteSystemConfigValidator 自動配置驗證
 ...    - 連接時自動檢查並修正遠端 /etc/init.d/emmc 配置
 ...
-Library          ../../libraries/multimodal_detection/SerialLogParser.py
+Resource         ../../resources/multimodal_keywords.robot
 Library          OperatingSystem
 Library          Collections
 Resource         ../../resources/common_keywords.robot

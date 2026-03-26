@@ -129,7 +129,7 @@
 - ❌ **缺少配置檔案**（應建立 `config/audio_config.py`）
 - ❌ **測試案例位置錯誤**：
   - 目前：`libraries/voice_control/*.robot`
-  - 應為：`tests/voice_control/` 或 `tests/audio_hardware/`
+  - 應為：`tests/voice_control/`（已整合至語音控制測試）
 - ❌ **關鍵字仍為英文**：
   ```python
   speak_text_to_channel()    # ❌ 應改為：播放文字到聲道()

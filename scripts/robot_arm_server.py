@@ -61,7 +61,7 @@ Enhanced features:
 
 has_return = [0x01,0x02,0x03,0x04,0x09,0x12, 0x14, 0x15, 0x17,0x1B, 0x20,0x23, 0x27, 0x2A,0x2B,0x2D,0x2E, 0x3B,0x3D, 0x40,0x42,0x43,0x44,0x4A, 0x4B,0x50,0x51,0x53,0x62,0x65,0x69,0x90,0x91,0x92,0xC0, 0xC3,0x82,0x84,0x86,0x88,0x8A,0xD0,0xD1,0xD5,0xE1,0xE2,0xE3,0xE4,0xE5,0XE6, 0xB0]
 
-SERVER_VERSION = "v5.6.1"
+SERVER_VERSION = "v5.6.2"
 
 # ==================== CONFIGURATION CONSTANTS ====================
 
@@ -97,6 +97,10 @@ CAMERA_WARMUP_FRAMES = 20        # Frames to discard during warmup
 
 # Timeout Configuration (seconds)
 MOVEMENT_TIMEOUT_SEC = 15.0      # Timeout for movement operations
+
+# Low Confidence Training Data Collection (v5.6.2)
+LOW_CONFIDENCE_THRESHOLD = 0.8   # 低於此閾值的偵測結果將被收集用於訓練
+LOW_CONFIDENCE_LOG_DIR = "low_confidence"  # 低信心度影像儲存目錄名稱
 ARRIVAL_TIMEOUT_SEC = 5.0        # Timeout for arrival confirmation
 SCAN_STABILIZATION_WAIT_SEC = 1.0  # Wait time after scan movement
 
@@ -841,10 +845,12 @@ class CameraCapture:
                     for _ in range(warmup_frames):
                         cap.read()
 
-                # 清空 Buffer (讀取最新幀)
-                # 即使不需要預熱，也建議至少讀取一幀以確保不是舊的 buffer
+                # Clear Buffer (read latest frames)
+                # Read at least 5 frames to ensure the hardware buffer (usually 4-5 frames) is completely drained
                 if not local_cap and warmup_frames == 0:
-                    cap.read()
+                    self.logger.debug("Clearing camera buffer (5 frames)...")
+                    for _ in range(5):
+                        cap.read()
 
                 # 讀取幀用於平均
                 frames = []
@@ -3234,6 +3240,71 @@ class MycobotServer(object):
                 det_details = ", ".join([f"{d['class']}({d['confidence']:.2f})" for d in formatted_detections])
                 self.logger.info(f"📋 偵測詳細結果: [{det_details}]")
             
+            # ========== 低信心度統計與訓練資料收集 (v5.6.2) ==========
+            low_confidence_detections = [
+                d for d in formatted_detections 
+                if d['confidence'] < LOW_CONFIDENCE_THRESHOLD
+            ]
+            low_confidence_saved_path = ""
+            
+            if low_confidence_detections:
+                # 統計並記錄低信心度物件
+                low_conf_details = ", ".join([
+                    f"{d['class']}({d['confidence']:.2f})" 
+                    for d in low_confidence_detections
+                ])
+                self.logger.warning(
+                    f"⚠️ 低信心度偵測統計: {len(low_confidence_detections)} 個物件 "
+                    f"(閾值: {LOW_CONFIDENCE_THRESHOLD}): [{low_conf_details}]"
+                )
+                
+                # 自動儲存 RAW 影像供訓練使用
+                try:
+                    # 依日期建立子資料夾
+                    date_str = time.strftime("%Y-%m-%d")
+                    low_conf_dir = os.path.join(
+                        os.getcwd(), "logs", LOW_CONFIDENCE_LOG_DIR, date_str
+                    )
+                    os.makedirs(low_conf_dir, exist_ok=True)
+                    
+                    # 檢查磁碟空間
+                    if self.disk_manager.check_disk_space(low_conf_dir, min_free_mb=500.0):
+                        timestamp = time.strftime("%Y%m%d_%H%M%S")
+                        
+                        # 檔名包含所有低信心度物件資訊（最多3個，避免檔名過長）
+                        # 依信心度排序，最低的在前
+                        sorted_low_dets = sorted(
+                            low_confidence_detections, 
+                            key=lambda x: x['confidence']
+                        )[:3]  # 最多取3個
+                        
+                        # 格式: TIMESTAMP_class1_0.69_class2_0.75.jpg（timestamp 在前方便排序）
+                        name_parts = []
+                        for det in sorted_low_dets:
+                            name_parts.append(f"{det['class']}_{det['confidence']:.2f}")
+                        
+                        filename = f"{timestamp}_{'_'.join(name_parts)}.jpg"
+                        low_confidence_saved_path = os.path.join(low_conf_dir, filename)
+                        
+                        # 儲存 RAW 影像 (使用 final_image，可能是旋轉後的)
+                        final_image_for_save = rotated_image if (rotated and 'rotated_image' in locals()) else image
+                        cv2.imwrite(low_confidence_saved_path, final_image_for_save)
+                        self.logger.info(
+                            f"🎯 低信心度訓練資料已收集: {low_confidence_saved_path}"
+                        )
+                        
+                        # 定期清理舊資料 (最多保留 500MB 或 2000 張)
+                        parent_dir = os.path.join(os.getcwd(), "logs", LOW_CONFIDENCE_LOG_DIR)
+                        self.disk_manager.cleanup_old_files(
+                            parent_dir, max_size_mb=500.0, max_files=2000
+                        )
+                    else:
+                        self.logger.warning("⚠️ 磁碟空間不足，跳過儲存低信心度訓練資料")
+                        
+                except Exception as e:
+                    self.logger.error(f"⚠️ 儲存低信心度訓練資料失敗: {e}")
+            # ========== 低信心度統計結束 ==========
+            
             # Save debug image and handle return_image
             filepath = ""
             image_base64 = None
@@ -3243,7 +3314,7 @@ class MycobotServer(object):
             final_image = rotated_image if (rotated and 'rotated_image' in locals()) else image
             
             # 1. Image Return (Base64)
-            if cmd.get("return_image", False):
+            if cmd.get("return_image", True):
                 try:
                     import base64
                     # 原始圖 Base64
@@ -3349,8 +3420,19 @@ class MycobotServer(object):
                 "status": "success",
                 "detections": formatted_detections,
                 "moved": True,
-                "image_path": filepath
+                "image_path": filepath,
+                # v5.6.2: 低信心度統計
+                "low_confidence_count": len(low_confidence_detections),
+                "low_confidence_threshold": LOW_CONFIDENCE_THRESHOLD
             }
+            # 如果有低信心度物件，加入詳細資訊
+            if low_confidence_detections:
+                result["low_confidence_detections"] = [
+                    {"class": d["class"], "confidence": d["confidence"]}
+                    for d in low_confidence_detections
+                ]
+                if low_confidence_saved_path:
+                    result["low_confidence_image_path"] = low_confidence_saved_path
             if image_base64:
                 result["image_base64"] = image_base64
             if annotated_image_base64:
