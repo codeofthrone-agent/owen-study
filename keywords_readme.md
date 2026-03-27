@@ -821,6 +821,33 @@ Resource    resources/audio_keywords.robot
 驗證當前的系統預設音訊輸出設備。
 - `expected_sink`: 預期的設備名稱 (如 "Scarlett_1-2")
 
+#### 列出可用輸出設備
+列出系統中所有可用的 PipeWire/PulseAudio 輸出設備並記錄到日誌。無參數。
+
+**使用範例**:
+```robotframework
+列出可用輸出設備
+```
+
+#### 取得當前預設輸出設備
+取得系統當前預設的音訊輸出設備名稱，回傳 sink 名稱字串。
+
+**使用範例**:
+```robotframework
+${sink}=    取得當前預設輸出設備
+Log    當前輸出設備: ${sink}
+```
+
+#### 取得聲道對應的輸出設備
+依聲道編號 (1–4) 回傳對應的 Scarlett 虛擬設備名稱。
+- `channel`: 聲道編號 (1, 2, 3, 4)
+
+**使用範例**:
+```robotframework
+${device}=    取得聲道對應的輸出設備    1
+Log    聲道 1 對應設備: ${device}
+```
+
 ---
 
 ## 🎤 語音控制關鍵字 (libraries/voice_control/VoiceControlKeywords.py) ✅ **符合規範**
@@ -853,6 +880,7 @@ Resource    resources/audio_keywords.robot
 - **Given Scarlett 4i4 音效介面已正確連接** - 確認 Focusrite Scarlett 4i4 音效介面正確連接並可用
 - **Given TTS 引擎已設定為 "${engine_name}"** - 設定並確認指定的 TTS 引擎已正確配置 (gtts/pyttsx3)
 - **Given TTS 語言已設定為 "${language}"** - 設定並確認指定的 TTS 語言已正確配置 (en/zh-TW/ja)
+- **Given TTS 語速已設定為 "${speed}"** - 設定並確認指定的 TTS 語速已正確配置 (wpm, 僅 pyttsx3)
 - **Given 音訊輸出聲道 "${channel}" 已準備就緒** - 確認指定音訊輸出聲道已準備就緒 (含路由驗證) (1-4)
 - **Given UART 日誌監控器已初始化** - 初始化 UART 監控器用於檢測語音回應 (v1.2.0 新增)
 
@@ -860,6 +888,7 @@ Resource    resources/audio_keywords.robot
 - **When 使用者播放文字 "${text}" 到聲道 "${channel}"** - 使用者播放文字到指定聲道
 - **When 使用者播放文字 "${text}" 到聲道 "${channel}" 使用語言 "${language}"** - 使用者播放文字到指定聲道使用指定語言
 - **When 使用者切換 TTS 引擎到 "${engine_name}"** - 使用者切換 TTS 引擎到指定引擎
+- **When 使用者設定 TTS 語速為 "${speed}"** - 使用者設定 TTS 語速為指定值
 - **When 使用者查詢當前 TTS 引擎資訊** - 使用者查詢當前 TTS 引擎資訊
 - **When 使用者測試指定聲道 "${channel}" 的音訊輸出** - 使用者測試指定聲道的音訊輸出
 - **When 使用者啟動 UART 背景監控** - 啟動 UART 背景監控以檢測語音回應 (v1.2.0 新增)
@@ -1187,6 +1216,18 @@ Scenario: 使用者切換 TTS 引擎並播放多語言文字
 - `API認證應該有效` - 驗證 SwitchBot API 認證資訊有效性
 - `設備清單應該包含目標設備` - 驗證設備清單包含指定的智慧插座
 
+### 其他關鍵字（資源檔補充）
+
+以下關鍵字定義於 `resources/switchbot_keywords.robot`，為 BDD 場景中額外支援的工具型關鍵字：
+
+| 關鍵字名稱 | 類型 | 說明 |
+|---|---|---|
+| `等待智慧插座狀態變更` | And/When | 呼叫底層 `等待設備狀態變更`，等待插座狀態變化（秒） |
+| `取得智慧插座狀態應該是` | Then | 取得當前狀態並驗證是否符合預期值（on/off） |
+| `系統狀態應該保持穩定` | And | 驗證插座連線及整體系統在操作後仍保持穩定 |
+| `設定測試環境變數` | （Suite Setup） | 設定測試所需環境變數（TOKEN、SECRET、DEVICE_ID）以利執行 |
+| `清理測試環境` | （Suite Teardown） | 清理測試產生的暫存狀態與資源 |
+
 ### 使用範例
 ```robotframework
 *** Test Cases ***
@@ -1366,7 +1407,7 @@ Scenario: 使用者需要進行語音檢測驗證
 ### ✅ 已完成現代化的模組 (100% Gherkin 合規)
 
 1. **switchbot_keywords.robot**: 17個純 Gherkin 中文關鍵字
-2. **voice_control (VoiceControlKeywords.py)**: 26個純 Gherkin 中文關鍵字 (v1.2.0 - 含 UART 監控功能)
+2. **voice_control (VoiceControlKeywords.py)**: 27個純 Gherkin 中文關鍵字 (v1.6.0 - 統整 TTS 設定功能)
 
 ### 📋 待現代化的模組 (仍有 Legacy 關鍵字)
 
@@ -1814,6 +1855,99 @@ brightness = float(np.mean(gray[center_region]))
 pipenv install pymycobot pyyaml
 ```
 
+### 🎯 BDD 關鍵字完整參考（RobotArmKeywords.py）
+
+#### Given 關鍵字（前置條件）
+
+| 關鍵字名稱 | 說明 |
+|---|---|
+| `Given 機器手臂已正確連接到控制面板` | 驗證 Socket 連線並回到初始位置，失敗則拋出 AssertionError |
+| `Given 控制面板電源狀態為 "${power_state}"` | 設定測試的電源狀態前提（"on"/"off"） |
+| `Given 機器手臂系統處於待命狀態` | 確認系統已連線且位於初始位置 |
+| `Given 測試環境設定為 "${environment}"` | 載入指定環境的所有按鈕配置（taipei_lab / taoyuan_lab / rv_car） |
+| `Given 面板類型設定為 "${panel_type}"` | 設定面板類型，用於篩選按鈕配置子集 |
+| `Given 環境 IP Camera 已完成預熱連接` | 確認 RTSP IP Camera 連線就緒並完成暖機 |
+| `Given 按鈕 "${button_id}" 的狀態應為 "${expected_state}"` | 以視覺方式驗證按鈕初始狀態（前置條件用） |
+
+#### When 關鍵字（執行動作）
+
+| 關鍵字名稱 | 說明 |
+|---|---|
+| `When 用戶透過機器手臂開啟第 "${light_number}" 號燈光` | 移動到對應燈光按鈕並執行點擊動作 |
+| `When 用戶透過機器手臂切換藍牙連接` | 點擊藍牙按鈕 |
+| `When 用戶透過機器手臂啟動 "${device_name}" 設備` | 依設備名稱找到對應按鈕並點擊 |
+| `When 用戶透過機器手臂長按 "${button_type}" 按鈕 "${seconds}" 秒` | 長按指定按鈕 N 秒（如 Retract/Extend） |
+| `When 用戶檢測面板按鈕 "${button_id}" 的顏色` | 拍攝 ROI 並返回 HSV 顏色分析結果 |
+| `When 用戶檢測環境燈光亮度 "${light_id}"` | 透過 RTSP IP Camera 量測環境燈光亮度百分比 |
+| `When 用戶檢測第 "${button_id}" 按鈕的燈光狀態` | 取得按鈕 LED 顏色（Socket 影像源） |
+| `When 用戶檢測多個按鈕的燈光狀態` | 批次檢測多個按鈕並回傳結果字典 |
+| `When 用戶等待按鈕 "${button_id}" 變為 "${expected_color}" 色` | 持續檢測直到按鈕顯示目標顏色或逾時 |
+| `When 用戶連接到機器手臂` | 建立 Socket 連線（含預設主機/端口） |
+| `When 用戶中斷與機器手臂的連接` | 斷開 Socket 連線並釋放資源 |
+| `When 用戶按壓第 "${button_id}" 按鈕` | 原子化按壓（down→wait→up）單次 |
+| `When 用戶按壓第 "${button_id}" 按鈕持續 "${duration}" 秒` | 原子化長按指定秒數 |
+
+#### Then 關鍵字（驗證結果）
+
+| 關鍵字名稱 | 說明 |
+|---|---|
+| `Then 機器手臂操作應該成功完成` | 驗證上一步操作回傳 True，失敗則拋出 AssertionError |
+| `Then 控制面板應該顯示 "${expected_state}" 狀態` | 驗證面板整體狀態符合預期 |
+| `Then 面板按鈕顏色應該為 "${expected_color}"` | 驗證最後一次按鈕顏色檢測結果符合預期 |
+| `Then 環境燈光亮度應該為 "${expected_level}" %` | 驗證 IP Camera 亮度量測值符合預期百分比 |
+| `Then 環境燈光狀態應該為 "${expected_state}"` | 驗證環境燈光為 "亮" 或 "暗" |
+| `Then 按鈕燈光應該為 "${expected_color}" 色` | 驗證 LED 顏色 (HSV 分析) |
+| `Then 雙重驗證面板按鈕 "${button_id}" 狀態應為 "${expected_state}"` | 以 HSV + YOLO 雙重驗證按鈕狀態 |
+| `Then 上一步操作應該成功` | 驗證最後操作結果為成功 |
+| `Then 驗證面板燈光狀態` | 批次驗證多個按鈕燈光狀態 |
+| `Then 按鈕 "${button_id}" 的狀態應為 "${expected_state}"` | 視覺狀態驗證 (v4.3.0)，支援 Given/When/Then/And 前綴 |
+| `YOLO 應該檢測到按鈕 "${button_id}" 為 "${expected_state}"` | 僅用 YOLO 模型驗證按鈕物理狀態 |
+| `YOLO 僅檢測並儲存按鈕影像 "${button_id}" 預期狀態 "${expected_state}"` | 執行 YOLO 檢測並儲存標註影像（除錯/採樣用） |
+
+#### And 關鍵字（附加驗證）
+
+| 關鍵字名稱 | 說明 |
+|---|---|
+| `And 機器手臂應該返回待命位置` | 驗證手臂已歸位到初始角度 |
+| `And 系統應該記錄完整操作歷程` | 驗證日誌已包含本次操作記錄 |
+| `And 暫存檔案應該正確清理` | 驗證 output/debug_images/ 暫存影像已清除 |
+| `And 按鈕 "${button_id}" 的狀態應為 "${expected_state}"` | 附加狀態驗證（與 Then 版本等效） |
+
+#### 工具型關鍵字（無 BDD 前綴）
+
+| 關鍵字名稱 | 說明 |
+|---|---|
+| `取得最後檢測結果` | 回傳最後一次單按鈕視覺檢測的完整結果字典 |
+| `取得批次檢測結果` | 回傳最後一次批次按鈕檢測的結果列表 |
+| `取得按鈕對應的環境燈光 ID` | 依按鈕 ID 查詢其對應的環境燈光 ID（YAML 配置） |
+| `移動到面板觀測位置` | 移動手臂到全局面板觀測角度，適合批次拍攝 |
+| `比較完整反饋結果` | 比對目前批次檢測結果與預期字典，輸出差異報告 |
+| `取得關節移動統計` | 回傳 6 個關節累積移動度數列表（維護分析用） |
+| `重置關節移動統計` | 清除所有關節移動累計數據 |
+| `記錄關節移動統計` | 將關節移動統計寫入測試日誌（Robot Framework logger） |
+| `Get YOLO Detection Status` | 取得 YOLO 檢測狀態字典，不拋出例外，適合條件判斷 |
+| `若 YOLO 檢測到按鈕 "${button_id}" 為 "${target_state}" 則點擊喚醒` | 條件式喚醒：若按鈕狀態符合目標才執行點擊 |
+| `移動機器手臂到指定角度` | 直接移動到 6 軸指定角度陣列，用於輔助定位 |
+| `拍攝並儲存影像` | 拍攝當前影像並儲存到 `output/debug_images/`（含時間戳記） |
+
+**Gherkin 範例（完整 BDD 測試案例）**:
+```robotframework
+*** Settings ***
+Library    libraries.robot_arm_control.RobotArmKeywords
+
+*** Test Cases ***
+驗證 Light1 按鈕開啟狀態
+    Given 測試環境設定為    taipei_lab
+    And 機器手臂已正確連接到控制面板
+    And 環境 IP Camera 已完成預熱連接
+    When 用戶透過機器手臂開啟第 "light1" 號燈光
+    And 用戶檢測第 "light1" 按鈕的燈光狀態
+    Then 按鈕燈光應該為 "blue" 色
+    And 環境燈光狀態應該為 "亮"
+    And 系統應該記錄完整操作歷程
+    And 機器手臂應該返回待命位置
+```
+
 ### 🔌 連接管理關鍵字 (3個)
 
 #### 連接機器手臂
@@ -2226,4 +2360,202 @@ Resource    resources/device_control_keywords.robot
 
 ### 相關測試案例
 - `tests/mobile/android/android_gesture_test.robot`（16 個 BDD 測試案例，全部 `android-only`）
+
+
+---
+
+## 🔊 本機語音驗證關鍵字（libraries/local_voice_verifying/LocalVoiceVerifyingLibrary.py）
+
+> **更新日期**：2026-03-27
+
+此模組提供「PC 播放語音 → 麥克風錄音 → 聲音特徵比對」的完整流程，用於驗證設備對喚醒詞的回應聲音。
+
+### 引用方式
+```robotframework
+Library    ../libraries/local_voice_verifying/LocalVoiceVerifyingLibrary.py
+```
+
+### Python Library 關鍵字
+
+| 關鍵字名稱 | 參數 | 說明 |
+|---|---|---|
+| `Speak And Detect` | `text`, `target_sound`, `duration=10` | 播放文字語音並同時錄音，比對是否檢測到目標聲音；回傳 True/False |
+| `Start Voice Recording` | `duration=10` | 開始後台錄音，持續指定秒數 |
+| `Stop Voice Recording` | — | 停止後台錄音並儲存音訊緩衝 |
+| `Detect Target Sound` | `target_sound`, `threshold=0.7` | 比對已錄製的音訊是否包含目標聲音；回傳 True/False |
+| `Get Detection Result` | — | 取得最後一次偵測結果（字典：sound、detected、confidence、timestamp） |
+| `Set Detection Threshold` | `threshold` | 設定聲音比對的信心度閾值（0.0–1.0，預設 0.7） |
+| `Load Reference Sound` | `sound_name` | 從 `libraries/local_voice_verifying/reference_sounds/` 載入參考聲音樣本 |
+| `Set TTS Language` | `language` | 設定 TTS 語言（如 "zh-TW"、"en"） |
+| `Set TTS Speed` | `speed` | 設定 TTS 語速（0.5–2.0，1.0 為正常） |
+| `Speak Text` | `text`, `language=None` | 使用 gTTS 播放文字（不錄音） |
+| `Cleanup Audio Resources` | — | 釋放所有音訊資源（錄音流、TTS 引擎） |
+
+### 使用範例
+```robotframework
+*** Test Cases ***
+驗證設備回應喚醒詞
+    Load Reference Sound    登登
+    Set Detection Threshold    0.75
+    ${result}=    Speak And Detect    Hey Power Pro    登登    10
+    Should Be True    ${result}    msg=未偵測到目標聲音「登登」
+    ${detail}=    Get Detection Result
+    Log    信心度：${detail}[confidence]
+    [Teardown]    Cleanup Audio Resources
+```
+
+---
+
+## 🤖 多感官檢測關鍵字（libraries/multimodal_detection/VoiceAssistantDetection.py）
+
+> **更新日期**：2026-03-27
+
+整合語音播放（VoiceControlKeywords）、IP Camera 視覺檢測（IPCamLightDetection）與 UART 日誌監控（SerialLogParser），提供語音助手多感官回應的一站式驗證。
+
+### Python Library 關鍵字
+
+| 關鍵字名稱 | 參數 | 說明 |
+|---|---|---|
+| `測試語音助理回應` | `wake_word`, `camera_env`, `camera_name`, `uart_port=None`, `uart_baudrate=115200`, `scarlett_channel=1`, `detection_timeout=10`, `require_both=True` | 執行完整的多感官回應測試：播放喚醒詞 → 同時偵測視覺亮度變化與 UART 日誌；回傳結果字典 |
+
+**回傳字典欄位**：
+- `overall_success` (bool)：整體測試是否通過
+- `vision_detected` (bool)：視覺偵測是否成功
+- `audio_detected` (bool)：聽覺（UART）偵測是否成功
+- `vision_details` (str)：視覺檢測詳情
+- `audio_details` (str)：聽覺檢測詳情
+- `failure_reason` (str)：失敗原因摘要
+
+### BDD 資源檔關鍵字（resources/voice_assistant_keywords.robot）
+
+| 關鍵字名稱 | 類型 | 說明 |
+|---|---|---|
+| `測試語音助手完整回應` | When | 呼叫 `測試語音助理回應`，包裝成 BDD 風格；參數：喚醒詞、環境、攝影機、參考聲音（預設「登登」）、超時（預設 10 秒） |
+| `驗證語音助手完整回應成功` | Then | 驗證結果字典中 vision_detected、audio_detected、overall_success 均為 True |
+| `驗證視覺和聽覺都有回應` | Then | `驗證語音助手完整回應成功` 的別名關鍵字 |
+| `記錄檢測詳細資料` | And | 將結果字典格式化輸出至測試日誌（視覺/聽覺/綜合判定） |
+| `驗證檢測結果符合預期` | Then | 驗證結果字典中 vision_detected 和 audio_detected 是否符合預期布林值 |
+| `設定檢測參數` | Given | 以 Suite Variable 設定環境、攝影機、參考聲音、超時等參數 |
+| `等待語音助手恢復` | And | Sleep 指定秒數（預設 5 秒），等待語音助手回到待命狀態 |
+| `清理檢測資源` | （Teardown） | 清理測試使用的資源（日誌記錄） |
+
+**使用範例**:
+```robotframework
+*** Settings ***
+Resource    resources/voice_assistant_keywords.robot
+
+*** Test Cases ***
+驗證語音助手對喚醒詞的完整回應
+    Given 設定檢測參數    laboratory    level1    登登    10
+    When 測試語音助手完整回應    Hey Power Pro    laboratory    level1
+    Then 驗證語音助手完整回應成功    ${結果}
+    And 記錄檢測詳細資料    ${結果}
+    [Teardown]    清理檢測資源
+```
+
+---
+
+## 📱 Appium 自訂擴充關鍵字（libraries/mobile_testing/common/CustomAppiumKeywords.py）
+
+> **更新日期**：2026-03-27
+
+封裝 Appium AppiumLibrary 的常用操作，並加入詳細的日誌記錄與錯誤處理，提供比原生 AppiumLibrary 更豐富的診斷資訊。
+
+### 引用方式
+```robotframework
+Library    ../libraries/mobile_testing/common/CustomAppiumKeywords.py
+```
+
+### 關鍵字清單
+
+| 關鍵字名稱 | 參數 | 說明 |
+|---|---|---|
+| `Open Application` | `remote_url`, `**desired_caps` | 開啟 Appium 連線並啟動 App（含詳細 capability 日誌） |
+| `Close Application` | — | 關閉目前 Appium Session（含日誌） |
+| `Click Element` | `locator` | 點擊元素（附記錄定位器與操作結果日誌） |
+| `Input Text` | `locator`, `text` | 清除後輸入文字至元素 |
+| `Get Text` | `locator` | 取得元素文字內容；回傳 str |
+| `Element Should Be Visible` | `locator`, `message=None` | 驗證元素可見；不可見則拋出 AssertionError |
+| `Wait Until Element Is Visible` | `locator`, `timeout=10` | 等待元素可見（最多 timeout 秒） |
+| `Swipe` | `start_x`, `start_y`, `end_x`, `end_y`, `duration=1000` | 執行滑動手勢（ms 單位） |
+| `Scroll Down` | `locator=None`, `duration=1000` | 向下滾動（可指定元素或螢幕整體） |
+| `Scroll Up` | `locator=None`, `duration=1000` | 向上滾動 |
+| `Take Screenshot` | `filename=None` | 擷取螢幕截圖並儲存（回傳路徑） |
+| `Get Current Activity` | — | 取得目前 Android Activity 名稱（Android 專用） |
+
+### 使用範例
+```robotframework
+*** Test Cases ***
+基本 App 互動測試
+    Open Application    http://localhost:4723    platformName=Android    app=/path/to/app.apk
+    Wait Until Element Is Visible    accessibility_id=LoginButton    15
+    Click Element    accessibility_id=LoginButton
+    Input Text    id=username    testuser
+    ${text}=    Get Text    id=greeting
+    Element Should Be Visible    id=dashboard
+    Take Screenshot    login_success
+    Close Application
+```
+
+---
+
+## 🖥️ 系統維護關鍵字（libraries/system_maintenance/DiskManagementKeywords.py）
+
+> **更新日期**：2026-03-27（首次建立完整文件，功能於 v5.5.5 新增）
+
+提供磁碟空間監控與 Debug 圖片清理功能，防止測試執行過程中 `output/debug_images/` 目錄佔用過多磁碟空間。
+
+### 引用方式
+```robotframework
+Library    ../libraries/system_maintenance/DiskManagementKeywords.py
+```
+
+### 關鍵字清單
+
+| 關鍵字名稱 | BDD 前綴 | 參數 | 說明 |
+|---|---|---|---|
+| `Given 磁碟剩餘空間應大於 '${size_mb}' MB` | Given | `size_mb` (int) | 取得磁碟可用空間（MB），若低於閾值則拋出 AssertionError，確保測試啟動前有足夠空間 |
+| `When 清理超過 '${days}' 天前的 Debug 圖片` | When | `days` (int) | 刪除 `output/debug_images/` 中修改時間超過 N 天的圖片，回傳刪除檔案數 |
+| `When 保留最新的 '${count}' 張 Debug 圖片` | When | `count` (int) | 依修改時間排序，僅保留最新 N 張圖片，刪除其餘，回傳刪除檔案數 |
+
+### 使用範例
+```robotframework
+*** Settings ***
+Library    ../libraries/system_maintenance/DiskManagementKeywords.py
+
+*** Test Cases ***
+機器手臂測試前磁碟健康檢查
+    Given 磁碟剩餘空間應大於 '500' MB
+    When 清理超過 '7' 天前的 Debug 圖片
+    And 保留最新的 '100' 張 Debug 圖片
+```
+
+---
+
+## 📊 關鍵字總覽更新（2026-03-27）
+
+### 新增模組摘要
+
+| 模組 | 類型 | 關鍵字數 | 說明 |
+|---|---|---|---|
+| `local_voice_verifying/LocalVoiceVerifyingLibrary.py` | Python Library | 11 | 本機語音播放與聲音比對 |
+| `multimodal_detection/VoiceAssistantDetection.py` | Python Library | 1 | 多感官語音助手回應驗證 |
+| `resources/voice_assistant_keywords.robot` | Resource File | 8 | 語音助手 BDD 包裝關鍵字 |
+| `mobile_testing/common/CustomAppiumKeywords.py` | Python Library | 12 | Appium 擴充操作關鍵字 |
+| `system_maintenance/DiskManagementKeywords.py` | Python Library | 3 | 磁碟空間管理 |
+
+### 更新模組摘要
+
+| 模組 | 新增關鍵字數 | 說明 |
+|---|---|---|
+| `voice_control/AudioKeywords.py` | 3 | 新增設備查詢工具關鍵字 |
+| `robot_arm_control/RobotArmKeywords.py` | 16 | 補充 BDD 關鍵字完整參考表 |
+| `resources/switchbot_keywords.robot` | 5 | 補充資源檔額外關鍵字 |
+
+> ⚠️ **文件規模提醒**：本文件目前已超過 2500 行。建議評估是否依模組拆分為多個文件，例如：
+> - `docs/keywords/keywords_robot_arm.md`
+> - `docs/keywords/keywords_voice_control.md`
+> - `docs/keywords/keywords_mobile.md`
+> - `docs/keywords/keywords_core.md`（SwitchBot / TestLink / IPCam / Web / API）
+> - `keywords_readme.md`（索引文件，包含各子文件連結）
 
