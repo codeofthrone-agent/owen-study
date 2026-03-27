@@ -6,8 +6,39 @@
 **當前階段**: Phase 1 - 基礎架構 + iOS 真機支援 (✅ 完成)  
 **完成進度**: 100% (基礎語音模組 + Appium 整合 + 全面中文關鍵字標準化 + SwitchBot 電源管理 + 配置系統整合 + iOS 真機測試完整支援)  
 **最新完成**: 2025-06-27 - iOS 真機測試環境完整建置 + 專案文檔最終整理  
-**最新更新**: 2026-03-11 - **Android 實體裝置控制架構完成（Stage 1-3, 5-8），待實機驗證**
+**最新更新**: 2026-03-27 - **tests/libraries IDE 匯入與設定錯誤修復完成（不含 .robot runtime）**
 **修復狀態**: ✅ 完成 - iOS 真機環境完整，Android 環境已修復並增強，多燈號關鍵字模組正常運作，所有關鍵字已標準化為中文，**機器手臂控制系統基本完成**，**Android 裝置/手勢/語音控制架構已建立（56 架構測試 GREEN）**
+
+---
+
+### 🔧 最新更新 (2026-03-27)
+
+#### ✅ tests/libraries IDE 匯入與設定修復完成（排除 .robot 執行期問題）
+
+**修復任務總結**:
+- ✅ 新增工作區 Python 分析路徑設定，穩定 Pylance 匯入解析
+- ✅ 新增 `pyrightconfig.json`，固定團隊靜態分析行為
+- ✅ 收斂多個 library 的載入期 `sys.path` 注入，只保留最小 fallback
+- ✅ 移除 `tests/unit` 核心測試檔中的分散式 `sys.path` 手動注入
+- ✅ 修正 `.robot` IDE 紅字：語音整合測試關鍵字前綴對齊（`And` → `Given`）
+- ✅ 修正 `.robot` 關鍵字嵌入參數引號樣式（雙引號改單引號，對齊 DiskManagementKeywords）
+- ✅ 修正舊式 section header（`*** Variable ***` → `*** Variables ***`）
+- ✅ 完成文件同步，將本次維護納入任務追蹤
+
+**修復範圍**:
+- `libraries/ipcam_light_detection/IPCamKeywords.py`
+- `libraries/robot_arm_control/RobotArmKeywords.py`
+- `libraries/voice_control/AudioKeywords.py`
+- `libraries/multimodal_detection/VoiceAssistantDetection.py`
+- `libraries/switchbot_smartplug_control/SwitchBotSmartPlugLibrary.py`
+- `libraries/testlink_integration/TestLinkConnector.py`
+- `tests/unit/api/test_http_api.py`
+- `tests/unit/robot_arm/test_robot_arm_server.py`
+- `.vscode/settings.json`
+- `pyrightconfig.json`
+
+**不在本次範圍**:
+- `.robot` 測試案例執行結果與硬體/網路 runtime 問題
 
 ---
 

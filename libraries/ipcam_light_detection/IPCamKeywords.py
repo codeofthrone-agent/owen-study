@@ -24,12 +24,16 @@ except ImportError:
         sys.path.insert(0, str(current_dir))
     from IPCamLightDetection import IPCamLightDetection
 
-# Add project root to sys.path for config import
-project_root = current_dir.parent.parent
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
-from config.robot_arm.config_loader import ConfigLoader
-from config.robot_arm.environment_config import EnvironmentConfig
+try:
+    from config.robot_arm.config_loader import ConfigLoader
+    from config.robot_arm.environment_config import EnvironmentConfig
+except ImportError:
+    # 僅在檔案路徑匯入時注入專案根目錄，避免常態污染 sys.path
+    project_root = current_dir.parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    from config.robot_arm.config_loader import ConfigLoader
+    from config.robot_arm.environment_config import EnvironmentConfig
 
 class IPCamKeywords:
     """

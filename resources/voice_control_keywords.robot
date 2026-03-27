@@ -1,37 +1,31 @@
 *** Settings ***
-Documentation    Voice Control Keywords - Gherkin Style
-...              語音控制關鍵字資源檔案 - Gherkin 風格
-...
-...              This resource file imports the VoiceControlKeywords Python library.
-...              All keywords are defined in the Python library with @keyword decorator.
-...              Do not redefine keywords here - they are already available from the library.
-...
-...              此資源檔案匯入 VoiceControlKeywords Python 函式庫。
-...              所有關鍵字都在 Python 函式庫中透過 @keyword 裝飾器定義。
-...              不要在此重複定義關鍵字 - 它們已經可以從函式庫中使用。
-
-Library          ../libraries/voice_control/VoiceControlKeywords.py
+Documentation     語音控制各模組關鍵字封裝 (Resource 層)
+Library           ../libraries/voice_control/VoiceControlKeywords.py
+Library           String
+Library           Collections
 
 *** Variables ***
-# 預設配置
-${DEFAULT_LANGUAGE}     en
+# 預設參數 (對齊 TTSManager.py)
 ${DEFAULT_ENGINE}       gtts
+${DEFAULT_LANGUAGE}     en
 ${DEFAULT_SPEED}        180
 ${DEFAULT_DURATION}     5
 
-# 語言代碼對照
-${LANG_ENGLISH}         en
-${LANG_CHINESE_TW}      zh-TW
-${LANG_CHINESE_CN}      zh-CN
-${LANG_JAPANESE}        ja
-${LANG_KOREAN}          ko
-
-# TTS 引擎
-${ENGINE_GTTS}          gtts
-${ENGINE_PYTTSX3}       pyttsx3
-
-# Scarlett 聲道
+# 常用聲道常數
 ${CHANNEL_1}            1
 ${CHANNEL_2}            2
 ${CHANNEL_3}            3
 ${CHANNEL_4}            4
+
+*** Keywords ***
+Given Scarlett 設備已就緒
+    [Documentation]    [Alias] 確認音效介面已準備就緒
+    Given Scarlett 4i4 音效介面已正確連接
+
+Given 設定語音環境
+    [Arguments]    ${engine}=${DEFAULT_ENGINE}    ${language}=${DEFAULT_LANGUAGE}    ${speed}=${DEFAULT_SPEED}
+    [Documentation]    [Alias] 設定 TTS 環境 (支援預設值)
+    Given 語音控制系統已成功初始化
+    Given TTS 引擎已設定為 "${engine}"
+    Given TTS 語言已設定為 "${language}"
+    Given TTS 語速已設定為 "${speed}"

@@ -18,15 +18,10 @@ Robot Arm Server 單元測試
 """
 
 import pytest
-import sys
-import os
 import json
 import struct
 from unittest.mock import MagicMock, Mock, patch
 import numpy as np
-
-# 加入專案路徑
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
 from scripts.robot_arm_server import (
     resolve_detection_conflicts,

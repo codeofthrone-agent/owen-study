@@ -1,5 +1,5 @@
 *** Settings ***
-Documentation    語音控制與 TTS 整合測試
+Documentation    語音控制與 TTS 整合測試 - 最終驗證
 ...              測試 VoiceControlKeywords 的完整功能
 ...              包含 TTS 生成、聲道控制、多語言支援
 Resource         ../../../resources/voice_control_keywords.robot
@@ -183,11 +183,11 @@ Suite 清理
 執行方式：
 
     # 執行所有測試
-    robot tests/integration/voice_control/voice_tts_integration_test.robot
+    robot tests/integration/voice_control/final_verification.robot
 
     # 執行特定標籤
-    robot --include basic tests/integration/voice_control/voice_tts_integration_test.robot
-    robot --include multilingual tests/integration/voice_control/voice_tts_integration_test.robot
+    robot --include basic tests/integration/voice_control/final_verification.robot
+    robot --include multilingual tests/integration/voice_control/final_verification.robot
 
     # 產生詳細報告
-    robot --outputdir results/voice_control --loglevel DEBUG tests/integration/voice_control/voice_tts_integration_test.robot
+    robot --outputdir results/voice_control --loglevel DEBUG tests/integration/voice_control/final_verification.robot

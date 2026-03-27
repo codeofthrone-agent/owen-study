@@ -24,9 +24,12 @@ Python 使用範例:
         print(f"請重開機: {result['reboot_command']}")
 """
 
+import os
+import signal
+import subprocess
 import time
 import re
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, List
 from pathlib import Path
 from loguru import logger
 
@@ -79,7 +82,8 @@ cd /uvoice
 """
     }
 
-    def __init__(self, port: str = '/dev/ttyUSB0', baudrate: int = 115200, command_timeout: float = 5.0):
+    def __init__(self, port: str = '/dev/ttyUSB0', baudrate: int = 115200, command_timeout: float = 5.0,
+                 auto_kill_conflicts: bool = True):
         """
         初始化遠端系統配置驗證器
 
@@ -87,6 +91,7 @@ cd /uvoice
             port: 串列埠路徑（預設 /dev/ttyUSB0）
             baudrate: 鮑率（預設 115200）
             command_timeout: 命令執行超時時間（秒，預設 5.0）
+            auto_kill_conflicts: 是否自動中止佔用串列埠的 screen/tio 程序
         """
         if not SERIAL_AVAILABLE:
             raise ImportError("pyserial 未安裝，無法使用遠端配置驗證功能")
@@ -95,6 +100,7 @@ cd /uvoice
         self.baudrate = baudrate
         self.command_timeout = command_timeout
         self.serial_conn: Optional[serial.Serial] = None
+        self.auto_kill_conflicts = auto_kill_conflicts
 
         logger.info(f"初始化遠端系統配置驗證器 (v{self.ROBOT_LIBRARY_VERSION})")
         logger.info(f"串列埠: {port}, 鮑率: {baudrate}, 命令超時: {command_timeout}s")
@@ -111,6 +117,9 @@ cd /uvoice
             return True
 
         try:
+            if self.auto_kill_conflicts:
+                self._terminate_conflicting_serial_sessions()
+
             logger.info(f"嘗試連接串列埠: {self.port}")
             self.serial_conn = serial.Serial(
                 port=self.port,
@@ -207,6 +216,69 @@ cd /uvoice
             logger.error(f"串列埠連接失敗: {e}")
             return False
 
+    def _terminate_conflicting_serial_sessions(self):
+        """主動清理可能占用串列埠的 screen/tio 工作階段"""
+        if not self.port:
+            return
+
+        try:
+            result = subprocess.run(['ps', '-eo', 'pid,args'], capture_output=True, text=True, check=False)
+        except Exception as exc:
+            logger.debug(f"無法列出系統程序: {exc}")
+            return
+
+        conflicts: List[Dict[str, str]] = []
+        for line in result.stdout.splitlines():
+            line = line.strip()
+            if not line or line.lower().startswith('pid'):
+                continue
+
+            parts = line.split(None, 1)
+            if len(parts) != 2:
+                continue
+
+            pid_str, cmdline = parts
+            try:
+                pid = int(pid_str)
+            except ValueError:
+                continue
+
+            if pid == os.getpid():
+                continue
+
+            lower_cmd = cmdline.lower()
+            if self.port in cmdline and any(tool in lower_cmd for tool in ('screen', 'tio')):
+                conflicts.append({'pid': pid, 'cmd': cmdline})
+
+        if not conflicts:
+            return
+
+        logger.warning("偵測到其他程序占用串列埠，嘗試釋放...")
+        for proc in conflicts:
+            pid = proc['pid']
+            logger.warning(f"  中止 PID {pid}: {proc['cmd']}")
+            try:
+                os.kill(pid, signal.SIGTERM)
+                time.sleep(0.2)
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                continue
+            except PermissionError:
+                logger.error(f"無權結束 PID {pid}")
+                continue
+            except Exception as exc:
+                logger.error(f"結束 PID {pid} 時發生錯誤: {exc}")
+                continue
+
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                logger.info(f"PID {pid} 已停止")
+            except PermissionError:
+                logger.error(f"無權強制結束 PID {pid}")
+            except Exception as exc:
+                logger.error(f"無法強制結束 PID {pid}: {exc}")
+
     def disconnect(self):
         """關閉串列埠連接"""
         if self.serial_conn and self.serial_conn.is_open:
@@ -249,30 +321,26 @@ cd /uvoice
 
             # 接收回應
             output_lines = []
-            start_time = time.time()
             marker_found = False
             start_marker_found = False
 
-            # 使用 read_until 讀取直到結束標記出現
             marker_bytes = end_marker.encode('utf-8')
             raw_output = b''
-            
-            while True:
+            deadline = time.time() + timeout
+
+            while time.time() < deadline:
                 chunk = self.serial_conn.read_until(marker_bytes)
-                raw_output += chunk
-                
-                if marker_bytes not in chunk:
-                    break
-                
-                # 檢查是否為命令回顯
-                chunk_str = chunk.decode('utf-8', errors='ignore')
-                if f"echo '{end_marker}'" in chunk_str:
-                    logger.debug("跳過包含結束標記的命令回顯")
+                if not chunk:
                     continue
-                
-                logger.debug("✓ 找到結束標記")
-                marker_found = True
-                break
+
+                raw_output += chunk
+                if marker_bytes in raw_output:
+                    logger.debug("✓ 找到結束標記")
+                    marker_found = True
+                    break
+
+            if not marker_found:
+                logger.warning(f"命令執行超時 ({timeout}s)，可能未完成")
 
             output_str = raw_output.decode('utf-8', errors='ignore')
             logger.debug(f"Raw output len: {len(output_str)}")
@@ -313,10 +381,6 @@ cd /uvoice
                     continue
                     
                 output_lines.append(line)
-
-            if not marker_found:
-                logger.warning(f"命令執行超時 ({timeout}s)，可能未完成")
-                logger.debug(f"收到的所有行 ({len(output_lines)} 行): {output_lines}")
 
             output = '\n'.join(output_lines)
             logger.debug(f"命令輸出 ({len(output_lines)} 行):")
@@ -360,10 +424,10 @@ cd /uvoice
             logger.error(f"無法讀取配置檔: {file_path}")
             ret = {
                 'file_path': file_path,
-                'has_error': None,
+                'has_error': True,
                 'error_type': 'file_not_readable',
                 'current_content': '',
-                'needs_fix': False,
+                'needs_fix': True,
                 'matched_line': None
             }
             logger.debug(f"Returning from check_file_config (error): {ret}")
@@ -510,7 +574,7 @@ cd /uvoice
             logger.info("檢查 uvcapture 狀態...")
             ps_output = self.execute_remote_command("ps | grep uvcapture")
             uvcapture_running = False
-            for line in ps_output:
+            for line in ps_output.splitlines():
                 if "uvcapture" in line and "grep" not in line:
                     uvcapture_running = True
                     logger.info(f"✓ uvcapture 正在運行: {line}")
@@ -523,7 +587,7 @@ cd /uvoice
                 
                 # 再次檢查
                 ps_output = self.execute_remote_command("ps | grep uvcapture")
-                for line in ps_output:
+                for line in ps_output.splitlines():
                     if "uvcapture" in line and "grep" not in line:
                         uvcapture_running = True
                         logger.info(f"✓ uvcapture 已啟動: {line}")

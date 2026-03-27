@@ -77,6 +77,26 @@ TestLink 專案結構:
 - **作業系統**: macOS (主要), 支援 Windows/Linux
 - **執行環境**: 本機 + 遠端設備網路
 
+### IDE 靜態分析與匯入規範
+
+為降低 IDE 假性紅線與匯入不一致問題，Python 模組需遵循以下規範：
+
+1. **優先使用 package import**
+  - 以 `from libraries.xxx import ...`、`from config.xxx import ...` 為主。
+  - 避免在模組載入期直接全域修改 `sys.path`。
+
+2. **最小化 fallback 策略**
+  - 只在檔案路徑直接匯入且發生 `ImportError` 時，才允許補充最小路徑。
+  - fallback 不可作為主要執行路徑，需保留清楚註解說明。
+
+3. **工作區分析設定一致化**
+  - 使用 `.vscode/settings.json` 與 `pyrightconfig.json` 統一分析路徑。
+  - 新增模組時需同步確認 `extraPaths` 是否覆蓋。
+
+4. **測試程式匯入規範**
+  - `tests/` 下測試檔不得分散式加入 `sys.path`。
+  - 測試匯入應依賴工作區設定與標準 package 結構。
+
 ### 子系統模組
 
 #### 1. 移動應用測試模組 (Mobile Testing Module)

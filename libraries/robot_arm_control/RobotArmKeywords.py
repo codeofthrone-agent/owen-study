@@ -28,15 +28,18 @@ except ImportError:
     current_dir = Path(__file__).parent
     if str(current_dir) not in sys.path:
         sys.path.insert(0, str(current_dir))
-    # 加入專案根目錄到 sys.path
-    project_root = current_dir.parent.parent
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
     from button_config_loader import ButtonConfigLoader
     from mycobot_socket_controller import MyCobotSocketController
     from local_vision_analyzer import LocalVisionAnalyzer
     from image_source_manager import ImageSourceManager
-    from config.robot_arm.environment_config import EnvironmentConfig
+    try:
+        from config.robot_arm.environment_config import EnvironmentConfig
+    except ImportError:
+        # 僅在檔案路徑匯入且找不到 config 時才補上專案根目錄
+        project_root = current_dir.parent.parent
+        if str(project_root) not in sys.path:
+            sys.path.insert(0, str(project_root))
+        from config.robot_arm.environment_config import EnvironmentConfig
 
 
 class RobotArmKeywords:
@@ -1582,13 +1585,13 @@ class RobotArmKeywords:
             try:
                 from config.robot_arm.config_loader import ConfigLoader
             except ImportError:
-                # 回退到相對匯入
+                # 僅在檔案路徑匯入時補上專案根目錄
                 import sys
                 from pathlib import Path
-                config_dir = Path(__file__).parent.parent.parent / 'config' / 'robot_arm'
-                if str(config_dir) not in sys.path:
-                    sys.path.insert(0, str(config_dir.parent))
-                from robot_arm.config_loader import ConfigLoader
+                project_root = Path(__file__).parent.parent.parent
+                if str(project_root) not in sys.path:
+                    sys.path.insert(0, str(project_root))
+                from config.robot_arm.config_loader import ConfigLoader
 
             config_loader = ConfigLoader(self.current_environment)
             button_config = config_loader.get_button(button_id)

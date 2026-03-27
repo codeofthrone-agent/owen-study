@@ -57,21 +57,24 @@ except ImportError:
 
 # 匯入專案的模組
 try:
-    # 假設此檔案位於 libraries/multimodal_detection/
-    # 需要將專案根目錄加入 sys.path
+    from libraries.voice_control.VoiceControlKeywords import VoiceControlKeywords
+    from libraries.ipcam_light_detection.IPCamLightDetection import IPCamLightDetection
+    from libraries.multimodal_detection.SerialLogParser import SerialLogParser
+    from config.ipcam_config import get_camera_url
+except ImportError as e:
     import sys
     project_root = Path(__file__).parent.parent.parent
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
 
-    from libraries.voice_control.VoiceControlKeywords import VoiceControlKeywords
-    from libraries.ipcam_light_detection.IPCamLightDetection import IPCamLightDetection
-    from libraries.multimodal_detection.SerialLogParser import SerialLogParser
-    from config.ipcam_config import get_camera_url
-
-except ImportError as e:
-    logger.error(f"無法匯入必要的模組: {e}")
-    raise
+    try:
+        from libraries.voice_control.VoiceControlKeywords import VoiceControlKeywords
+        from libraries.ipcam_light_detection.IPCamLightDetection import IPCamLightDetection
+        from libraries.multimodal_detection.SerialLogParser import SerialLogParser
+        from config.ipcam_config import get_camera_url
+    except ImportError as inner_e:
+        logger.error(f"無法匯入必要的模組: {inner_e}")
+        raise
 
 
 class VoiceAssistantDetection:

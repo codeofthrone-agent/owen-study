@@ -1,7 +1,7 @@
 *** Settings ***
 Documentation    Voice Control TTS Test Cases - Gherkin Style with New Keywords
 ...              語音控制 TTS 測試案例 - 使用新 Gherkin 關鍵字
-Library    ../../libraries/voice_control/VoiceControlKeywords.py
+Library    ../../../libraries/voice_control/VoiceControlKeywords.py
 Library    BuiltIn
 
 *** Variables ***

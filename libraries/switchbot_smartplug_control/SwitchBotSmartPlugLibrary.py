@@ -5,7 +5,6 @@ SwitchBot 智慧插座控制 Robot Framework Library
 支援 Robot Framework 測試案例中的電源管理和設備控制需求
 """
 import os
-import sys
 import hmac
 import hashlib
 import base64
@@ -40,14 +39,6 @@ except ImportError:
 
 # 內部模組匯入 - 處理相對/絕對匯入
 try:
-    # 嘗試從專案根目錄的 config 套件匯入
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.join(current_dir, '..', '..')
-    project_root = os.path.abspath(project_root)  # 正規化路徑
-    
-    if project_root not in sys.path:
-        sys.path.insert(0, project_root)
-    
     from config.switchbot_config import (
         SWITCHBOT_API_CONFIG,
         SWITCHBOT_LOG_CONFIG, 
@@ -62,27 +53,49 @@ try:
     from config.voice_config import create_directories
     CONFIG_AVAILABLE = True
 except ImportError:
-    # 如果無法匯入配置，使用預設值
-    CONFIG_AVAILABLE = False
-    SWITCHBOT_PATHS = {
-        'logs': 'logs',
-        'config': 'config'
-    }
-    SWITCHBOT_API_CONFIG = {
-        'api_url': 'https://api.switch-bot.com/v1.1',
-        'api_timeout': 30,
-        'retry_attempts': 3
-    }
-    SWITCHBOT_LOG_CONFIG = {
-        'log_level': 'INFO',
-        'log_file': 'switchbot_smartplug.log'
-    }
-    def create_directories():
-        pass
-    def validate_switchbot_config():
-        return {'valid': False, 'errors': ['配置模組不可用']}
-    def get_device_id(device_id=None):
-        return device_id
+    try:
+        import sys
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.join(current_dir, '..', '..')
+        project_root = os.path.abspath(project_root)
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+
+        from config.switchbot_config import (
+            SWITCHBOT_API_CONFIG,
+            SWITCHBOT_LOG_CONFIG,
+            SWITCHBOT_CREDENTIALS,
+            SWITCHBOT_PATHS,
+            SUPPORTED_DEVICE_TYPES,
+            DEVICE_STATUS_MAPPING,
+            API_ERROR_CODES,
+            validate_switchbot_config,
+            get_device_id
+        )
+        from config.voice_config import create_directories
+        CONFIG_AVAILABLE = True
+    except ImportError:
+        # 如果無法匯入配置，使用預設值
+        CONFIG_AVAILABLE = False
+        SWITCHBOT_PATHS = {
+            'logs': 'logs',
+            'config': 'config'
+        }
+        SWITCHBOT_API_CONFIG = {
+            'api_url': 'https://api.switch-bot.com/v1.1',
+            'api_timeout': 30,
+            'retry_attempts': 3
+        }
+        SWITCHBOT_LOG_CONFIG = {
+            'log_level': 'INFO',
+            'log_file': 'switchbot_smartplug.log'
+        }
+        def create_directories():
+            pass
+        def validate_switchbot_config():
+            return {'valid': False, 'errors': ['配置模組不可用']}
+        def get_device_id(device_id=None):
+            return device_id
 
 class SwitchBotSmartPlugLibrary:
     """

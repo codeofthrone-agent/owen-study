@@ -1,0 +1,38 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/vscode-pyright/schemas/pyrightconfig.schema.json",
+  "include": [
+    "config",
+    "libraries",
+    "scripts",
+    "tests"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "results",
+    "output",
+    "logs",
+    "docs",
+    "openspec",
+    ".cache",
+    ".pytest_cache"
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [
+        ".",
+        "config",
+        "libraries",
+        "libraries/voice_control",
+        "libraries/multimodal_detection",
+        "libraries/robot_arm_control",
+        "scripts"
+      ]
+    }
+  ],
+  "pythonVersion": "3.12",
+  "reportMissingImports": true,
+  "typeCheckingMode": "basic"
+}

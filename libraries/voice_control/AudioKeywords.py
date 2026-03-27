@@ -5,7 +5,6 @@ Robot Framework 音訊測試關鍵字庫 (AudioKeywords)
 """
 
 import subprocess
-import sys
 from pathlib import Path
 from typing import List, Dict
 
@@ -13,9 +12,6 @@ from typing import List, Dict
 from robot.api.deco import keyword
 from robot.api import logger
 import time
-
-# 添加專案根目錄到 sys.path 以便匯入 config
-sys.path.append(str(Path(__file__).parent.parent.parent))
 
 try:
     from config.audio_config import VIRTUAL_SINKS
@@ -32,12 +28,7 @@ try:
 
 except ImportError:
     # Fallback for direct execution or Robot Framework import
-    import sys
-    from pathlib import Path
-    sys.path.append(str(Path(__file__).parent))
     from ultimate_play import play_audio_to_channel
-
-from pathlib import Path
 
 
 class AudioKeywords:
@@ -221,17 +212,8 @@ class AudioKeywords:
         try:
             from config.audio_config import CHANNEL_MAPPING
         except ImportError:
-            # Try to add project root to path
-            import sys
-            from pathlib import Path
-            project_root = Path(__file__).parent.parent.parent
-            if str(project_root) not in sys.path:
-                sys.path.append(str(project_root))
-            try:
-                from config.audio_config import CHANNEL_MAPPING
-            except ImportError:
-                logger.error("Failed to import CHANNEL_MAPPING from config.audio_config")
-                return "Unknown"
+            logger.error("Failed to import CHANNEL_MAPPING from config.audio_config")
+            return "Unknown"
 
         mapping = CHANNEL_MAPPING.get(int(channel))
         if not mapping:

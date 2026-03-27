@@ -557,6 +557,7 @@ class VoiceControlKeywords:
     # Gherkin 風格關鍵字 - Given (前置條件)
     # ===========================================
 
+    
     @keyword('Given 語音控制系統已成功初始化')
     def given_voice_control_system_initialized(self) -> bool:
         """
@@ -606,8 +607,23 @@ class VoiceControlKeywords:
                 robot_logger.error(f"✗ 語音控制系統初始化失敗: {e}")
             return False
 
+    
     @keyword('Given Scarlett 4i4 音效介面已正確連接')
     def given_scarlett_device_connected(self) -> bool:
+        """
+        Given: 確認 Scarlett 4i4 音效介面已正確連接
+        """
+        return self._check_scarlett_and_setup()
+
+    
+    # @keyword('Given Scarlett 設備已就緒')
+    # def given_scarlett_device_ready_alias(self) -> bool:
+    #     """
+    #     [Alias] Given: 確認 Scarlett 設備已就緒
+    #     """
+    #     return self._check_scarlett_and_setup()
+
+    def _check_scarlett_and_setup(self) -> bool:
         """
         Given: 確認 Scarlett 4i4 音效介面已正確連接
         Given: Confirm Scarlett 4i4 audio interface is properly connected
@@ -707,6 +723,7 @@ class VoiceControlKeywords:
             logger.error(f"執行設定腳本時發生例外: {e}")
             return False
 
+    
     @keyword('Given TTS 引擎已設定為 "${engine_name}"')
     def given_tts_engine_set_to(self, engine_name: str) -> bool:
         """
@@ -753,6 +770,7 @@ class VoiceControlKeywords:
                 robot_logger.error(f"✗ TTS 引擎設定失敗: {e}")
             return False
 
+    
     @keyword('Given TTS 語言已設定為 "${language}"')
     def given_tts_language_set_to(self, language: str) -> bool:
         """
@@ -805,42 +823,34 @@ class VoiceControlKeywords:
     @keyword('Given TTS 語速已設定為 "${speed}"')
     def given_tts_speed_set_to(self, speed: int) -> bool:
         """
-        Given: 確認 TTS 語速已設定為指定速度
-        Given: Confirm TTS speed is set to specified rate
-
+        Given: 確認 TTS 語速已設定為指定值
+        Given: Confirm TTS speed is set to specified value
+        
         此關鍵字設定並確認指定的 TTS 語速已正確配置。
         This keyword sets and confirms the specified TTS speed is properly configured.
-
+        
         Arguments:
         - speed: 語速值 (pyttsx3: words per minute, 建議範圍 100-300)
         - speed: Speed value (pyttsx3: words per minute, recommended range 100-300)
-
-        速度參考:
-        - 100-150: 較慢 (slow)
-        - 180: 標準速度 (default)
-        - 200-250: 較快 (fast)
-        - 250+: 很快 (very fast)
-
+        
         Prerequisites:
         - Voice control system is initialized
         - TTS engine is available
-
+        
         前置條件:
         - 語音控制系統已初始化
         - TTS 引擎可用
-
+        
         Examples:
         | Given | TTS 語速已設定為 "150" |
-        | Given | TTS 語速已設定為 "180" |
-        | Given | TTS 語速已設定為 "200" |
-
+        
         Returns:
             bool: 設定是否成功
         """
         try:
             speed_value = int(speed)
             success = self.tts_manager.set_voice_speed(speed_value)
-
+            
             if success:
                 logger.info(f"TTS 語速已設定為: {speed_value} wpm")
                 if ROBOT_AVAILABLE:
@@ -848,16 +858,70 @@ class VoiceControlKeywords:
             else:
                 logger.error(f"TTS 語速設定失敗: {speed_value}")
                 if ROBOT_AVAILABLE:
-                    robot_logger.error(f"✗ TTS 語速設定失敗: {speed_value}")
-
+                    robot_logger.error(f"✗ TTS 語速設定失敗")
+                    
             return success
-
         except Exception as e:
             logger.error(f"TTS 語速設定失敗: {e}")
             if ROBOT_AVAILABLE:
                 robot_logger.error(f"✗ TTS 語速設定失敗: {e}")
             return False
 
+    
+    def given_set_voice_environment(self, engine: Optional[str] = None, 
+                                   language: Optional[str] = None, 
+                                   speed: Optional[int] = None) -> bool:
+        """
+        Given: 設定語音測試環境 (支援多參數一次設定)
+        Given: Set voice testing environment (supports multiple parameters at once)
+        
+        此關鍵字用於初始化或更新語音環境設定。如果參數為空，則使用當前預設值。
+        This keyword is used to initialize or update voice environment settings. 
+        If arguments are empty, current default values are used.
+        
+        Arguments:
+        - engine: TTS 引擎名稱 (gtts/pyttsx3)
+        - language: 語言代碼 (en/zh-TW/ja/etc.)
+        - speed: 語速值 (例如 180)
+        
+        Examples:
+        | Given | 設定語音環境 | engine=gtts | language=zh-TW |
+        | Given | 設定語音環境 | language=en |
+        | Given | 設定語音環境 | # 使用全部預設值 |
+        
+        Returns:
+            bool: 所有設定是否皆成功
+        """
+        success = True
+        
+        # 設定引擎
+        if engine:
+            if not self.tts_manager.set_engine(engine):
+                success = False
+                logger.error(f"設定環境時切換引擎失敗: {engine}")
+        
+        # 設定語言
+        if language:
+            if not self.tts_manager.set_language(language):
+                success = False
+                logger.error(f"設定環境時切換語言失敗: {language}")
+                
+        # 設定語速
+        if speed:
+            if not self.tts_manager.set_voice_speed(int(speed)):
+                success = False
+                logger.error(f"設定環境時設定語速失敗: {speed}")
+        
+        if success:
+            info = self.tts_manager.get_engine_info()
+            msg = f"✓ 語音環境已就緒 (引擎: {info['primary_engine']}, 語言: {self.tts_manager.config['gtts']['language']})"
+            logger.info(msg)
+            if ROBOT_AVAILABLE:
+                robot_logger.info(msg)
+        
+        return success
+
+    
     @keyword('Given 音訊輸出聲道 "${channel}" 已準備就緒')
     def given_audio_channel_ready(self, channel: int) -> bool:
         """
@@ -927,7 +991,8 @@ class VoiceControlKeywords:
     # Gherkin 風格關鍵字 - When (執行動作)
     # ===========================================
 
-    @keyword('When 使用者播放文字 "${text}" 到聲道 "${channel}"')
+    
+    @keyword('When 使用者播放文字 "${text}" 到聲道 "${channel:\\d+}"')
     def when_user_plays_text_to_channel(self, text: str, channel: int) -> bool:
         """
         When: 使用者播放文字到指定聲道
@@ -966,7 +1031,8 @@ class VoiceControlKeywords:
             
         return result
 
-    @keyword('When 使用者播放文字 "${text}" 到聲道 "${channel}" 使用語言 "${language}"')
+    
+    @keyword('When 使用者播放文字 "${text}" 到聲道 "${channel:\\d+}" 使用語言 "${language}"')
     def when_user_plays_text_to_channel_with_language(self, text: str, channel: int, language: str) -> bool:
         """
         When: 使用者播放文字到指定聲道使用指定語言
@@ -1010,6 +1076,57 @@ class VoiceControlKeywords:
             
         return result
 
+    
+    @keyword('播放語音到所有聲道')
+    def when_user_plays_text_to_all_channels(self, text: str, channel: int, language: str = 'zh-TW') -> bool:
+        """
+        When: 使用者播放文字到指定聲道
+        支援三個參數以對齊測試案例 (text, channel, language)。
+        """
+        return self.speak_text_to_channel(text, int(channel), language, 5)
+
+    
+    def play_text_to_channel_alias(self, text: str, channel: int, language: Optional[str] = None, duration: int = 5) -> bool:
+        """
+        [Alias] 播放文字到指定聲道
+        支援測試案例直接呼叫，並提供語言與時長的預設值。
+        
+        Arguments:
+        - text: 播放內容
+        - channel: 聲道 (1-4)
+        - language: 語言 (預設使用配置或 en)
+        - duration: 播放時長 (預設 5s)
+        """
+        lang = language or self.tts_manager.config['gtts']['language'] or 'en'
+        return self.speak_text_to_channel(text, int(channel), lang, int(duration))
+
+    
+    def play_speech_to_all_channels(self, text: str, language: str = 'en', duration: int = 2) -> Dict[int, bool]:
+        """
+        將語音播放到所有可用聲道 (1-4)
+        
+        Returns:
+            Dict: 每個聲道的成功狀態
+        """
+        results = {}
+        for ch in range(1, 5):
+            results[ch] = self.speak_text_to_channel(text, ch, language, duration)
+        return results
+
+    
+    def switch_voice_language(self, language: str) -> bool:
+        """[Alias] 切換 TTS 語言 (已廢棄，建議改用 Given/When 關鍵字)"""
+        return self.set_tts_language(language)
+
+    def switch_voice_engine(self, engine: str) -> bool:
+        """[Alias] 切換 TTS 引擎 (已廢棄，建議改用 Given/When 關鍵字)"""
+        return self.set_tts_engine(engine)
+
+    def set_voice_speed(self, speed: int) -> bool:
+        """[Alias] 設定 TTS 語速 (已廢棄，建議改用 Given/When 關鍵字)"""
+        return self.tts_manager.set_voice_speed(int(speed))
+
+    
     @keyword('When 使用者使用預設喇叭播放文字 "${text}"')
     def when_user_plays_text_using_default_speaker(self, text: str) -> bool:
         """
@@ -1091,6 +1208,7 @@ class VoiceControlKeywords:
                 robot_logger.error(error_msg)
             return False
 
+    
     @keyword('When 使用者切換 TTS 引擎到 "${engine_name}"')
     def when_user_switches_tts_engine(self, engine_name: str) -> bool:
         """
@@ -1164,6 +1282,7 @@ class VoiceControlKeywords:
             logger.error(f"設定 TTS 語速失敗: {e}")
             return False
 
+    
     @keyword('When 使用者查詢當前 TTS 引擎資訊')
     def when_user_queries_tts_engine_info(self) -> Dict[str, Any]:
         """
@@ -1187,6 +1306,72 @@ class VoiceControlKeywords:
         """
         return self.get_tts_engine_info()
 
+    
+    @keyword('Then 應該列出可用的音訊輸出')
+    def then_should_list_available_audio_sinks(self, sinks: Any = None) -> bool:
+        """
+        When: 使用者查詢可用的音訊輸出
+        When: User queries available audio sinks
+        
+        此關鍵字執行查詢系統可用音訊輸出的動作。
+        This keyword performs the action of querying available audio sinks.
+        
+        Prerequisites:
+        - Audio system is initialized
+        
+        前置條件:
+        - 音訊系統已初始化
+        
+        Examples:
+        | When | 使用者查詢可用的音訊輸出 |
+        
+        Returns:
+            list[str]: 可用的音訊輸出列表
+        """
+        # The original implementation of when_user_queries_available_audio_sinks
+        # returned the list of sinks directly.
+        # This new keyword expects the sinks as an argument for verification.
+        # For compatibility, we can log and then verify the passed sinks.
+        logger.info(f"可用的音訊輸出: {sinks}")
+        if ROBOT_AVAILABLE:
+            robot_logger.info(f"✓ 可用的音訊輸出: {sinks}")
+        
+        # Basic verification: check if the list is not empty
+        if not sinks:
+            logger.error("未列出任何音訊輸出")
+            if ROBOT_AVAILABLE:
+                robot_logger.error("✗ 未列出任何音訊輸出")
+            return False
+        return True
+
+    
+    def when_user_queries_available_audio_sinks(self) -> list[str]:
+        """
+        When: 使用者查詢可用的音訊輸出
+        When: User queries available audio sinks
+        
+        此關鍵字執行查詢系統可用音訊輸出的動作。
+        This keyword performs the action of querying available audio sinks.
+        
+        Prerequisites:
+        - Audio system is initialized
+        
+        前置條件:
+        - 音訊系統已初始化
+        
+        Examples:
+        | When | 使用者查詢可用的音訊輸出 |
+        
+        Returns:
+            list[str]: 可用的音訊輸出列表
+        """
+        sinks = self.audio_player.list_available_sinks()
+        logger.info(f"可用的音訊輸出: {sinks}")
+        if ROBOT_AVAILABLE:
+            robot_logger.info(f"✓ 可用的音訊輸出: {sinks}")
+        return sinks
+
+    
     @keyword('When 使用者測試指定聲道 "${channel}" 的音訊輸出')
     def when_user_tests_channel_output(self, channel: int) -> bool:
         """
@@ -1221,6 +1406,7 @@ class VoiceControlKeywords:
     # Gherkin 風格關鍵字 - Then (驗證結果)
     # ===========================================
 
+    
     @keyword('Then 語音應該成功播放到指定聲道')
     def then_speech_should_play_successfully_to_channel(self) -> bool:
         """
@@ -1269,6 +1455,38 @@ class VoiceControlKeywords:
                 robot_logger.error(f"✗ 語音播放驗證失敗: {e}")
             return False
 
+    @keyword('應該成功播放語音')
+    def then_speech_should_play_successfully_alias(self, result: Any = None) -> bool:
+        """
+        Then: 驗證語音播放是否成功
+        支援帶參數 result 的驗證方式（對齊測試案例）。
+        
+        Arguments:
+        - result: 播放關鍵字回傳的布林值
+        """
+        # 如果有傳入 result，直接檢查 result
+        if result is not None:
+            # 處理字串形式的 "True"/"False" (Robot 常見)
+            if str(result).lower() == 'false':
+                raise AssertionError("語音播放失敗 (Result is False)")
+            if str(result).lower() == 'true':
+                return True
+        
+        # 如果沒傳入或為 True，則進行檔案檢查
+        if not self.then_speech_should_play_successfully_to_channel():
+            raise AssertionError("語音播放驗證失敗：音訊檔案未生成或播放過程中報錯")
+        
+        return True
+
+    @keyword('驗證所有聲道可用')
+    def verify_all_channels_available(self, results: Dict[Any, Any]):
+        """驗證所有聲道播放結果皆為成功"""
+        failed_channels = [ch for ch, res in results.items() if str(res).lower() != 'true']
+        if failed_channels:
+            raise AssertionError(f"聲道播放失敗: {', '.join(map(str, failed_channels))}")
+        return True
+
+    
     @keyword('Then TTS 引擎應該成功切換')
     def then_tts_engine_should_switch_successfully(self) -> bool:
         """
@@ -1310,7 +1528,7 @@ class VoiceControlKeywords:
                 robot_logger.error(f"✗ TTS 引擎切換驗證失敗: {e}")
             return False
 
-    @keyword('Then TTS 語速應該成功設定')
+    
     def then_tts_speed_should_be_set_successfully(self) -> bool:
         """
         Then: TTS 語速應該成功設定
@@ -1361,7 +1579,7 @@ class VoiceControlKeywords:
                 robot_logger.error(f"✗ TTS 語速驗證失敗: {e}")
             return False
 
-    @keyword('Then 音訊輸出應該清晰無雜音')
+    
     def then_audio_output_should_be_clear(self) -> bool:
         """
         Then: 音訊輸出應該清晰無雜音
@@ -1411,8 +1629,9 @@ class VoiceControlKeywords:
                 robot_logger.error(f"✗ 音訊品質檢測失敗: {e}")
             return False
 
+    
     @keyword('Then 系統應該回傳正確的 TTS 引擎資訊')
-    def then_system_should_return_correct_tts_info(self) -> bool:
+    def then_system_should_return_correct_tts_info(self, info: Any = None) -> bool:
         """
         Then: 系統應該回傳正確的 TTS 引擎資訊
         Then: System should return correct TTS engine information
@@ -1457,6 +1676,7 @@ class VoiceControlKeywords:
                 robot_logger.error(f"✗ TTS 引擎資訊驗證失敗: {e}")
             return False
 
+    
     @keyword('Then Scarlett 4i4 設備應該處於正常運作狀態')
     def then_scarlett_device_should_be_operational(self) -> bool:
         """
@@ -1484,6 +1704,7 @@ class VoiceControlKeywords:
     # Gherkin 風格關鍵字 - And (附加驗證)
     # ===========================================
 
+    
     @keyword('And 語音品質應該符合標準')
     def and_voice_quality_should_meet_standards(self) -> bool:
         """
@@ -1508,6 +1729,7 @@ class VoiceControlKeywords:
         # 重用音訊品質檢測邏輯
         return self.then_audio_output_should_be_clear()
 
+    
     @keyword('And 沒有音訊延遲或中斷')
     def and_no_audio_delay_or_interruption(self) -> bool:
         """
@@ -1556,8 +1778,9 @@ class VoiceControlKeywords:
                 robot_logger.error(f"✗ 音訊延遲/中斷檢測失敗: {e}")
             return False
 
+    
     @keyword('And 暫存檔案應該正確清理')
-    def and_temp_files_should_be_cleaned_properly(self) -> bool:
+    def then_temp_files_should_be_cleaned(self) -> bool:
         """
         And: 暫存檔案應該正確清理
         And: Temporary files should be cleaned properly
@@ -1600,7 +1823,7 @@ class VoiceControlKeywords:
                 robot_logger.error(f"✗ 暫存檔案清理驗證失敗: {e}")
             return False
 
-    @keyword('And 錯誤日誌應該為空')
+    
     def and_error_logs_should_be_empty(self) -> bool:
         """
         And: 錯誤日誌應該為空
@@ -1656,6 +1879,7 @@ class VoiceControlKeywords:
     # Gherkin 風格關鍵字 - UART 監控 (新增於 v1.1.0)
     # ===========================================
 
+    
     @keyword('Given UART 日誌監控器已初始化')
     def given_uart_monitor_initialized(self, port: Optional[str] = None, baudrate: int = 115200, auto_validate: bool = True) -> bool:
         """
@@ -1693,6 +1917,7 @@ class VoiceControlKeywords:
 
         return success
 
+    
     @keyword('When 使用者啟動 UART 背景監控')
     def when_user_starts_uart_monitoring(self) -> bool:
         """
@@ -1722,6 +1947,7 @@ class VoiceControlKeywords:
 
         return success
 
+    
     @keyword('When 使用者停止 UART 背景監控')
     def when_user_stops_uart_monitoring(self):
         """
@@ -1743,7 +1969,7 @@ class VoiceControlKeywords:
         if ROBOT_AVAILABLE:
             robot_logger.info("✓ UART 背景監控已停止")
 
-    @keyword('Then 應該在 "${timeout}" 秒內收到恰好 "${count}" 個語音回應')
+    
     def then_should_receive_exact_voice_responses(self, timeout: float, count: int):
         """
         Then: 應該在指定時間內收到恰好指定數量的語音回應
@@ -1873,6 +2099,7 @@ class VoiceControlKeywords:
                 
         return None
 
+    
     @keyword('Then 應該在 "${timeout}" 秒內收到包含以下檔案的語音回應 "${patterns}"')
     def then_should_receive_voice_responses_with_patterns(self, timeout: float, patterns: str):
         """
@@ -1990,6 +2217,7 @@ class VoiceControlKeywords:
 
             raise AssertionError(error_msg)
 
+    
     @keyword('Then 應該在 "${timeout}" 秒內收到語音指令 "${command_keys}" 的回應')
     def then_should_receive_voice_command_response(self, timeout: float, command_keys: str):
         """
@@ -2037,6 +2265,7 @@ class VoiceControlKeywords:
         # 呼叫原有的驗證邏輯
         self.then_should_receive_voice_responses_with_patterns(timeout, patterns_str)
 
+    
     @keyword('And 清空 UART 事件記錄')
     def and_clear_uart_events(self):
         """
@@ -2059,6 +2288,7 @@ class VoiceControlKeywords:
             if ROBOT_AVAILABLE:
                 robot_logger.info("✓ UART 事件記錄已清空")
 
+    
     @keyword('And 系統資源使用應該在正常範圍內')
     def and_system_resources_should_be_normal(self) -> bool:
         """
