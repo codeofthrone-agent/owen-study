@@ -100,10 +100,13 @@ show_help() {
     echo "Scarlett PipeWire 路由設定與修復腳本 (v5)"
     echo "-------------------------------------------------"
     echo "使用方式:"
-    echo "  $0         - 執行完整設定，包含設定檔創建與音訊測試"
-    echo "  $0 --test    - 僅對已存在的虛擬裝置執行音訊測試"
-    echo "  $0 --cleanup - 清理所有由本腳本建立的虛擬裝置"
-    echo "  $0 --help    - 顯示此幫助訊息"
+    echo "  $0                - 執行完整設定，包含設定檔創建與音訊測試"
+    echo "  $0 --test         - 僅對已存在的虛擬裝置執行音訊測試"
+    echo "  $0 --cleanup      - 清理所有由本腳本建立的虛擬裝置"
+    echo "  $0 --routing-only - 僅重建虛擬裝置與路由連線（供自動啟動使用）"
+    echo "  $0 --install      - 安裝 systemd user service，每次登入自動建立路由"
+    echo "  $0 --uninstall    - 移除自動啟動 service"
+    echo "  $0 --help         - 顯示此幫助訊息"
 }
 
 # --- 依賴性檢查 ---
@@ -240,6 +243,135 @@ run_test() {
     
     log_success "音訊測試流程結束。"
     set -e
+}
+
+# --- 僅重建路由（供 systemd service 自動啟動使用，跳過 Pro Audio 設定） ---
+setup_routing_only() {
+    set +e
+    log_info "自動啟動模式：等待 PipeWire 就緒..."
+    for i in {1..15}; do
+        if pactl info &>/dev/null; then
+            break
+        fi
+        log_info "  等待中... ($i/15)"
+        sleep 2
+    done
+
+    log_action "尋找 Scarlett 音訊介面..."
+    CARD_NAME=$(pactl list cards short | grep -i -E "Focusrite.*Scarlett|Scarlett.*Focusrite" | awk '{print $2}' | head -n 1)
+    if [ -z "$CARD_NAME" ]; then
+        log_error "找不到 Scarlett 設備，請確認已連接。"
+        exit 1
+    fi
+    log_success "找到音訊卡: $CARD_NAME"
+
+    log_action "清理並重新建立虛擬輸出裝置..."
+    cleanup_routes
+    local virtual_sinks=("Scarlett_1-2" "Scarlett_3-4")
+    for sink in "${virtual_sinks[@]}"; do
+        pactl load-module module-null-sink sink_name="$sink" sink_properties=device.description="$sink"
+        pactl set-sink-volume "$sink" 100%
+    done
+    sleep 2
+
+    log_action "偵測 Scarlett Pro Audio 實體輸出設備..."
+    DEVICE_NAME=$(pw-link -i | grep -i "Focusrite.*pro-output" | head -n 1 | cut -d: -f1)
+    if [ -z "$DEVICE_NAME" ]; then
+        log_error "找不到 Scarlett Pro Audio 實體輸出！請先執行完整設定（無參數）以確認 Pro Audio 模式已啟用。"
+        exit 1
+    fi
+    log_success "找到實體輸出設備: $DEVICE_NAME"
+
+    local port_map_1="playback_FL"
+    local port_map_2="playback_FR"
+    local port_map_3="playback_RL"
+    local port_map_4="playback_RR"
+    local current_device_node="$DEVICE_NAME"
+
+    for i in {1..10}; do
+        if pw-link -i | grep -q "$current_device_node:playback_FL"; then
+            port_map_1="playback_FL"; port_map_2="playback_FR"
+            port_map_3="playback_RL"; port_map_4="playback_RR"
+            break
+        elif pw-link -i | grep -q "$current_device_node:playback_AUX0"; then
+            port_map_1="playback_AUX0"; port_map_2="playback_AUX1"
+            port_map_3="playback_AUX2"; port_map_4="playback_AUX3"
+            break
+        fi
+        sleep 1
+    done
+    sleep 2
+
+    log_action "連接虛擬裝置至實體輸出..."
+    local links=(
+        "Scarlett_1-2:monitor_FL=$current_device_node:$port_map_1"
+        "Scarlett_1-2:monitor_FR=$current_device_node:$port_map_2"
+        "Scarlett_3-4:monitor_FL=$current_device_node:$port_map_3"
+        "Scarlett_3-4:monitor_FR=$current_device_node:$port_map_4"
+    )
+    for link in "${links[@]}"; do
+        src="${link%=*}"; dst="${link#*=}"
+        if pw-link "$src" "$dst"; then
+            log_success "  $src -> $dst"
+        else
+            log_error "  連接失敗: $src -> $dst"
+        fi
+    done
+    log_success "路由設定完成！"
+    set -e
+}
+
+# --- 安裝 systemd user service（每次登入自動建立路由） ---
+install_autostart() {
+    local script_path
+    script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+    local service_dir="$HOME/.config/systemd/user"
+    local service_file="$service_dir/scarlett-routing.service"
+
+    log_info "安裝自動啟動 systemd user service..."
+    mkdir -p "$service_dir"
+
+    cat > "$service_file" << EOF
+[Unit]
+Description=Scarlett PipeWire Routing Auto-Setup
+After=pipewire.service pipewire-pulse.service wireplumber.service
+Wants=pipewire.service pipewire-pulse.service wireplumber.service
+
+[Service]
+Type=oneshot
+ExecStart=$script_path --routing-only
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=default.target
+EOF
+
+    systemctl --user daemon-reload
+    systemctl --user enable scarlett-routing.service
+    log_success "已安裝並啟用 systemd user service: $service_file"
+    echo ""
+    echo "每次登入後將自動重建 Scarlett 路由。"
+    echo ""
+    echo "常用指令："
+    echo "  systemctl --user start scarlett-routing.service   # 立即啟動"
+    echo "  systemctl --user status scarlett-routing.service  # 查看狀態"
+    echo "  journalctl --user -u scarlett-routing.service     # 查看日誌"
+    echo "  $0 --uninstall                                    # 移除服務"
+}
+
+# --- 移除 systemd user service ---
+uninstall_autostart() {
+    local service_file="$HOME/.config/systemd/user/scarlett-routing.service"
+    if [ ! -f "$service_file" ]; then
+        log_warn "找不到 service 檔案: $service_file，可能尚未安裝。"
+        return 0
+    fi
+    systemctl --user disable --now scarlett-routing.service 2>/dev/null || true
+    rm -f "$service_file"
+    systemctl --user daemon-reload
+    log_success "已移除自動啟動服務。"
 }
 
 # --- 主要設定流程 ---
@@ -398,6 +530,15 @@ case "$1" in
         ;;
     --test)
         run_test
+        ;;
+    --routing-only)
+        setup_routing_only
+        ;;
+    --install)
+        install_autostart
+        ;;
+    --uninstall)
+        uninstall_autostart
         ;;
     *)
         log_error "未知的參數: $1"
