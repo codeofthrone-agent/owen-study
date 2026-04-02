@@ -20,7 +20,7 @@ from collections import deque
 
 # 加入系統路徑以便匯入 config，這樣 Robot 框架就能順利找到設定
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from config.ipcam_config import get_camera_url
+from config.ipcam_config import get_camera_url, get_camera_config
 
 class ArUcoSpaceDetection:
     """
@@ -39,10 +39,10 @@ class ArUcoSpaceDetection:
         
         # --- 核心關鍵：平滑與信心參數 (移植自使用者的調校) ---
         self.target_id = target_id
-        self.history_size = 15       # 視窗大小
-        self.move_threshold = 3500   # 觸發移動的門檻
-        self.stable_threshold = 1500 # 回到穩定的緩衝門檻
-        self.confidence_required = 10# 信心機制：狀態必須連續出現幾次才算數
+        self.history_size = 10       # 視窗大小
+        self.move_threshold = 150    # 觸發移動的門檻
+        self.stable_threshold = 110  # 回到穩定的緩衝門檻
+        self.confidence_required = 7 # 信心機制：狀態必須連續出現幾次才算數
         
         # --- 存放機器的「記憶」與「狀態」 ---
         self.area_history = deque(maxlen=self.history_size)
@@ -64,14 +64,27 @@ class ArUcoSpaceDetection:
             
         self.logger.info(f"🚀 終極穩定 ArUco 空間追蹤器初始化完成 (Target ID: {self.target_id})")
 
-    def connect_camera(self, environment: str = 'rv_car', camera_name: str = 'cam3'):
+    def connect_camera(self, environment: str = 'rv_car', camera_name: str = 'rv_motor'):
         """
         2. 第二步：連線按鈕 
         當被呼叫時，我們去請 YAML 提供網址，並且打開 OpenCV 串流。
         """
         try:
-            # 向設定中心請求 URL
+            # 向設定中心請求 URL 與完整設定
             rtsp_url = get_camera_url(environment, camera_name)
+            cam_config = get_camera_config(environment, camera_name)
+            
+            # 若該攝影機有配置專屬的 ArUco 參數，則覆寫預設值
+            if 'aruco' in cam_config:
+                opts = cam_config['aruco']
+                self.target_id = opts.get('target_id', self.target_id)
+                self.history_size = opts.get('history_size', self.history_size)
+                self.move_threshold = opts.get('move_threshold', self.move_threshold)
+                self.stable_threshold = opts.get('stable_threshold', self.stable_threshold)
+                self.confidence_required = opts.get('confidence_required', self.confidence_required)
+                self.area_history = deque(maxlen=self.history_size)  # 視窗改變需重建記憶體
+                self.logger.info(f"✨ 成功套用專屬參數檔 [{opts.get('name', '未命名')}] -> Target:{self.target_id}, Thresh:{self.move_threshold}")
+
             self.logger.info(f"準備連線至攝影機 {environment}/{camera_name}...")
             
             # 設定連線協定 (完全移植您腳本原本的 TCP 設定)
@@ -132,7 +145,7 @@ class ArUcoSpaceDetection:
                     temp_state = "收縮中"
                 elif diff < -self.move_threshold:
                     temp_state = "外推中"
-                elif abs(diff) < self.stable_threshold:
+                else:
                     temp_state = "穩定"
 
                 # 如果偵測到的臨時狀態跟目前真正的狀態不一樣，開始累積「狀態變更的信心」
@@ -145,11 +158,13 @@ class ArUcoSpaceDetection:
                     
                     # 只有連續達標 CONFIDENCE_REQUIRED 次，我們才正式公佈狀態改變
                     if self.state_count >= self.confidence_required:
-                        old_state = self.last_state
                         self.last_state = temp_state
                         self.last_stable_area = avg_area  # 更新基準點
                         self.state_count = 0
-                        self.logger.info(f"🔔 狀態切換： {old_state} -> {self.last_state} (Diff: {diff:.1f})")
+                        
+                        # 讓通知文字完全與您的腳本 Camera3 保持一致
+                        timestamp = time.strftime('%H:%M:%S')
+                        self.logger.info(f"🔔 [{timestamp}] 狀態切換 -> {self.last_state} (Diff: {diff:.1f})")
                 else:
                     self.state_count = 0  # 狀態跳回跟目前一樣，計數歸零
                 

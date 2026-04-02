@@ -14,7 +14,7 @@ from config.ipcam_config import get_camera_url
 # --- 1. 連線設定 ---
 try:
     # 向設定中心請求 'rv_car' 環境的 'rv_motor' 完整 RTSP URL (已自動含帳密)
-    RTSP_URL = get_camera_url('rv_car', 'rv_motor')
+    RTSP_URL = get_camera_url('rv_car', 'cam3')
 except Exception as e:
     print(f"❌ 無法取得攝影機設定: {e}")
     exit(1)
@@ -24,12 +24,12 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|stimeout;50000
 # --- 2. 參數調整 (核心關鍵) ---
 target_id = 17
 # 增加視窗大小，平滑感更強
-HISTORY_SIZE = 15  
+HISTORY_SIZE = 10  
 # 提高門檻，過濾掉更大幅度的抖動
-MOVE_THRESHOLD = 3500    
-STABLE_THRESHOLD = 1500  
+MOVE_THRESHOLD = 150    
+STABLE_THRESHOLD = 110  
 # 【信心機制】狀態必須連續出現幾次才算數
-CONFIDENCE_REQUIRED = 10 
+CONFIDENCE_REQUIRED = 7 
 
 area_history = deque(maxlen=HISTORY_SIZE)
 last_stable_area = None
@@ -67,7 +67,7 @@ try:
                     temp_state = "收縮中"
                 elif diff < -MOVE_THRESHOLD:
                     temp_state = "外推中"
-                elif abs(diff) < STABLE_THRESHOLD:
+                else:
                     temp_state = "穩定"
 
                 # 如果偵測到的狀態跟目前不一樣，開始累積「信心」
