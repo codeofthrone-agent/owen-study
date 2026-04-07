@@ -73,20 +73,13 @@ environments:
         # username 和 password 會自動從 .env 讀取
 
       cam3:
-        ip: "192.168.166.143"
+        ip: "192.168.166.172"
         port: 554
         protocol: "rtsp"
         stream_path: "/live0"
         transport: "udp"
         description: "燈光區域三監控攝影機"
         # username 和 password 會自動從 .env 讀取
-        aruco:
-          name: "蘆竹區RV車ArUco的參數"
-          target_id: 17
-          history_size: 10
-          move_threshold: 150
-          stable_threshold: 110
-          confidence_required: 7
 
       rv_panel:
         ip: "192.168.166.158"
@@ -98,20 +91,13 @@ environments:
         # username 和 password 會自動從 .env 讀取
 
       rv_motor:
-        ip: "10.42.0.25"
+        ip: "192.168.166.176"
         port: 554
         protocol: "rtsp"
         stream_path: "/live0"
         transport: "udp"
         description: "RV 馬達攝影機"
         # username 和 password 會自動從 .env 讀取        
-        aruco:
-          name: "rv_motor 專屬的高門檻防抖參數"
-          target_id: 17
-          history_size: 15
-          move_threshold: 3500
-          stable_threshold: 1500
-          confidence_required: 10
 
 # 燈光檢測設定
 light_detection:
