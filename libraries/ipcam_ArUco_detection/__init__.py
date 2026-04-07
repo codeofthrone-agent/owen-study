@@ -5,6 +5,6 @@
 使用方式: import libraries.ipcam_ArUco_detection
 """
 
-from .ArUcoSpaceDetection import ArUcoSpaceDetector
+from .ArUcoSpaceDetection import ArUcoSpaceDetection
 
-__all__ = ["ArUcoSpaceDetector"]
+__all__ = ["ArUcoSpaceDetection"]

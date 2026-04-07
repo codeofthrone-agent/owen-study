@@ -9,27 +9,40 @@ import sys
 
 # 自動載入上層的 config 模組，取得最新機密資訊
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from config.ipcam_config import get_camera_url
+from config.ipcam_config import get_camera_url, get_camera_config
 
 # --- 1. 連線設定 ---
+ENVIRONMENT = 'rv_car'
+CAMERA_NAME = 'taoyuan_4F'
+
 try:
-    # 向設定中心請求 'rv_car' 環境的 'rv_motor' 完整 RTSP URL (已自動含帳密)
-    RTSP_URL = get_camera_url('rv_car', 'cam3')
+    # 向設定中心請求完整 RTSP URL (已自動含帳密)
+    RTSP_URL = get_camera_url(ENVIRONMENT, CAMERA_NAME)
+    
+    # 讀取 YAML 中專屬的 ArUco 設定
+    cam_config = get_camera_config(ENVIRONMENT, CAMERA_NAME)
+    if 'aruco' not in cam_config:
+        raise ValueError(f"攝影機 '{CAMERA_NAME}' 缺少必填的 'aruco' 設定區塊！請至 ipcam_config.yaml 中補上。")
+        
+    opts = cam_config['aruco']
+    target_id = int(opts['target_id'])
+    HISTORY_SIZE = int(opts['history_size'])
+    MOVE_THRESHOLD = int(opts['move_threshold'])
+    STABLE_THRESHOLD = int(opts['stable_threshold'])
+    CONFIDENCE_REQUIRED = int(opts['confidence_required'])
+    
+    print(f"✨ 成功套用 YAML 參數檔 [{opts.get('name', '未命名')}] -> Target:{target_id}, Thresh:{MOVE_THRESHOLD}")
+
+except KeyError as e:
+    print(f"❌ YAML 之 aruco 區塊漏填必填參數: {e}")
+    exit(1)
 except Exception as e:
     print(f"❌ 無法取得攝影機設定: {e}")
     exit(1)
 
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|stimeout;5000000"
 
-# --- 2. 參數調整 (核心關鍵) ---
-target_id = 17
-# 增加視窗大小，平滑感更強
-HISTORY_SIZE = 10  
-# 提高門檻，過濾掉更大幅度的抖動
-MOVE_THRESHOLD = 150    
-STABLE_THRESHOLD = 110  
-# 【信心機制】狀態必須連續出現幾次才算數
-CONFIDENCE_REQUIRED = 7 
+# --- 2. 參數調整 (核心關鍵已由 YAML 提供) ---
 
 area_history = deque(maxlen=HISTORY_SIZE)
 last_stable_area = None

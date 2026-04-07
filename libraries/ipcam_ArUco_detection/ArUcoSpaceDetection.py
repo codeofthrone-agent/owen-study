@@ -22,9 +22,13 @@ from collections import deque
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from config.ipcam_config import get_camera_url, get_camera_config
 
+# --- 全局預設測試連線設定 (方便開發者直接在此修改切換攝影機) ---
+DEFAULT_ENVIRONMENT = 'rv_car'
+DEFAULT_CAMERA_NAME = 'taoyuan_4F'
+
 class ArUcoSpaceDetection:
     """
-    IP Camera RV 車內空間檢測類別 (這就是物件導向的威力！)
+    IP Camera RV 車內空間檢測類別 
     """
 
     # 供 Robot Framework 識別的屬性，告訴 Robot 這是一個共用的全域函式庫
@@ -37,15 +41,15 @@ class ArUcoSpaceDetection:
         """
         self.logger = logging.getLogger(__name__)
         
-        # --- 核心關鍵：平滑與信心參數 (移植自使用者的調校) ---
+        # --- 核心關鍵：平滑與信心參數 (強制由 YAML 提供) ---
         self.target_id = target_id
-        self.history_size = 10       # 視窗大小
-        self.move_threshold = 150    # 觸發移動的門檻
-        self.stable_threshold = 110  # 回到穩定的緩衝門檻
-        self.confidence_required = 7 # 信心機制：狀態必須連續出現幾次才算數
+        self.history_size = None
+        self.move_threshold = None
+        self.stable_threshold = None
+        self.confidence_required = None
         
         # --- 存放機器的「記憶」與「狀態」 ---
-        self.area_history = deque(maxlen=self.history_size)
+        self.area_history = None  # 將在讀取 YAML 後初始化
         self.last_stable_area = None
         self.last_state = "穩定"     # 對應到原來的 current_state
         self.pending_state = "穩定"
@@ -64,27 +68,47 @@ class ArUcoSpaceDetection:
             
         self.logger.info(f"🚀 終極穩定 ArUco 空間追蹤器初始化完成 (Target ID: {self.target_id})")
 
-    def connect_camera(self, environment: str = 'rv_car', camera_name: str = 'rv_motor'):
+    def _apply_camera_aruco_config(self, environment: str, camera_name: str):
+        """強迫讀取 YAML 中該攝影機專屬的 ArUco 配置並套用"""
+        try:
+            cam_config = get_camera_config(environment, camera_name)
+            if 'aruco' not in cam_config:
+                raise ValueError(f"攝影機 '{camera_name}' 缺少必填的 'aruco' 設定區塊！請至 ipcam_config.yaml 中補上。")
+                
+            opts = cam_config['aruco']
+            
+            # 強制轉換為整數，確保安全性。嚴格讀取，漏填將拋出 KeyError
+            self.target_id = int(opts.get('target_id', self.target_id))
+            self.history_size = int(opts['history_size'])
+            self.move_threshold = int(opts['move_threshold'])
+            self.stable_threshold = int(opts['stable_threshold'])
+            self.confidence_required = int(opts['confidence_required'])
+            
+            # 初始化記憶體視窗
+            self.area_history = deque(maxlen=self.history_size)
+            
+            self.logger.info(f"✨ 成功套用專屬參數檔 [{opts.get('name', '未命名')}] "
+                             f"-> Target:{self.target_id}, Thresh:{self.move_threshold}")
+        except KeyError as e:
+            msg = f"必須提供完整的 ArUco 參數！YAML 漏了必填欄位: {e}"
+            self.logger.error(f"⚠️ {msg}")
+            raise ValueError(msg)
+        except Exception as e:
+            self.logger.error(f"⚠️ 讀取 {camera_name} 的 ArUco 參數發生嚴重錯誤: {e}")
+            raise
+
+    def connect_camera(self, environment: str = DEFAULT_ENVIRONMENT, camera_name: str = DEFAULT_CAMERA_NAME):
         """
         2. 第二步：連線按鈕 
-        當被呼叫時，我們去請 YAML 提供網址，並且打開 OpenCV 串流。
+        先套用專屬設定，接著去取得網址並打開 OpenCV 串流。
         """
         try:
-            # 向設定中心請求 URL 與完整設定
-            rtsp_url = get_camera_url(environment, camera_name)
-            cam_config = get_camera_config(environment, camera_name)
+            # 1. 先去 YAML 讀取並套用該攝影機的 ArUco 參數
+            self._apply_camera_aruco_config(environment, camera_name)
             
-            # 若該攝影機有配置專屬的 ArUco 參數，則覆寫預設值
-            if 'aruco' in cam_config:
-                opts = cam_config['aruco']
-                self.target_id = opts.get('target_id', self.target_id)
-                self.history_size = opts.get('history_size', self.history_size)
-                self.move_threshold = opts.get('move_threshold', self.move_threshold)
-                self.stable_threshold = opts.get('stable_threshold', self.stable_threshold)
-                self.confidence_required = opts.get('confidence_required', self.confidence_required)
-                self.area_history = deque(maxlen=self.history_size)  # 視窗改變需重建記憶體
-                self.logger.info(f"✨ 成功套用專屬參數檔 [{opts.get('name', '未命名')}] -> Target:{self.target_id}, Thresh:{self.move_threshold}")
-
+            # 2. 向設定中心請求 URL
+            rtsp_url = get_camera_url(environment, camera_name)
+            
             self.logger.info(f"準備連線至攝影機 {environment}/{camera_name}...")
             
             # 設定連線協定 (完全移植您腳本原本的 TCP 設定)
@@ -230,8 +254,8 @@ if __name__ == "__main__":
     detector = ArUcoSpaceDetection(target_id=17)
     
     print("[測試連線] 按下連線按鈕...")
-    # 這邊因為我們 yaml 裡面您改回 172 了，所以這裡去連 rv_car 的 cam3 就是 172
-    detector.connect_camera('rv_car', 'rv_motor')
+    # 這邊會自動帶入最上方的 DEFAULT_ENVIRONMENT 與 DEFAULT_CAMERA_NAME 進行測試連線
+    detector.connect_camera(DEFAULT_ENVIRONMENT, DEFAULT_CAMERA_NAME)
     
     print("\n[測試運作] --- 啟動連續監控功能 (30 秒) ---")
     # 這邊模擬：機器人按下「開始連續監控 30 秒」，然後去喝口水
