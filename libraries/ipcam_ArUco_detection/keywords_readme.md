@@ -1,9 +1,6 @@
-# ArUco Space Detection 關鍵字參考手冊 (Keyword README)
+# IPCam ArUco Detection 關鍵字說明文件 - Gherkin 風格
 
-**建立日期:** 2026-04-07
-**對應模組:** `libraries.ipcam_ArUco_detection.ArUcoSpaceDetection`
-
-本文件詳細列出了使用 IP Camera 結合 ArUco 影像辨識進行空間狀態判定所提供的 Robot Framework 關鍵字。測試撰寫人員可參閱此手冊將相關動作寫入 `.robot` 測試腳本中。
+本文件詳細列出了使用 IP Camera 結合 ArUco 影像辨識進行空間狀態判定所提供的 Robot Framework 關鍵字，已全面改寫為 Gherkin 風格（Given-When-Then-And）並符合專案雙語規範。
 
 ---
 
@@ -18,54 +15,109 @@ Library    libraries.ipcam_ArUco_detection.ArUcoSpaceDetection
 
 ---
 
-## 關鍵字清單
+## 📝 關鍵字文檔
 
-### 1. 連接攝影機
+```robotframework
+Given 專屬攝影機已連線 "${environment}" "${camera_name}"
+    [Documentation]    Given: 建立 IP Camera 影像串流與 ArUco 設定連線
+    ...                Given: Establish IP Camera streaming and ArUco setting connection
+    ...                
+    ...                This keyword connects to the specified IP camera and loads
+    ...                its custom ArUco detection anti-jitter parameters from YAML.
+    ...                
+    ...                此關鍵字將連接至指定的 IP 攝影機，並從 YAML 載入專屬的 
+    ...                ArUco 防抖動門檻參數。
+    ...                
+    ...                Arguments:
+    ...                - environment: Deployment environment (e.g., 'rv_car')
+    ...                - environment: 部署環境名稱（預設為 'rv_car'）
+    ...                - camera_name: Camera name/id (e.g., 'rv_motor')
+    ...                - camera_name: 攝影機代號（例如 'rv_motor' 或 'cam3'）
+    ...                
+    ...                Prerequisites:
+    ...                - config/ipcam_config.yaml must have the target camera defined.
+    ...                
+    ...                前置條件:
+    ...                - 必須在 config/ipcam_config.yaml 中定義好該台攝影機。
+    ...                
+    ...                Examples:
+    ...                | Given | 專屬攝影機已連線 "rv_car" "rv_motor" |
 
-*   **說明**: 建立 IP Camera 的影像串流連線。執行時會自動往 `config/ipcam_config.yaml` 讀取並套用對應的攝影機網址與專屬的 ArUco 防抖門檻設定。請確保必須先呼叫此關鍵字才能進行後續狀態判定。
-*   **參數**:
-    *   `environment` (字串, 必填): 部署環境名稱（預設為 `rv_car`）。
-    *   `camera_name` (字串, 必填): 攝影機代號（例如 `rv_motor`, `cam3` 等）。
-*   **使用範例**:
-    ```robotframework
-    *** Test Cases ***
-    初始化車內攝影機
-        Given 連接攝影機    environment=rv_car    camera_name=rv_motor
-    ```
+When 取得當前車內空間狀態
+    [Documentation]    When: 擷取並辨識目前空間的伸縮狀態
+    ...                When: Capture and detect the current space telescopic state
+    ...                
+    ...                This keyword captures the current ArUco tag size and returns
+    ...                the space state via a moving average and confidence scoring algorithm.
+    ...                
+    ...                此關鍵字透過滑動平均與連續信心打分演算法，分析畫面中
+    ...                ArUco 標籤大小變化並回傳車內當前的空間狀態判斷。
+    ...                
+    ...                Returns:
+    ...                - string: Status corresponding to "穩定", "收縮中", or "外推中".
+    ...                - 字串: 回傳 "穩定", "收縮中", 或 "外推中"。
+    ...                
+    ...                Prerequisites:
+    ...                - Camera must be connected via `Given 專屬攝影機已連線`
+    ...                
+    ...                前置條件:
+    ...                - 必須先透過 `Given 專屬攝影機已連線` 建立連線。
+    ...                
+    ...                Examples:
+    ...                | When | 取得當前車內空間狀態 |
 
-### 2. 取得當前車內空間狀態
+When 觀察並記錄空間動態 "${duration_sec}" 秒
+    [Documentation]    When: 持續監控畫面動態狀態轉換
+    ...                When: Continuously monitor screen dynamic state transitions
+    ...                
+    ...                This keyword monitors the space state over a designated number 
+    ...                of seconds, recording all state changes (deduplicated).
+    ...                
+    ...                此關鍵字在指定的時長內，持續監控畫面的動態狀態轉換，
+    ...                並記錄這段時間內發生過的所有狀態變化（去除重複狀態）。
+    ...                
+    ...                Arguments:
+    ...                - duration_sec: Number of seconds to observe.
+    ...                - duration_sec: 要持續觀察的秒數。
+    ...                
+    ...                Returns:
+    ...                - list: Sequence of states recorded (e.g. ['穩定', '收縮中']).
+    ...                - 列表: 紀錄的狀態序列（例如 ['穩定', '收縮中']）。
+    ...                
+    ...                Prerequisites:
+    ...                - Camera must be connected.
+    ...                
+    ...                前置條件:
+    ...                - 必須先建立攝影機連線。
+    ...                
+    ...                Examples:
+    ...                | When | 觀察並記錄空間動態 "30" 秒 |
 
-*   **說明**: 即時抓取影像現有的 ArUco 標籤大小，並經過「滑動平均」及「連續信心打分」後，回傳車內當前的空間狀態判斷。
-*   **回傳值**: 字串 (可能為 `"穩定"`, `"收縮中"`, `"外推中"`)
-*   **使用範例**:
-    ```robotframework
-    *** Test Cases ***
-    檢查車廂起步狀態
-        When 取得當前車內空間狀態
-        Then 結果應為穩定
-    ```
+And 斷開攝影機連線
+    [Documentation]    And: 安全釋放資源，切斷即時 RTSP 影像連線
+    ...                And: Safely release resources and cut RTSP connection
+    ...                
+    ...                This keyword safely releases all OpenCV streaming resources.
+    ...                Recommended to be used in Teardown.
+    ...                
+    ...                此關鍵字安全釋放資源，切斷與攝影機的即時 RTSP 影像連線。
+    ...                建議在 Teardown 區段統一呼叫。
+    ...                
+    ...                Examples:
+    ...                | And | 斷開攝影機連線 |
+```
 
-### 3. 觀察並記錄空間動態
+---
 
-*   **說明**: 在指定的時長內，持續監控畫面的動態狀態轉換，並記錄這段時間內發生過的所有狀態變化（去除重複狀態）。適合用在動作觸發後，去監測這幾秒內是否發生過「收縮中」或「外推中」的情境。
-*   **參數**:
-    *   `duration_sec` (整數, 選填, 預設=10): 要持續觀察的秒數。
-*   **回傳值**: 列表 List (例如 `['穩定', '收縮中', '穩定']`)
-*   **使用範例**:
-    ```robotframework
-    *** Test Cases ***
-    觸發關閉按鈕並監控收縮
-        # 假設前面有關閉按鈕動作
-        When 觀察並記錄空間動態    duration_sec=30
-        Then 記錄列表中應包含收縮中狀態
-    ```
+## 💡 Gherkin 測試案例範例
 
-### 4. 斷開攝影機連線
-
-*   **說明**: 安全釋放資源，切斷與攝影機的即時 RTSP 影像連線。建議在 `Teardown` 區段統一呼叫，避免記憶體洩漏與頻寬浪費。
-*   **使用範例**:
-    ```robotframework
-    *** Test Cases ***
-    清理測試環境
-        [Teardown]    斷開攝影機連線
-    ```
+```robotframework
+*** Test Cases ***
+Scenario: 測試 RV 車庫縮放監測
+    [Documentation]    Gherkin 風格的車庫空間監測與動態紀錄
+    [Tags]    ipcam    aruco    gherkin
+    Given 專屬攝影機已連線 "rv_car" "rv_motor"
+    When 取得當前車內空間狀態
+    And 觀察並記錄空間動態 "10" 秒
+    [Teardown]    斷開攝影機連線
+```
