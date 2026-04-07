@@ -73,7 +73,7 @@ environments:
         # username 和 password 會自動從 .env 讀取
 
       cam3:
-        ip: "192.168.166.143"
+        ip: "192.168.166.172"
         port: 554
         protocol: "rtsp"
         stream_path: "/live0"

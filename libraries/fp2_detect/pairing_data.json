@@ -1,0 +1,12 @@
+{
+  "my_fp2_sensor": {
+    "AccessoryPairingID": "8E:6B:14:9E:0D:93",
+    "AccessoryLTPK": "0615517f127fc00711c090eb813c65713f00ea4c248f0650abf7f41171971c0c",
+    "iOSPairingId": "71becd50-89d3-4293-bbe8-dc95ef899347",
+    "iOSDeviceLTSK": "376c9fd39a26167a89a6bc24ffaa85b4e95c1fb9974e8d3bd90ae67e363fefcf",
+    "iOSDeviceLTPK": "3533d25f7eb7042bdda7147b8e3f06bf4b6bf06078ae9c4dd7e25a440980da90",
+    "AccessoryIP": "10.42.0.96",
+    "AccessoryPort": 60003,
+    "Connection": "IP"
+  }
+}
