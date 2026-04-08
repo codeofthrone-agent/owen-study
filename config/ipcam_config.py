@@ -167,6 +167,52 @@ def get_camera_config(environment: str, camera_name: str) -> Dict[str, Any]:
     return config
 
 
+def get_all_fp2_sensors(environment: str = 'taipei_lab') -> Dict[str, Dict[str, Any]]:
+    """
+    取得指定環境的所有 FP2 雷達感測器配置
+
+    Args:
+        environment (str): 環境名稱，預設為 'taipei_lab'
+
+    Returns:
+        Dict[str, Dict[str, Any]]: 該環境所有 FP2 雷達的配置字典
+
+    Raises:
+        ValueError: 環境不存在
+    """
+    if environment not in ENVIRONMENTS:
+        available = ', '.join(ENVIRONMENTS.keys())
+        raise ValueError(f"環境 '{environment}' 不存在。可用環境: {available}")
+
+    return ENVIRONMENTS[environment].get('fp2_sensors', {})
+
+
+def get_fp2_config(environment: str, sensor_id: str) -> Dict[str, Any]:
+    """
+    取得特定 FP2 雷達感測器的配置
+
+    Args:
+        environment (str): 環境名稱 (如: 'rv_car')
+        sensor_id (str): 感測器 ID (如: 'awning_fp2')
+
+    Returns:
+        Dict[str, Any]: FP2 配置字典，包含 alias, setup_code, description 等
+
+    Raises:
+        ValueError: 環境或感測器不存在
+    """
+    sensors = get_all_fp2_sensors(environment)
+
+    if sensor_id not in sensors:
+        available = ', '.join(sensors.keys()) if sensors else '無'
+        raise ValueError(
+            f"FP2 感測器 '{sensor_id}' 在環境 '{environment}' 中不存在。"
+            f"可用感測器: {available}"
+        )
+
+    return sensors[sensor_id].copy()
+
+
 def get_camera_url(environment: str, camera_name: str, path: str = "") -> str:
     """
     建立攝影機的完整 URL（支援 HTTP 和 RTSP）

@@ -113,6 +113,16 @@ environments:
           stable_threshold: 1500
           confidence_required: 10
 
+      # FP2 雷達感測器設定區塊
+      # 此區塊供 fp2_detect 模組讀取，可用於自動化檢測雨遮與房間擴展狀態
+      fp2_sensors:
+        awning_fp2:
+          alias: "my_fp2_sensor"           # 設備在 HomeKit Local 協議註冊的別名 (名稱必須與 Pairing 時一致)
+          description: "RV 雨遮佔用與空間感測雷達"  # 人類可讀的用途說明
+          setup_code: "129-99-964"         # 機身背後或包裝盒上的 8 位數 HomeKit Setup Code
+          awning_threshold: 2              # 【雨遮模式】觸發「佔用/展開」所需要的最少網格數量 (例如 2 代表要有兩個以上的網格被遮蔽才算展開)
+          slide_threshold: 1               # 【側推模式】觸發「佔用/收起」所需要的最少網格數量 (與雨遮邏輯相反，被牆壁推回視為佔用)
+
 # 燈光檢測設定
 light_detection:
   # 亮度閾值設定

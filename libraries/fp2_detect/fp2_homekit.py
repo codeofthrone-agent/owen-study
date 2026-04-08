@@ -24,10 +24,8 @@ load_dotenv()
 
 # ── 設定 ────────────────────────────────────────────────────────
 PAIRING_FILE = "pairing_data.json"
-ALIAS = "my_fp2_sensor"
 OCCUPANCY_UUID = "00000071-0000-1000-8000-0026BB765291"
 LIGHT_LEVEL_UUID = "0000006B-0000-1000-8000-0026BB765291"
-AWNING_THRESHOLD = 2
 
 # ── 狀態變數 ────────────────────────────────────────────────────
 zone_states: Dict[Tuple, int] = {}
@@ -35,6 +33,7 @@ zone_labels: Dict[Tuple, str] = {}
 light_levels: Dict[Tuple, float] = {}
 current_state: str = "未知"
 current_mode: str = "awning"
+current_options: dict = {}
 
 
 def format_time() -> str:
@@ -75,19 +74,18 @@ async def do_discover():
 
     # 若有找到未配對的 FP2，直接觸發配對
     if fp2_unpaired:
-        print("\n💡 發現尚未配對的 FP2，將自動開始配對流程...")
-        # 取第一個未配對的 FP2
-        await _perform_pairing(fp2_unpaired[0], controller)
+        print("\n💡 發現尚未配對的 FP2，但由於 discover 指令不帶配對碼，請使用 pair 指令進行配對。")
 
 
 # ==========================================
 # 2. 設備配對 (Pair)
 # ==========================================
-async def _perform_pairing(target_device, controller: Controller):
+async def _perform_pairing(target_device, controller: Controller, alias: str, setup_code: str):
     """執行實際的配對流程"""
-    setup_code = os.getenv("fp2_setup_code")
     if not setup_code:
-        print("❌ 錯誤：.env 檔案中找不到 'fp2_setup_code'")
+        setup_code = os.getenv("fp2_setup_code")
+    if not setup_code:
+        print("❌ 錯誤：未提供 setup_code 且 .env 檔案中找不到 'fp2_setup_code'")
         return
 
     # 確保格式為 XXX-XX-XXX
@@ -95,11 +93,11 @@ async def _perform_pairing(target_device, controller: Controller):
         setup_code = f"{setup_code[:3]}-{setup_code[3:5]}-{setup_code[5:]}"
     
     print(f"=== 開始配對 FP2 ===")
-    print(f"目標設備: {target_device.info.get('name')} | 使用 Setup Code: {setup_code}")
+    print(f"目標設備: {target_device.info.get('name')} | 使用 Setup Code: {setup_code} | Alias: {alias}")
     
     try:
         print("配對中...")
-        finish_pairing = await target_device.start_pairing(ALIAS)
+        finish_pairing = await target_device.start_pairing(alias)
         await finish_pairing(setup_code)
         
         controller.save_data(PAIRING_FILE)
@@ -109,7 +107,7 @@ async def _perform_pairing(target_device, controller: Controller):
     except Exception as e:
         print(f"❌ 配對失敗: {e}")
 
-async def do_pair():
+async def do_pair(alias: str, setup_code: str):
     print("=== 尋找可配對的 FP2 (掃描 20 秒) ===")
     controller = Controller()
     devices = await controller.discover_ip(max_seconds=20)
@@ -126,7 +124,7 @@ async def do_pair():
         print("❌ 找不到可用的 FP2，請確認設備已開機並處於配對模式（黃燈閃爍）")
         return
 
-    await _perform_pairing(fp2_device, controller)
+    await _perform_pairing(fp2_device, controller, alias, setup_code)
 
 
 # ==========================================
@@ -134,14 +132,15 @@ async def do_pair():
 # ==========================================
 def check_state() -> str:
     occupied = sum(1 for v in zone_states.values() if v == 1)
+    slide_threshold = int(current_options.get("slide_threshold", 1))
+    awning_threshold = int(current_options.get("awning_threshold", 2))
+    
     if current_mode == "slide":
         # 側推艙: 牆壁推開 = 淨空(展開) / 牆壁收回 = 佔用(收起)
-        # 只要有 >= 1 個區域被牆壁擋住，就視為收起
-        return "🚐 車廂已收起 (變小/被牆壁佔用)" if occupied >= 1 else "🚙 車廂已展開 (變大/淨空)"
+        return "🚐 車廂已收起 (變小/被牆壁佔用)" if occupied >= slide_threshold else "🚙 車廂已展開 (變大/淨空)"
     else:
         # 雨遮: 雨遮布遮擋 = 佔用(展開) / 無遮擋 = 淨空(縮回)
-        # 建議 >= 2 個區域被遮擋才判定為展開，避免單一區域干擾
-        return "🌧️  雨遮已展開 (被佔用)" if occupied >= AWNING_THRESHOLD else "☀️  雨遮已縮回 (淨空)"
+        return "🌧️  雨遮已展開 (被佔用)" if occupied >= awning_threshold else "☀️  雨遮已縮回 (淨空)"
 
 
 def on_event(events: dict):
@@ -181,8 +180,10 @@ def on_event(events: dict):
                   f"（{occupied_count}/{total} 個區域有訊號）══\n")
 
 
-async def refresh_ip(controller: Controller) -> bool:
-    pairing = controller.pairings[ALIAS]
+async def refresh_ip(controller: Controller, alias: str) -> bool:
+    pairing = controller.pairings.get(alias)
+    if not pairing:
+        return False
     target_id = pairing.pairing_data.get("AccessoryPairingID", "").upper()
     devices = await async_discover_homekit_devices(max_seconds=10)
     for dev in devices:
@@ -197,11 +198,11 @@ async def refresh_ip(controller: Controller) -> bool:
     return True
 
 
-async def do_monitor(mode: str):
+async def do_monitor(alias: str, mode: str):
     global current_state, current_mode
     current_mode = mode
 
-    print(f"=== FP2 HomeKit 區域佔用監控 ({'旅行車側推艙模式' if mode == 'slide' else '雨遮模式'}) ===")
+    print(f"=== FP2 HomeKit 區域佔用監控 ({alias} - {'旅行車側推艙模式' if mode == 'slide' else '雨遮模式'}) ===")
     controller = Controller()
     try:
         controller.load_data(PAIRING_FILE)
@@ -209,13 +210,13 @@ async def do_monitor(mode: str):
         print(f"❌ 找不到 {PAIRING_FILE}，請先執行 'uv run python fp2_homekit.py pair'")
         return
 
-    if ALIAS not in controller.pairings:
-        print("❌ 配對資料中找不到 FP2")
+    if alias not in controller.pairings:
+        print(f"❌ 配對資料中找不到 FP2 (Alias: {alias})")
         return
 
     print("尋找設備並連線中...")
-    await refresh_ip(controller)
-    pairing = controller.pairings[ALIAS]
+    await refresh_ip(controller, alias)
+    pairing = controller.pairings[alias]
 
     try:
         services = await pairing.list_accessories_and_characteristics()
@@ -280,6 +281,78 @@ async def do_monitor(mode: str):
 
 
 # ==========================================
+# 4. 單次查詢 (Single-shot query for Robot Framework)
+# ==========================================
+async def get_status_once(alias: str, mode: str, options: dict = None) -> dict:
+    """提供給 Robot Framework 單次讀取狀態的 API"""
+    global current_mode, current_options
+    current_mode = mode
+    current_options = options or {}
+
+    controller = Controller()
+    try:
+        # 當從 Robot 呼叫時，需使用絕對路徑尋找 pairing_data.json
+        # 假設執行目錄在專案根目錄，但 pairing_data.json 存在 libraries/fp2_detect/
+        file_path = os.path.join(os.path.dirname(__file__), PAIRING_FILE)
+        if not os.path.exists(file_path):
+             file_path = PAIRING_FILE # 退回相對路徑
+        controller.load_data(file_path)
+    except FileNotFoundError:
+        return {"error": f"找不到配對設定檔，請確保 FP2 已配對。"}
+
+    if alias not in controller.pairings:
+        return {"error": f"配對資料中找不到 FP2 (Alias: {alias})"}
+
+    await refresh_ip(controller, alias)
+    pairing = controller.pairings[alias]
+
+    try:
+        services = await pairing.list_accessories_and_characteristics()
+    except Exception as e:
+        return {"error": f"連線失敗: {e}"}
+
+    accs = services if isinstance(services, list) else services.get("accessories", [])
+    
+    local_zone_states = {}
+    local_light_levels = {}
+    
+    for acc in accs:
+        aid = acc.get("aid", 1)
+        for svc in acc.get("services", []):
+            for char in svc.get("characteristics", []):
+                ctype = char.get("type", "")
+                iid = char["iid"]
+                key = (aid, iid)
+                if OCCUPANCY_UUID.upper() in ctype.upper() or ctype.upper() == "71":
+                    local_zone_states[key] = int(char.get("value", 0))
+                elif LIGHT_LEVEL_UUID.upper() in ctype.upper() or ctype.upper() == "6B":
+                    local_light_levels[key] = float(char.get("value", 0))
+
+    await pairing.close()
+
+    occupied = sum(1 for v in local_zone_states.values() if v == 1)
+    slide_threshold = int(current_options.get("slide_threshold", 1))
+    awning_threshold = int(current_options.get("awning_threshold", 2))
+    
+    if mode == "slide":
+        state_str = "close" if occupied >= slide_threshold else "open"
+        is_occupied = occupied >= slide_threshold
+    else:
+        state_str = "close" if occupied >= awning_threshold else "open"
+        is_occupied = occupied >= awning_threshold
+
+    # 回傳結構化資料，便於測試程式斷言
+    return {
+        "status": "success",
+        "state_id": state_str,
+        "is_occupied": is_occupied,
+        "occupied_zones_count": occupied,
+        "total_zones": len(local_zone_states),
+        "zones": {f"{k[0]}_{k[1]}": v for k, v in local_zone_states.items()},
+        "lights": {f"{k[0]}_{k[1]}": v for k, v in local_light_levels.items()}
+    }
+
+# ==========================================
 # CLI 進入點
 # ==========================================
 def main():
@@ -288,15 +361,17 @@ def main():
                         help="執行的動作：discover(尋找設備), pair(配對), monitor(監聽狀態)")
     parser.add_argument("--mode", choices=["awning", "slide"], default="awning",
                         help="監聽模式：awning(雨遮, 預設), slide(旅行車側推艙)")
+    parser.add_argument("--alias", default="my_fp2_sensor", help="設備配對名稱 (預設: my_fp2_sensor)")
+    parser.add_argument("--setup-code", default="", help="設備配對碼 (pair 時使用)")
     args = parser.parse_args()
 
     try:
         if args.action == "discover":
             asyncio.run(do_discover())
         elif args.action == "pair":
-            asyncio.run(do_pair())
+            asyncio.run(do_pair(args.alias, args.setup_code))
         elif args.action == "monitor":
-            asyncio.run(do_monitor(args.mode))
+            asyncio.run(do_monitor(args.alias, args.mode))
     except KeyboardInterrupt:
         print("\n已終止。")
 
