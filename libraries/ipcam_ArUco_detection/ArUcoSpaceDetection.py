@@ -31,10 +31,6 @@ class ArUcoSpaceDetection:
     IP Camera RV 車內空間檢測類別 
     """
 
-    # 供 Robot Framework 識別的屬性，告訴 Robot 這是一個共用的全域函式庫
-    ROBOT_LIBRARY_SCOPE = 'GLOBAL'
-    ROBOT_LIBRARY_VERSION = '1.0.0'
-
     def __init__(self, target_id: int = 17):
         """
         1. 打造機器 (初始化階段)
@@ -125,10 +121,6 @@ class ArUcoSpaceDetection:
             self.logger.error(f"連線攝影機失敗: {e}")
             raise
 
-    # 👇 Robot Framework 使用的中文接口 (就像給 Robot 一個中文快捷鍵)
-    def 連接攝影機(self, environment: str, camera_name: str):
-        self.connect_camera(environment, camera_name)
-
     def get_current_space_state(self) -> str:
         """
         3. 第三步：狀態查詢按鈕
@@ -195,10 +187,6 @@ class ArUcoSpaceDetection:
         # 即使畫面上沒有標籤，或沒有達到變更門檻，都直接回傳當下的狀態即可
         return self.last_state
 
-    # 👇 Robot Framework 使用的中文查詢接口
-    def 取得當前車內空間狀態(self) -> str:
-        return self.get_current_space_state()
-
     def monitor_space_changes(self, duration_sec: int = 10) -> list:
         """
         4. 第四步：連續監控按鈕
@@ -229,10 +217,6 @@ class ArUcoSpaceDetection:
         self.logger.info(f"監控結束！這 {duration_sec} 秒內發生的所有動態為：{history}")
         return history
 
-    # 👇 Robot Framework 使用的中文監控接口
-    def 觀察並記錄空間動態(self, duration_sec: int = 10) -> list:
-        return self.monitor_space_changes(duration_sec)
-
     def disconnect(self):
         """
         關閉攝影機連線，釋放資源 (好處是可以把記憶體還給電腦)
@@ -241,9 +225,6 @@ class ArUcoSpaceDetection:
             self.cap.release()
             self.cap = None
             self.logger.info("已斷開攝影機連線。")
-
-    def 斷開攝影機連線(self):
-        self.disconnect()
 
 if __name__ == "__main__":
     # ========== 開發者測試區塊 ==========
@@ -260,7 +241,7 @@ if __name__ == "__main__":
     print("\n[測試運作] --- 啟動連續監控功能 (30 秒) ---")
     # 這邊模擬：機器人按下「開始連續監控 30 秒」，然後去喝口水
     # 只要這 30 秒內您在鏡頭前面晃動標籤，它都會通通錄下來！
-    history_report = detector.觀察並記錄空間動態(duration_sec=30)
+    history_report = detector.monitor_space_changes(duration_sec=30)
     
     print(f"\n[報告出爐] 這 10 秒內產生的所有移動紀錄為：")
     print(history_report)

@@ -67,3 +67,24 @@ uv run python3 fp2_homekit.py monitor
 3. 點擊右上角 `...` 進入設備設定，開啟 **「名稱同步 (Name Synchronization)」**。
 4. （視需要）在設備資訊中點擊「同步到 Apple Home」。
 5. 重新執行 `uv run python fp2_homekit.py monitor`，新的區域就會自動出現並開始監控！
+
+---
+
+## 🤖 Robot Framework 自動化與 YAML 整合
+
+這套 FP2 工具已經正式被整合為本專案 `ipcam_config.yaml` 環境體系的一部分。
+
+1. **設定整合**：未來如需在自動化測試中使用，請直接在 `config/ipcam_config.yaml` 內指定 alias 和 setup_code：
+   ```yaml
+   rv_car:
+     fp2_sensors:
+       awning_fp2:
+         alias: "my_fp2_sensor"
+         setup_code: "129-99-964"
+   ```
+2. **在測試腳本中使用**：使用 `FP2Keywords.py` 會自動讀取上述環境設定，不再依賴 `.env` 變數：
+   ```robotframework
+   Given FP2 空間雷達已連線 "rv_car" "awning_fp2" "awning"
+   Then FP2 空間狀態應該為 "close"
+   ```
+*(註：原本純下指令的 CLI 執行方式（含讀取 `.env` 行為）已被完美相容保留，直接以此腳本除錯依舊可行！)*
