@@ -5,16 +5,6 @@
 使用方式: import libraries.fp2_detect
 """
 
-import sys
-from pathlib import Path
-
-current_dir = Path(__file__).parent
-if str(current_dir) not in sys.path:
-    sys.path.insert(0, str(current_dir))
-
-try:
-    from FP2Keywords import FP2Keywords
-except ImportError:
-    from .FP2Keywords import FP2Keywords
+from .FP2Keywords import FP2Keywords
 
 __all__ = ["FP2Keywords"]
