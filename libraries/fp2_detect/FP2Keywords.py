@@ -71,6 +71,7 @@ class FP2Keywords:
         logger.info(f"FP2 '{sensor_id}' (Alias: {alias}) 已宣告為連線就緒狀態 (模式: {mode})")
 
     @keyword('When 取得 FP2 當前空間佔用狀態')
+    @keyword('When 取得 FP2 當前空間佔用狀態 "${sensor_id}"')
     def when_get_fp2_current_space_state(self, sensor_id: str = None) -> str:
         """
         When: 取得 FP2 當前空間佔用狀態
@@ -88,10 +89,15 @@ class FP2Keywords:
              raise RuntimeError(f"查詢 FP2 狀態失敗: {result['error']}")
              
         state = result["state_id"]
-        logger.info(f"FP2 當前空間佔用狀態為: {state} (判定: {result['state_id']}, 被佔用區域: {result['occupied_zones_count']}/{result['total_zones']})")
+        
+        # 快取最新的狀態給 Then 使用，避免重複查詢造成的網路延遲
+        sensor["cached_state"] = state
+        
+        logger.info(f"FP2 當前空間佔用狀態為: {state} (被佔用區域: {result['occupied_zones_count']}/{result['total_zones']})")
         return state
 
     @keyword('Then FP2 空間狀態應該為 "${expected_state}"')
+    @keyword('Then FP2 空間狀態應該為 "${expected_state}" 於 "${sensor_id}"')
     def then_fp2_space_state_should_be(self, expected_state: str, sensor_id: str = None):
         """
         Then: 驗證 FP2 空間狀態應符合預期狀態
@@ -102,12 +108,19 @@ class FP2Keywords:
         - sensor_id: 感測器 ID (若未指定，預設為第一台)
         """
         sensor = self._get_target_sensor(sensor_id)
-        result = asyncio.run(get_status_once(sensor["alias"], sensor["mode"], sensor.get("config", {})))
         
-        if "error" in result:
-             raise RuntimeError(f"查詢 FP2 狀態失敗: {result['error']}")
-             
-        actual_state = result["state_id"]
+        # 優先使用快取狀態，避免重複呼叫 get_status_once 造成延遲與設備負擔
+        if "cached_state" in sensor:
+            actual_state = sensor["cached_state"]
+            logger.info(f"使用快取的狀態: {actual_state} 進行驗證")
+            # 清空快取確保後續若有其他獨立 Then 時能重新查詢最新的狀態
+            del sensor["cached_state"]
+        else:
+            result = asyncio.run(get_status_once(sensor["alias"], sensor["mode"], sensor.get("config", {})))
+            if "error" in result:
+                 raise RuntimeError(f"查詢 FP2 狀態失敗: {result['error']}")
+            actual_state = result["state_id"]
+            
         if actual_state != expected_state:
              raise AssertionError(f"FP2 狀態驗證失敗！預期應為: {expected_state}，但實際為: {actual_state}")
              

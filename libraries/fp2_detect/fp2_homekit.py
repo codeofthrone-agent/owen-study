@@ -27,13 +27,60 @@ PAIRING_FILE = "pairing_data.json"
 OCCUPANCY_UUID = "00000071-0000-1000-8000-0026BB765291"
 LIGHT_LEVEL_UUID = "0000006B-0000-1000-8000-0026BB765291"
 
-# ── 狀態變數 ────────────────────────────────────────────────────
-zone_states: Dict[Tuple, int] = {}
-zone_labels: Dict[Tuple, str] = {}
-light_levels: Dict[Tuple, float] = {}
-current_state: str = "未知"
-current_mode: str = "awning"
-current_options: dict = {}
+class FP2StateManager:
+    """封裝狀態與事件處理邏輯，避免多執行緒或多次呼叫時的全域變數競態問題"""
+    def __init__(self, mode: str = "awning", options: dict = None):
+        self.zone_states: Dict[Tuple, int] = {}
+        self.zone_labels: Dict[Tuple, str] = {}
+        self.light_levels: Dict[Tuple, float] = {}
+        self.current_state: str = "未知"
+        self.current_mode: str = mode
+        self.current_options: dict = options or {}
+
+    def check_state(self) -> str:
+        occupied = sum(1 for v in self.zone_states.values() if v == 1)
+        slide_threshold = int(self.current_options.get("slide_threshold", 1))
+        awning_threshold = int(self.current_options.get("awning_threshold", 2))
+        
+        if self.current_mode == "slide":
+            return "🚐 車廂已收起 (變小/被牆壁佔用)" if occupied >= slide_threshold else "🚙 車廂已展開 (變大/淨空)"
+        else:
+            return "🌧️  雨遮已展開 (被佔用)" if occupied >= awning_threshold else "☀️  雨遮已縮回 (淨空)"
+
+    def on_event(self, events: dict):
+        ts = format_time()
+
+        for (aid, iid), data in events.items():
+            key = (aid, iid)
+            value = data.get("value", data) if isinstance(data, dict) else data
+            
+            # 處理光照度更新
+            if key in self.light_levels:
+                old_lx = self.light_levels[key]
+                new_lx = float(value)
+                self.light_levels[key] = new_lx
+                print(f"[{ts}] 💡 環境亮度更新: {new_lx} lux (舊={old_lx})")
+                continue
+
+            # 處理區域佔用更新
+            if key not in self.zone_states:
+                continue
+
+            old_val = self.zone_states[key]
+            new_val = int(value)
+            self.zone_states[key] = new_val
+
+            label = self.zone_labels.get(key, f"[{aid},{iid}]")
+            status = "🛑 空間被佔用（偵測到物體/牆壁）" if new_val == 1 else "⚪ 空間淨空"
+            print(f"[{ts}] {label}: {status}  (舊={old_val}→新={new_val})")
+
+            new_state = self.check_state()
+            if new_state != self.current_state:
+                self.current_state = new_state
+                occupied_count = sum(1 for v in self.zone_states.values() if v == 1)
+                total = len(self.zone_states)
+                print(f"\n[{ts}] ══ 系統狀態改變: {self.current_state} "
+                      f"（{occupied_count}/{total} 個區域有訊號）══\n")
 
 
 def format_time() -> str:
@@ -83,7 +130,7 @@ async def do_discover():
 async def _perform_pairing(target_device, controller: Controller, alias: str, setup_code: str):
     """執行實際的配對流程"""
     if not setup_code:
-        setup_code = os.getenv("fp2_setup_code")
+        setup_code = os.getenv("FP2_SETUP_CODE") or os.getenv("fp2_setup_code")
     if not setup_code:
         print("❌ 錯誤：未提供 setup_code 且 .env 檔案中找不到 'fp2_setup_code'")
         return
@@ -130,54 +177,7 @@ async def do_pair(alias: str, setup_code: str):
 # ==========================================
 # 3. 狀態監聽 (Monitor)
 # ==========================================
-def check_state() -> str:
-    occupied = sum(1 for v in zone_states.values() if v == 1)
-    slide_threshold = int(current_options.get("slide_threshold", 1))
-    awning_threshold = int(current_options.get("awning_threshold", 2))
-    
-    if current_mode == "slide":
-        # 側推艙: 牆壁推開 = 淨空(展開) / 牆壁收回 = 佔用(收起)
-        return "🚐 車廂已收起 (變小/被牆壁佔用)" if occupied >= slide_threshold else "🚙 車廂已展開 (變大/淨空)"
-    else:
-        # 雨遮: 雨遮布遮擋 = 佔用(展開) / 無遮擋 = 淨空(縮回)
-        return "🌧️  雨遮已展開 (被佔用)" if occupied >= awning_threshold else "☀️  雨遮已縮回 (淨空)"
-
-
-def on_event(events: dict):
-    global current_state
-    ts = format_time()
-
-    for (aid, iid), data in events.items():
-        key = (aid, iid)
-        value = data.get("value", data) if isinstance(data, dict) else data
-        
-        # 處理光照度更新
-        if key in light_levels:
-            old_lx = light_levels[key]
-            new_lx = float(value)
-            light_levels[key] = new_lx
-            print(f"[{ts}] 💡 環境亮度更新: {new_lx} lux (舊={old_lx})")
-            continue
-
-        # 處理區域佔用更新
-        if key not in zone_states:
-            continue
-
-        old_val = zone_states[key]
-        new_val = int(value)
-        zone_states[key] = new_val
-
-        label = zone_labels.get(key, f"[{aid},{iid}]")
-        status = "🛑 空間被佔用（偵測到物體/牆壁）" if new_val == 1 else "⚪ 空間淨空"
-        print(f"[{ts}] {label}: {status}  (舊={old_val}→新={new_val})")
-
-        new_state = check_state()
-        if new_state != current_state:
-            current_state = new_state
-            occupied_count = sum(1 for v in zone_states.values() if v == 1)
-            total = len(zone_states)
-            print(f"\n[{ts}] ══ 系統狀態改變: {current_state} "
-                  f"（{occupied_count}/{total} 個區域有訊號）══\n")
+# (check_state 和 on_event 已移至 FP2StateManager)
 
 
 async def refresh_ip(controller: Controller, alias: str) -> bool:
@@ -199,8 +199,7 @@ async def refresh_ip(controller: Controller, alias: str) -> bool:
 
 
 async def do_monitor(alias: str, mode: str):
-    global current_state, current_mode
-    current_mode = mode
+    state_mgr = FP2StateManager(mode=mode)
 
     print(f"=== FP2 HomeKit 區域佔用監控 ({alias} - {'旅行車側推艙模式' if mode == 'slide' else '雨遮模式'}) ===")
     controller = Controller()
@@ -241,17 +240,17 @@ async def do_monitor(alias: str, mode: str):
                 label = f"Zone {zone_index:02d} [{aid},{iid}]"
                 
                 if OCCUPANCY_UUID.upper() in ctype.upper() or ctype.upper() == "71":
-                    zone_labels[key] = label
-                    zone_states[key] = int(char.get("value", 0))
+                    state_mgr.zone_labels[key] = label
+                    state_mgr.zone_states[key] = int(char.get("value", 0))
                     subscribe_targets.append(key)
 
-                    status = "🛑 被佔用" if zone_states[key] == 1 else "⚪ 淨空"
+                    status = "🛑 被佔用" if state_mgr.zone_states[key] == 1 else "⚪ 淨空"
                     print(f"  {label}: {status}")
                     zone_index += 1
                 
                 elif LIGHT_LEVEL_UUID.upper() in ctype.upper() or ctype.upper() == "6B":
                     val = float(char.get("value", 0))
-                    light_levels[key] = val
+                    state_mgr.light_levels[key] = val
                     subscribe_targets.append(key)
                     print(f"  💡 光照度感測器 [{aid},{iid}]: {val} lux")
 
@@ -260,17 +259,17 @@ async def do_monitor(alias: str, mode: str):
         await pairing.close()
         return
 
-    current_state = check_state()
-    occupied_count = sum(1 for v in zone_states.values() if v == 1)
+    state_mgr.current_state = state_mgr.check_state()
+    occupied_count = sum(1 for v in state_mgr.zone_states.values() if v == 1)
     
     print(f"\n✅ 成功訂閱 {len(subscribe_targets)} 個區域")
-    print(f"初始狀態：{current_state}（{occupied_count}/{len(zone_states)} 個區域有訊號）")
+    print(f"初始狀態：{state_mgr.current_state}（{occupied_count}/{len(state_mgr.zone_states)} 個區域有訊號）")
     print("開始即時監聽狀態（按 Ctrl+C 停止）")
     print("─" * 50)
 
     try:
         await pairing.subscribe(subscribe_targets)
-        pairing.dispatcher_connect(on_event)
+        pairing.dispatcher_connect(state_mgr.on_event)
         while True:
             await asyncio.sleep(1)
     except KeyboardInterrupt:
@@ -285,9 +284,7 @@ async def do_monitor(alias: str, mode: str):
 # ==========================================
 async def get_status_once(alias: str, mode: str, options: dict = None) -> dict:
     """提供給 Robot Framework 單次讀取狀態的 API"""
-    global current_mode, current_options
-    current_mode = mode
-    current_options = options or {}
+    safe_options = options or {}
 
     controller = Controller()
     try:
@@ -331,8 +328,8 @@ async def get_status_once(alias: str, mode: str, options: dict = None) -> dict:
     await pairing.close()
 
     occupied = sum(1 for v in local_zone_states.values() if v == 1)
-    slide_threshold = int(current_options.get("slide_threshold", 1))
-    awning_threshold = int(current_options.get("awning_threshold", 2))
+    slide_threshold = int(safe_options.get("slide_threshold", 1))
+    awning_threshold = int(safe_options.get("awning_threshold", 2))
     
     if mode == "slide":
         state_str = "close" if occupied >= slide_threshold else "open"

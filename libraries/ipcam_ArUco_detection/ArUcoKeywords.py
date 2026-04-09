@@ -18,16 +18,7 @@ except ImportError:
         sys.path.insert(0, str(current_dir))
     from ArUcoSpaceDetection import ArUcoSpaceDetection
 
-try:
-    from config.robot_arm.config_loader import ConfigLoader
-    from config.robot_arm.environment_config import EnvironmentConfig
-except ImportError:
-    # 僅在檔案路徑匯入時注入專案根目錄，避免常態污染 sys.path
-    project_root = current_dir.parent.parent
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-    from config.robot_arm.config_loader import ConfigLoader
-    from config.robot_arm.environment_config import EnvironmentConfig
+
 
 class ArUcoKeywords:
     """
@@ -35,21 +26,23 @@ class ArUcoKeywords:
     """
     
     ROBOT_LIBRARY_SCOPE = 'GLOBAL'
+    
+    ERROR_NO_CAMERA = "尚未連接攝影機，請先使用 'Given 專屬攝影機已連線'"
 
     def __init__(self):
         # 儲存多個攝影機實體: {camera_name: ArUcoSpaceDetection_instance}
         self.detectors: Dict[str, ArUcoSpaceDetection] = {}
-        self.config_loader = None
-        self.current_environment = None
+        self.detectors: Dict[str, ArUcoSpaceDetection] = {}
 
     @property
     def detector(self) -> 'ArUcoSpaceDetection':
         """
         取得預設攝影機實體 (為了向後相容)
-        如果有多個攝影機，返回第一個；如果沒有，返回一個未連接的實體
+        取得預設攝影機實體 (為了向後相容)
+        如果有多個攝影機，返回第一個；如果沒有，拋出異常
         """
         if not self.detectors:
-            return ArUcoSpaceDetection()
+            raise RuntimeError(self.ERROR_NO_CAMERA)
         return next(iter(self.detectors.values()))
 
     @keyword('Given 專屬攝影機已連線 "${environment}" "${camera_name}"')
@@ -75,9 +68,6 @@ class ArUcoKeywords:
             None
         """
         self.current_environment = environment
-        
-        if self.config_loader is None:
-             self.config_loader = ConfigLoader(environment)
 
         if camera_name not in self.detectors:
             new_detector = ArUcoSpaceDetection()
@@ -110,7 +100,7 @@ class ArUcoKeywords:
             str: 狀態字串 (如 'open', 'close', 'moving' 等)
         """
         if not self.detectors:
-            raise RuntimeError("尚未連接攝影機，請先使用 'Given 專屬攝影機已連線'")
+            raise RuntimeError(self.ERROR_NO_CAMERA)
         
         state = self.detector.get_current_space_state()
         logger.info(f"當前車內空間狀態為: {state}")
@@ -138,7 +128,7 @@ class ArUcoKeywords:
             list[str]: 一段時間內的狀態列表，例如 ['close', 'moving', 'open']
         """
         if not self.detectors:
-            raise RuntimeError("尚未連接攝影機，請先使用 'Given 專屬攝影機已連線'")
+            raise RuntimeError(self.ERROR_NO_CAMERA)
             
         duration = int(duration_sec)
         logger.info(f"開始觀察動態，持續 {duration} 秒...")

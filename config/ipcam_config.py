@@ -210,7 +210,14 @@ def get_fp2_config(environment: str, sensor_id: str) -> Dict[str, Any]:
             f"可用感測器: {available}"
         )
 
-    return sensors[sensor_id].copy()
+    config = sensors[sensor_id].copy()
+    
+    # 從環境變數注入 setup_code (支援專屬如 AWNING_FP2_SETUP_CODE 或共用的 FP2_SETUP_CODE)
+    if not config.get('setup_code'):
+        specific_env_key = f"{sensor_id.upper()}_SETUP_CODE"
+        config['setup_code'] = os.getenv(specific_env_key) or os.getenv('FP2_SETUP_CODE', '')
+
+    return config
 
 
 def get_camera_url(environment: str, camera_name: str, path: str = "") -> str:
