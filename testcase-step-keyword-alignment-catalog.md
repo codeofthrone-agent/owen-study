@@ -136,7 +136,10 @@
 - `step-mapping-split-draft.csv`（拆分後子步驟）
 - `step-mapping-split-report.md`（拆分統計與樣本）
 - `step-mapping-split-prefill-v1.csv`（高頻動作 alias 預填版）
-- `step-mapping-split-prefill-report.md`（預填統計）
+- `step-mapping-split-prefill-report.md`（v1 預填統計）
+- `step-mapping-unmapped-top200.csv`（未映射高頻模板 Top 200）
+- `step-mapping-split-prefill-v2.csv`（擴充規則後預填版）
+- `step-mapping-split-prefill-v2-report.md`（v2 預填統計）
 
 ### 6.2 拆分統計
 
@@ -175,12 +178,33 @@
 - `KW-ALIAS-OPEN` / `KW-ALIAS-CLOSE`
 - `KW-ALIAS-VOICE` / `KW-ALIAS-WAIT`
 
+### 6.5 Alias 預填（v2，已完成）
+
+> 先針對 v1 的 1844 筆 unmapped 做模板聚類，輸出 Top 200（`step-mapping-unmapped-top200.csv`），
+> 再加入擴充規則（wiring/navigation/login/bluetooth/wifi/ota/device_state/code-like）。
+
+| 指標 | v1 | v2 |
+|---|---:|---:|
+| `manual_only` | 1315 | 2257 |
+| `unmapped` | 1844 | 902 |
+| 覆蓋率 | 41.63% | 71.45% |
+
+v2 新增 alias 類別：
+- `KW-ALIAS-DEVICE-WIRING`
+- `KW-ALIAS-NAVIGATION`
+- `KW-ALIAS-LOGIN-FLOW`
+- `KW-ALIAS-BLUETOOTH`
+- `KW-ALIAS-WIFI`
+- `KW-ALIAS-OTA`
+- `KW-ALIAS-DEVICE-STATE`
+- `KW-ALIAS-CODE-LIKE-STEP`
+
 ## 7) 立刻可執行的下一步（read-only）
 
-1. 以 `step-mapping-split-draft.csv` 為基礎，先補 200 筆高頻 action 的 `mapped_keyword_id`。
-2. 先定義 20~30 個 alias 規則（點擊/查看/輸入/設定/檢查/開啟/關閉）。
-3. 產出第二版覆蓋率：`mapped / manual_only / unmapped`（以 sub-step 為單位）。
-4. 將被判定為 `manual_only` 的項目整理為「需新增 keyword」候選清單。
+1. 以 `step-mapping-split-prefill-v2.csv` 為基礎，人工 review 前 300 筆 `manual_only`（先把信心提升到 `high/medium`）。
+2. 針對剩餘 `unmapped=902`，先處理 `step-mapping-unmapped-top200.csv` 的模板並補 alias 規則（v3）。
+3. 產出第三版覆蓋率：`mapped / manual_only / unmapped`（以 sub-step 為單位）。
+4. 將高頻 `manual_only` 轉為「正式 canonical keyword 候選」，形成新增/重構 backlog。
 
 ---
 

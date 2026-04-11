@@ -1,0 +1,201 @@
+rank,template_action,count,suggested_alias_id
+1,實體線路操作水位偵測地線放入水瓶中,321,KW-ALIAS-DEVICE-WIRING
+2,實體線路操作水位偵測橘色線路放進水瓶中,131,KW-ALIAS-DEVICE-WIRING
+3,app 完成連線,96,KW-ALIAS-GENERIC-ACTION
+4,實體線路操作水位偵測綠色線路放進水瓶中,81,KW-ALIAS-DEVICE-WIRING
+5,實體線路操作水位偵測黃色線路放進水瓶中,81,KW-ALIAS-DEVICE-WIRING
+6,透過 app 導航至延伸車架控制。,60,KW-ALIAS-GENERIC-ACTION
+7,有輕微移動,40,KW-ALIAS-GENERIC-ACTION
+8,短暫點擊 (例如{n}-{n}秒後立即停止)「展開」按鈕。,30,KW-ALIAS-GENERIC-ACTION
+9,短暫點擊「收回」按鈕。,30,KW-ALIAS-GENERIC-ACTION
+10,如長壓時間移動,30,KW-ALIAS-GENERIC-ACTION
+11,在 my rv 頁面,30,KW-ALIAS-GENERIC-ACTION
+12,步驟 {n}:,25,KW-ALIAS-GENERIC-ACTION
+13,觸發更新檢查。,24,KW-ALIAS-GENERIC-ACTION
+14,import json to app,22,KW-ALIAS-CODE-LIKE-STEP
+15,test output,20,KW-ALIAS-CODE-LIKE-STEP
+16,lcd 操作,18,KW-ALIAS-DEVICE-STATE
+17,switch output operation,18,KW-ALIAS-CODE-LIKE-STEP
+18,manual switch input on / off,18,KW-ALIAS-CODE-LIKE-STEP
+19,test input,16,KW-ALIAS-CODE-LIKE-STEP
+20,在 settings 頁面,13,KW-ALIAS-GENERIC-ACTION
+21,透過 app 導航至主燈控制項。,12,KW-ALIAS-GENERIC-ACTION
+22,透過 iot 面板操作主燈「開啟」。,9,KW-ALIAS-GENERIC-ACTION
+23,透過 iot 面板操作主燈「關閉」。,9,KW-ALIAS-GENERIC-ACTION
+24,閒置 {n} 秒,9,KW-ALIAS-GENERIC-ACTION
+25,enter setting,9,KW-ALIAS-GENERIC-ACTION
+26,顯示基本控制項或狀態資訊,8,KW-ALIAS-GENERIC-ACTION
+27,modify text not follow rules,8,KW-ALIAS-CODE-LIKE-STEP
+28,modify device name,8,KW-ALIAS-CODE-LIKE-STEP
+29,click save,8,KW-ALIAS-GENERIC-ACTION
+30,"測試app語音命令""{text}""",8,KW-ALIAS-DEVICE-STATE
+31,讀取面板 log,8,KW-ALIAS-GENERIC-ACTION
+32,在 rv 頁面點擊 zone{n},8,KW-ALIAS-GENERIC-ACTION
+33,對胎壓計施加壓力,8,KW-ALIAS-GENERIC-ACTION
+34,在controls分類 點選右邊三個點點,8,KW-ALIAS-GENERIC-ACTION
+35,面板電源開啟,6,KW-ALIAS-GENERIC-ACTION
+36,寧聽面板語音,6,KW-ALIAS-DEVICE-STATE
+37,app 滑掉,6,KW-ALIAS-GENERIC-ACTION
+38,"voice command : ""{text}""",6,KW-ALIAS-DEVICE-STATE
+39,閒置{n}秒 回到主選單 不選取物件,6,KW-ALIAS-GENERIC-ACTION
+40,雙擊 “sel” 回到主選單,6,KW-ALIAS-GENERIC-ACTION
+41,閒置{n}秒 回到 主選單 不選取任何物件,6,KW-ALIAS-GENERIC-ACTION
+42,選取 config,6,KW-ALIAS-GENERIC-ACTION
+43,點選頁面 remote mode 連線,6,KW-ALIAS-GENERIC-ACTION
+44,add json to app,6,KW-ALIAS-GENERIC-ACTION
+45,app 開啟,5,KW-ALIAS-GENERIC-ACTION
+46,setting scan,5,KW-ALIAS-GENERIC-ACTION
+47,點選app頁面的done,4,KW-ALIAS-GENERIC-ACTION
+48,手機 app 遠離面板,4,KW-ALIAS-GENERIC-ACTION
+49,iot面板 設定 app 連線,4,KW-ALIAS-GENERIC-ACTION
+50,app 中斷連線,4,KW-ALIAS-GENERIC-ACTION
+51,enter setting page,4,KW-ALIAS-GENERIC-ACTION
+52,settings page display,4,KW-ALIAS-GENERIC-ACTION
+53,click cancel,4,KW-ALIAS-GENERIC-ACTION
+54,執行 dsi fault,4,KW-ALIAS-GENERIC-ACTION
+55,修改battery level,4,KW-ALIAS-GENERIC-ACTION
+56,修改tank level,4,KW-ALIAS-GENERIC-ACTION
+57,修改通知週期到period,4,KW-ALIAS-GENERIC-ACTION
+58,修改通知週期到 always,4,KW-ALIAS-GENERIC-ACTION
+59,麥克風led 開啟,4,KW-ALIAS-GENERIC-ACTION
+60,麥克風led 關閉,4,KW-ALIAS-GENERIC-ACTION
+61,調整panel auto-lock 為三分種,4,KW-ALIAS-GENERIC-ACTION
+62,調整panel auto-lock 為五分鐘,4,KW-ALIAS-GENERIC-ACTION
+63,nickname不符合規則,4,KW-ALIAS-GENERIC-ACTION
+64,nickname符合規則,4,KW-ALIAS-GENERIC-ACTION
+65,重新進入nickname頁面輸入符合規則,4,KW-ALIAS-GENERIC-ACTION
+66,"對panel輸入語音命令""{text}"" ""{text}""",4,KW-ALIAS-DEVICE-STATE
+67,rv voice command list,4,KW-ALIAS-DEVICE-STATE
+68,lights,4,KW-ALIAS-DEVICE-STATE
+69,devices,4,KW-ALIAS-GENERIC-ACTION
+70,modes,4,KW-ALIAS-GENERIC-ACTION
+71,rv status,4,KW-ALIAS-GENERIC-ACTION
+72,youtube link,4,KW-ALIAS-GENERIC-ACTION
+73,customer service number,4,KW-ALIAS-GENERIC-ACTION
+74,wfco web site,4,KW-ALIAS-GENERIC-ACTION
+75,頁面顯示,4,KW-ALIAS-GENERIC-ACTION
+76,修改email,4,KW-ALIAS-LOGIN-FLOW
+77,修改時鍵盤應自動出現,4,KW-ALIAS-GENERIC-ACTION
+78,company invite code,4,KW-ALIAS-GENERIC-ACTION
+79,調整 device log sharing 為 off,4,KW-ALIAS-GENERIC-ACTION
+80,在account類別,4,KW-ALIAS-GENERIC-ACTION
+81,test pressure,4,KW-ALIAS-CODE-LIKE-STEP
+82,unplug device,4,KW-ALIAS-GENERIC-ACTION
+83,測試output,4,KW-ALIAS-GENERIC-ACTION
+84,import json toapp,4,KW-ALIAS-CODE-LIKE-STEP
+85,將 living room 編輯為 light{n} kitchen 編輯為 light{n} bedroom 編輯為 light{n} bathroom 編輯為 light{n},4,KW-ALIAS-DEVICE-STATE
+86,將 light{n} 編輯為 living room light{n} 編輯為 kitchen light{n} 編輯為 bedroom light{n} 編輯為 bathroom,4,KW-ALIAS-DEVICE-STATE
+87,上 短按,3,KW-ALIAS-GENERIC-ACTION
+88,進入heating,3,KW-ALIAS-GENERIC-ACTION
+89,將 gray{n} 選取為 enable,3,KW-ALIAS-GENERIC-ACTION
+90,預設值 device log sharing 為 on,3,KW-ALIAS-GENERIC-ACTION
+91,settings 頁面,3,KW-ALIAS-GENERIC-ACTION
+92,rv 分類,3,KW-ALIAS-GENERIC-ACTION
+93,連線完成,3,KW-ALIAS-GENERIC-ACTION
+94,返回上一頁,3,KW-ALIAS-GENERIC-ACTION
+95,google帳號登入後,2,KW-ALIAS-LOGIN-FLOW
+96,手機app正常開啟,2,KW-ALIAS-GENERIC-ACTION
+97,點選合約,2,KW-ALIAS-GENERIC-ACTION
+98,點不同意,2,KW-ALIAS-GENERIC-ACTION
+99,點同意,2,KW-ALIAS-GENERIC-ACTION
+100,手機app正長開啟,2,KW-ALIAS-GENERIC-ACTION
+101,app 回來面板附近,2,KW-ALIAS-GENERIC-ACTION
+102,app 回來面板附近（將背景 app 變回使用中）,2,KW-ALIAS-GENERIC-ACTION
+103,app 顯示其他有在廣播的面板,2,KW-ALIAS-NAVIGATION
+104,將 app 滑掉,2,KW-ALIAS-GENERIC-ACTION
+105,點選任意馬達,2,KW-ALIAS-GENERIC-ACTION
+106,點選 i forgot my password,2,KW-ALIAS-LOGIN-FLOW
+107,使用新密碼,2,KW-ALIAS-GENERIC-ACTION
+108,app 連接模式選擇 remote 連接,2,KW-ALIAS-GENERIC-ACTION
+109,上下改變溫度,2,KW-ALIAS-GENERIC-ACTION
+110,左右改變 mod,2,KW-ALIAS-GENERIC-ACTION
+111,左右改變 fan,2,KW-ALIAS-GENERIC-ACTION
+112,上下左右改變選項,2,KW-ALIAS-GENERIC-ACTION
+113,上 長按,2,KW-ALIAS-GENERIC-ACTION
+114,下 長按,2,KW-ALIAS-GENERIC-ACTION
+115,power pro app 連結 gen{n} 面板,2,KW-ALIAS-GENERIC-ACTION
+116,終端機輸入 curl --location '{text}',2,KW-ALIAS-GENERIC-ACTION
+117,lcd 主頁 gray_{n},2,KW-ALIAS-DEVICE-STATE
+118,將 black{n} 選取為 enable,2,KW-ALIAS-GENERIC-ACTION
+119,light {n} 修改成 living room,2,KW-ALIAS-DEVICE-STATE
+120,light {n} 修改成 kitchen,2,KW-ALIAS-DEVICE-STATE
+121,light {n} 修改成 bedroom,2,KW-ALIAS-DEVICE-STATE
+122,light {n} 修改成 exterior,2,KW-ALIAS-DEVICE-STATE
+123,light {n} 修改成 bathroom,2,KW-ALIAS-DEVICE-STATE
+124,light {n} 修改成 garage,2,KW-ALIAS-DEVICE-STATE
+125,light {n} 修改成 galley,2,KW-ALIAS-DEVICE-STATE
+126,light {n} 修改成 dinette,2,KW-ALIAS-DEVICE-STATE
+127,living room 修改成 light {n},2,KW-ALIAS-DEVICE-STATE
+128,kitchen 修改成 light {n},2,KW-ALIAS-DEVICE-STATE
+129,bedroom 修改成 light {n},2,KW-ALIAS-DEVICE-STATE
+130,exterior 修改成 light {n},2,KW-ALIAS-DEVICE-STATE
+131,bathroom 修改成 light {n},2,KW-ALIAS-DEVICE-STATE
+132,garage 修改成 light {n},2,KW-ALIAS-DEVICE-STATE
+133,galley 修改成 light {n},2,KW-ALIAS-DEVICE-STATE
+134,dinette 修改成 light {n},2,KW-ALIAS-DEVICE-STATE
+135,預設為off,2,KW-ALIAS-GENERIC-ACTION
+136,頁面顯示rv pin,2,KW-ALIAS-GENERIC-ACTION
+137,在 rv 頁面更換左上角名稱,2,KW-ALIAS-GENERIC-ACTION
+138,在 setting 頁面,2,KW-ALIAS-GENERIC-ACTION
+139,在 settings 頁面最下面 點選 forget rv panel,2,KW-ALIAS-GENERIC-ACTION
+140,在 controls 分類,2,KW-ALIAS-GENERIC-ACTION
+141,非ios跳過此步驟 （掃描門鎖的qr code),2,KW-ALIAS-GENERIC-ACTION
+142,在電子門鎖按壓 {n}|{n}，{n}|{n}，{n}|{n}，{n}|{n},2,KW-ALIAS-GENERIC-ACTION
+143,上述按完在電子門鎖,2,KW-ALIAS-GENERIC-ACTION
+144,按壓{n}|{n}，{n}|{n} 進入配對,2,KW-ALIAS-GENERIC-ACTION
+145,手機點選可配對的門鎖,2,KW-ALIAS-GENERIC-ACTION
+146,增加json 到app,2,KW-ALIAS-GENERIC-ACTION
+147,測試input,2,KW-ALIAS-GENERIC-ACTION
+148,增加json到app,2,KW-ALIAS-GENERIC-ACTION
+149,連續點擊light{n}~light{n}開關,2,KW-ALIAS-DEVICE-STATE
+150,點選 config,2,KW-ALIAS-GENERIC-ACTION
+151,點選右上角 sensors,2,KW-ALIAS-DEVICE-WIRING
+152,在 rv 分類，點選power pro companion,2,KW-ALIAS-GENERIC-ACTION
+153,使用語音 turn on living room bug#{n},2,KW-ALIAS-DEVICE-STATE
+154,使用語音 turn on kitchen bug#{n},2,KW-ALIAS-DEVICE-STATE
+155,使用語音 turn on bedroom bug#{n},2,KW-ALIAS-DEVICE-STATE
+156,使用語音 turn on bathroom bug#{n},2,KW-ALIAS-DEVICE-STATE
+157,在 modes 點選 reading mode,2,KW-ALIAS-GENERIC-ACTION
+158,在my rv頁面,2,KW-ALIAS-GENERIC-ACTION
+159,controls 分類,2,KW-ALIAS-GENERIC-ACTION
+160,在 rv 分類,2,KW-ALIAS-GENERIC-ACTION
+161,使用 remote 連線,2,KW-ALIAS-GENERIC-ACTION
+162,lcd操作： 進入options,2,KW-ALIAS-DEVICE-STATE
+163,使用語音hey power pro ， it's cold in second zone bug#{n},2,KW-ALIAS-DEVICE-STATE
+164,進入看到介面,2,KW-ALIAS-GENERIC-ACTION
+165,lcd面板操作,2,KW-ALIAS-DEVICE-STATE
+166,手機操作（ｗｉｆｉ）,2,KW-ALIAS-GENERIC-ACTION
+167,controls分類,2,KW-ALIAS-GENERIC-ACTION
+168,面板開機完成,2,KW-ALIAS-GENERIC-ACTION
+169,"上下左右 idle {n}sec 設定 ""{text}"" 設定 ""{text}"" 回到 “options"" 短按 及 長按",1,KW-ALIAS-GENERIC-ACTION
+170,lcd 面板點選上,1,KW-ALIAS-DEVICE-STATE
+171,lcd 面板點選下,1,KW-ALIAS-DEVICE-STATE
+172,lcd 面板點選左,1,KW-ALIAS-DEVICE-STATE
+173,lcd 面板點選右,1,KW-ALIAS-DEVICE-STATE
+174,上下改變選項,1,KW-ALIAS-GENERIC-ACTION
+175,下 短按,1,KW-ALIAS-GENERIC-ACTION
+176,power on device,1,KW-ALIAS-GENERIC-ACTION
+177,test voice command,1,KW-ALIAS-DEVICE-STATE
+178,app 完成配對,1,KW-ALIAS-GENERIC-ACTION
+179,讓 {n}b 板 brake 接上正極 （短路）,1,KW-ALIAS-GENERIC-ACTION
+180,面板 water heater gas 按鈕按下 （顯示白燈),1,KW-ALIAS-NAVIGATION
+181,讓{n}b 板 dis 接上正極 （短路）,1,KW-ALIAS-GENERIC-ACTION
+182,步驟 {n}: power on device | 預期結果: mic led green display normally,1,KW-ALIAS-DEVICE-STATE
+183,idle {n} sec,1,KW-ALIAS-GENERIC-ACTION
+184,"回到 “options""",1,KW-ALIAS-GENERIC-ACTION
+185,步驟 {n}: 點擊按鈕 | 預期結果: {n}. 介面顯示 一個選取方塊,1,KW-ALIAS-NAVIGATION
+186,"步驟 {n}: 無動作 | 預期結果: {n}. 應選取 ""{text}""溫度數值",1,KW-ALIAS-GENERIC-ACTION
+187,步驟 {n}: 無動作計時三分鐘 | 預期結果: lcd背光自動關閉,1,KW-ALIAS-DEVICE-STATE
+188,步驟 {n}: 點擊 iot面板 的 hvac按鈕 | 預期結果:,1,KW-ALIAS-GENERIC-ACTION
+189,iot面板hvac按鈕由藍轉白,1,KW-ALIAS-GENERIC-ACTION
+190,lcd面板 mode & fan default = off & low 與 上一次設定切換,1,KW-ALIAS-DEVICE-STATE
+191,步驟 {n}: 選取進入option | 預期結果: 選取方塊 外框為白色 選定為白底黑字,1,KW-ALIAS-GENERIC-ACTION
+192,進入version,1,KW-ALIAS-GENERIC-ACTION
+193,lcd 主頁 fresh,1,KW-ALIAS-DEVICE-STATE
+194,lcd 主頁 gray,1,KW-ALIAS-DEVICE-STATE
+195,lcd 主頁 black,1,KW-ALIAS-DEVICE-STATE
+196,lcd 主頁 black_{n},1,KW-ALIAS-DEVICE-STATE
+197,將 gray{n} 選取為 disable,1,KW-ALIAS-GENERIC-ACTION
+198,預設值 device log sharing 為on,1,KW-ALIAS-GENERIC-ACTION
+199,隔天看hvac bug#{n} | 預期結果: 沒有開啟hvac,1,KW-ALIAS-GENERIC-ACTION
+200,在my rv 頁面,1,KW-ALIAS-GENERIC-ACTION
