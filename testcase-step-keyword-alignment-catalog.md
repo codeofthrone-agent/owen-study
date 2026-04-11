@@ -126,12 +126,61 @@
 
 ---
 
-## 6) 立刻可執行的下一步（read-only）
+## 6) Step 1 解析拆分（已完成）
 
-1. 用本文件 schema 建立 `step-mapping-draft.csv`（只存 repo，不回寫 TestLink）。
-2. 先挑 100 個高頻 step（點擊/查看/輸入/設定/檢查）做人工映射。
-3. 產出第一版覆蓋率：`mapped / manual_only / unmapped`。
-4. 再決定是否進入下一階段（有寫入權限時回填至 TestLink custom field）。
+> 針對你提出的「一個 step 可能有多個動作」先做拆分解析，供後續補正。
+
+### 6.1 產出檔案
+
+- `step-mapping-draft.csv`（原始 step 對齊草稿）
+- `step-mapping-split-draft.csv`（拆分後子步驟）
+- `step-mapping-split-report.md`（拆分統計與樣本）
+- `step-mapping-split-prefill-v1.csv`（高頻動作 alias 預填版）
+- `step-mapping-split-prefill-report.md`（預填統計）
+
+### 6.2 拆分統計
+
+| 指標 | 數量 |
+|---|---:|
+| 原始 steps | 1941 |
+| 單一步驟 | 1245 |
+| 多步驟（需拆分） | 696 |
+| 其中 action 多段 | 506 |
+| 其中 expected 多段 | 243 |
+| 拆分後 sub-steps | 3159 |
+
+### 6.3 拆分規則（v1）
+
+- 依序號切分：`1.`、`(1)`、`第X步`
+- 依語句連接詞/標點切分：`；`、`。`、`然後`、`並且`、`and` 等
+- expected 對齊策略：
+  - 長度相等：index 對齊
+  - expected 只有 1 段：掛在第一個 sub-step
+  - expected 缺失：留空
+
+### 6.4 Alias 預填（v1，已完成）
+
+| 指標 | 數量 |
+|---|---:|
+| 拆分後 sub-steps | 3159 |
+| 預填成功（`manual_only`） | 1315 |
+| 仍未映射（`unmapped`） | 1844 |
+| 預填率 | 41.63% |
+
+高頻 alias 類別：
+- `KW-ALIAS-CLICK`（點擊/按下/長按）
+- `KW-ALIAS-CHECK`（查看/觀察/檢查）
+- `KW-ALIAS-INPUT`（輸入/填寫）
+- `KW-ALIAS-SET`（設定/選擇）
+- `KW-ALIAS-OPEN` / `KW-ALIAS-CLOSE`
+- `KW-ALIAS-VOICE` / `KW-ALIAS-WAIT`
+
+## 7) 立刻可執行的下一步（read-only）
+
+1. 以 `step-mapping-split-draft.csv` 為基礎，先補 200 筆高頻 action 的 `mapped_keyword_id`。
+2. 先定義 20~30 個 alias 規則（點擊/查看/輸入/設定/檢查/開啟/關閉）。
+3. 產出第二版覆蓋率：`mapped / manual_only / unmapped`（以 sub-step 為單位）。
+4. 將被判定為 `manual_only` 的項目整理為「需新增 keyword」候選清單。
 
 ---
 
