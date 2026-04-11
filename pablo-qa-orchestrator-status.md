@@ -227,12 +227,293 @@ session_search(query="Pablo QA orchestrator HIL TestLink Robot Framework")
 
 ---
 
-## 十、關鍵原則
+## 十、需要補齊：TestLink × Robot Framework 對齊矩陣（v1）
+
+> 說明：不是比對自然語言 keyword 字面，而是比對「管理面能力」與「執行面能力」是否對齊。
+
+| 能力面向 | TestLink 需要 | Robot Framework 現況 | 對齊狀態 | 需要補齊 |
+|---|---|---|---|---|
+| 測試案例識別 | 唯一 testcase external id | 可傳入 `test_case_id` | ⚠️ 部分對齊 | 強制每個 RF test case 綁定 `testlink_case_id`（metadata/tag） |
+| Test Plan / Build 綁定 | execution 必須屬於 plan + build | connector 支援初始化 project/plan/build | ⚠️ 部分對齊 | 在 Runner 啟動時固定 plan/build，避免同 run 漂移 |
+| 單筆結果回報 | status + notes + duration | 已有回報能力 | ✅ 基本對齊 | notes 結構化（actual/error_code/trace_id） |
+| 批次結果回報 | 多案例批次上報 | 已有 batch 回報能力 | ✅ 基本對齊 | 增加批次失敗重試與補償策略 |
+| 最後執行狀態查詢 | case last execution 可查 | 已有查詢能力 | ✅ 對齊 | 回報後立即抽查驗證（post-write verify） |
+| Requirement trace | testcase 對應需求/缺陷 | 缺少標準欄位規範 | ❌ 缺口 | 導入 `redmine_issue_id` 與 `testlink_case_id` 強制關聯 |
+| 證據管理 | execution 可追溯 evidence | 有概念，缺統一 schema | ❌ 缺口 | 統一 evidence schema 與 artifact URI 命名規範 |
+| 執行分層 | smoke / nightly / release-gate | 架構已提但未制度化 | ⚠️ 部分對齊 | TestLink 增 `execution_tier`；RF tag 同步 |
+| 真實後端風險控管 | readonly/write-safe/destructive | 有風險意識，缺流程 gate | ❌ 缺口 | Orchestrator 依 mode 強制前置檢查與保護策略 |
+
+---
+
+## 十一、需要補齊：欄位與資料契約（v1）
+
+| 類別 | 欄位 | 建議落點 | 用途 |
+|---|---|---|---|
+| 主鍵 | `testlink_case_id` | RF metadata/tag + Graph node | 管理面與執行面唯一對齊鍵 |
+| 需求追蹤 | `redmine_issue_id` | TestLink custom field + RF tag | 串接需求/缺陷與測試案例 |
+| 追蹤鏈 | `trace_id` | 每次 run 產生；寫入 notes + artifact | 串接 log/screenshot/video/waveform |
+| 執行分類 | `execution_tier` | TestLink case field | 控制 smoke/nightly/release-gate |
+| 風險模式 | `backend_mode` | run-time 參數（plan/run metadata） | 區分 readonly/write-safe/destructive |
+| 證據索引 | `artifact_uri[]` | TestLink execution notes/附件索引 | 支援快速回查證據 |
+| 自動化成熟度 | `automation_status` | TestLink case field | manual / automated / stub 管理 |
+| 版本關聯 | `firmware/app/backend_version` | run metadata | 失敗追溯與回歸分析 |
+
+---
+
+## 十二、需要補齊：Redmine → TestLink → Robot Framework 流程（v1）
+
+### 為何需要
+
+目前若只看 TestLink 或只看 Robot，容易缺少需求脈絡。建議把 Redmine issue 變成前置索引，才能看到全貌（需求/缺陷 → 測試案例 → 執行證據）。
+
+### 建議標準流程
+
+1. **讀取 Redmine issue**：抽取需求目標、風險、驗收條件
+2. **映射 TestLink testcase**：存在則關聯，不存在則建立候選 case
+3. **綁定 Robot Framework 測試**：每個測試帶 `testlink_case_id`（必要）與 `redmine_issue_id`（建議）
+4. **執行與回填**：回填 status + notes + `trace_id` + `artifact_uri[]`
+5. **圖譜更新**：建立 `Issue -> TestCase -> RF Test -> Artifact` 關聯邊
+
+### 最低可行驗證（MVP Gate）
+
+- Gate-1：若缺 `testlink_case_id`，不可進入自動執行
+- Gate-2：若 `backend_mode=destructive` 且未授權，禁止執行
+- Gate-3：若無 `trace_id` 或無 evidence，該次結果不得標記為 release-gate 通過
+
+---
+
+## 十三、關鍵原則
 
 1. **Pablo 是 Orchestrator，不是 Runner** — 子代理做事，Pablo 做決策
 2. **TestLink 是管理面、Robot Framework 是執行面、Graph 是關聯面、Artifact Lake 是真相面** — 四者分工清楚才可維護
 3. **圖譜是導覽，不是真相本體** — 最後仍要回到原始事實來源驗證
 4. **證據 > 口頭報告** — 每次測試都要附截圖/log/波形
+5. **對齊優先於自動化速度** — 先確保 `issue ↔ testcase ↔ execution ↔ evidence` 可追溯，再擴大覆蓋率
+
+---
+
+## 附錄 A：Redmine 初始盤點（2026-04-11）
+
+- Redmine URL：`https://redmine.thortron.dev`
+- Project：`gen-2-5`（GEN 2.5_WF-3511/WF-3611）
+- API 讀取確認：✅ 可透過 API 取得 project 與 issues
+- 目前 issues 規模：`total_count=739`（本次先抓最新 20 筆）
+
+### 最新 issues 快照（節錄）
+
+| Issue ID | Tracker | Status | Subject |
+|---|---|---|---|
+| 1926 | Feature | New | [CI][Power Pro] Investigate and Fix Release Pipeline Failure |
+| 1840 | Bug | Resolved | APP WiFi 設定密碼輸入錯誤顯示訊息異常 |
+| 1826 | Bug | Resolved | 關掉 MIC LED 第一次喚醒仍亮起 |
+| 1919 | Feature | In Progress | OTA: Version Restriction Based on User Role |
+| 1915 | Bug | In Progress | APP 滑動登入頁至底部會看不見所有欄位 |
+
+### 下一步（與 TestLink/Robot 對齊）
+
+1. 對最新 issues 做 **issue→testcase 對映盤點**（有對應 / 缺 testcase / testcase 過期）
+2. 建立 `redmine_issue_id` 欄位規範（TestLink custom field + RF tag）
+3. 為高風險 issue（New/In Progress）補齊 `testlink_case_id` 與 `execution_tier`
+4. 將 issue 執行結果回填時強制帶入 `trace_id` + `artifact_uri[]`
+
+---
+
+## 附錄 B：TestLink XML-RPC 在 robot repo 的位置（read-only 盤點）
+
+### 主要程式碼與文件位置
+
+- API client（核心）  
+  `libraries/testlink_integration/api_client/testlink_api.py`
+- Robot 高階連接器  
+  `libraries/testlink_integration/TestLinkConnector.py`
+- Gherkin 資源關鍵字  
+  `resources/testlink_keywords.robot`
+- 安裝與設定指南  
+  `docs/testlink_integration_setup_guide.md`
+- 驗證與除錯腳本  
+  `scripts/verify_testlink_integration.py`、`scripts/debug_testlink_api.py`
+
+### 已確認的 API 端點
+
+- UI：`https://testlink.thortron.dev/testlink/`
+- XML-RPC：`https://testlink.thortron.dev/testlink/lib/api/xmlrpc/v1/xmlrpc.php`
+
+### 目前觀察（僅讀取，不變更）
+
+- TestLink API 可連通（`tl.about` 回應正常）
+- TestLink 專案存在：`GEN2.5`；Test Plan：`Release`
+- `GEN2.5/Release` 下約有 `1681` 個 test cases（API 讀取結果）
+- Redmine `gen-2-5` 最新 20 筆 issue 中，**尚未發現明確的 TestLink external id（如 `CCU-xxx`）字串**
+  - 代表目前 issue → testcase 關聯多半未顯式標註，需補欄位/規範
+
+### 階段限制（治理規則）
+
+- 本階段 Redmine / TestLink 僅允許 **read-only** 操作
+- 禁止 create / update / delete
+
+---
+
+## 附錄 C：是否先做「test case 內 keyword 對齊表」— 結論與初版
+
+### 結論
+
+**是，應該先做。**
+在 issue ↔ testcase 對齊前，先確認 testcase 在執行面是否有可用 keyword，否則會出現「管理面有 case、執行面跑不起來」的假對齊。
+
+### 初版盤點（目前 repo 現況）
+
+> 更正：`testlink_keywords.robot` 只是**其中一份資源檔**，不是整個專案全部 keyword。
+
+| 指標 | 數量 | 說明 |
+|---|---:|---|
+| 全 repo `.robot` 檔案數 | 49 | 其中多數含測試/資源 keyword |
+| 含 `*** Keywords ***` 的 `.robot` 檔 | 39 | 分散於 resources 與 tests |
+| 全 repo Robot keyword 定義總數 | 395 | 包含 domain keywords（mobile/device/api/web/robot arm 等） |
+| Python `@keyword` 定義總數 | 115 | 分散於 9 個 library 檔案 |
+| `resources/testlink_keywords.robot` 定義關鍵字 | 17 | 僅 TestLink wrapper + helper |
+| 其中 stub（含「暫時無法使用」） | 15 | 多數僅 Log WARN，未實際執行 API |
+| 其中可用 helper | 2 | `建立測試結果列表`、`添加測試結果` |
+| `TestLinkConnector.py` 可執行 library keyword | 7 | 可呼叫 XML-RPC 的核心能力 |
+
+### 對齊建議（先後順序）
+
+1. **先做 Keyword 能力對齊表**（wrapper keyword → library keyword → 狀態）
+2. 再做 **Issue ↔ TestCase 對齊**（只用已可執行能力作為 coverage 判斷）
+3. 最後做 **Evidence Gate**（trace_id / artifact_uri）
+
+### v1 表格欄位建議
+
+| 欄位 | 說明 |
+|---|---|
+| keyword_name | Robot/Gherkin keyword 名稱 |
+| keyword_layer | `wrapper` / `library` |
+| mapped_library_keyword | 對應的 connector keyword（若有） |
+| execution_status | `implemented` / `stub` / `partial` |
+| api_method | 對應 XML-RPC method（read-only 檢視） |
+| related_testlink_case_ids | 目前已引用的 case id（若可解析） |
+| notes | 缺口與補強建議 |
+
+---
+
+## 附錄 D：TestLink 對齊子集 v1（keyword capability matrix, read-only）
+
+> 範圍：只看會影響 TestLink testcase 對齊/回填的 keywords。  
+> 目的：先判斷「可執行能力」再做 issue ↔ testcase coverage。
+
+### D-1. Wrapper（`resources/testlink_keywords.robot`）對齊表
+
+| keyword_name | mapped_library_keyword | execution_status | api_method（預期） | notes |
+|---|---|---|---|---|
+| Given TestLink 服務已連接 | 連接到 TestLink | stub | `tl.about` + project/plan/build 查詢 | 目前僅 Log WARN |
+| Given TestLink 服務已連接到專案 "${project_name}" | 連接到 TestLink | stub | 同上 | 目前僅 Log WARN |
+| Given TestLink 連接狀態為正常 | 檢查 TestLink 連接狀態 | stub | `tl.about` | 目前僅 Log WARN |
+| When 回報測試案例 "${test_case_id}" 的執行結果為 "${status}" | 回報測試結果到 TestLink | stub | `getTestCaseIDByName` + `reportTCResult` | 目前僅 Log WARN |
+| When 回報測試案例 "${test_case_id}" 的執行結果為 "${status}" 並附註 "${notes}" | 回報測試結果到 TestLink | stub | `getTestCaseIDByName` + `reportTCResult` | 目前僅 Log WARN |
+| When 批次回報多個測試結果到 TestLink | 批次回報測試結果到 TestLink | stub | 多次 `reportTCResult` | 目前僅 Log WARN |
+| When 查詢測試案例 "${test_case_id}" 的資訊 | 取得測試案例資訊 | stub | `getTestCaseIDByName` | 目前僅 Log WARN |
+| Then TestLink 應該記錄測試結果 | （需斷言 keyword） | stub | 查 execution result | 缺可執行斷言 |
+| Then 測試案例 "${test_case_id}" 的最後執行狀態應為 "${expected_status}" | 取得最後執行結果 | stub | `getLastExecutionResult` | 目前僅 Log WARN |
+| And 測試案例 "${test_case_id}" 的最後執行狀態應為 "${expected_status}" | 取得最後執行結果 | stub | `getLastExecutionResult` | 同上 |
+| Then 測試案例 "${test_case_id}" 應該存在於 TestLink | 取得測試案例資訊 | stub | `getTestCaseIDByName` | 目前僅 Log WARN |
+| And 測試案例 "${test_case_id}" 應該存在於 TestLink | 取得測試案例資訊 | stub | `getTestCaseIDByName` | 同上 |
+| Then 批次回報應該全部成功 | （需斷言 keyword） | stub | 本地統計 + 抽查 | 缺可執行斷言 |
+| And 記錄當前 TestLink 專案資訊 | 取得當前專案資訊 | stub | 專案/計畫/build 讀取 | 目前僅 Log WARN |
+| And 驗證 TestLink 連接正常 | 檢查 TestLink 連接狀態 | stub | `tl.about` | 目前僅 Log WARN |
+| 建立測試結果列表 | （helper） | implemented | N/A | 本地資料結構 helper |
+| 添加測試結果 | （helper） | implemented | N/A | 本地資料結構 helper |
+
+### D-2. Library（`TestLinkConnector.py`）可執行能力表
+
+| library keyword | execution_status | api_method（實際/封裝） | 用途 |
+|---|---|---|---|
+| 連接到 TestLink | implemented | `tl.about` + project/plan/build 讀取 | 建立連線與上下文 |
+| 檢查 TestLink 連接狀態 | implemented | `tl.about` | 連線健康檢查 |
+| 回報測試結果到 TestLink | implemented* | `getTestCaseIDByName` + `reportTCResult` | 單筆結果回填 |
+| 批次回報測試結果到 TestLink | implemented* | 多次 `reportTCResult` | 批次結果回填 |
+| 取得測試案例資訊 | implemented | `getTestCaseIDByName` | 讀 testcase 資訊 |
+| 取得最後執行結果 | implemented | `getLastExecutionResult` | 讀最後執行狀態 |
+| 取得當前專案資訊 | implemented | 連線上下文讀取 | 讀目前 project/plan/build |
+
+\* 註：本文件階段規則為 read-only；此能力在本階段僅做靜態對齊盤點，不執行寫入。
+
+### D-3. 立即可用的對齊判準（用於後續 issue ↔ testcase）
+
+- `coverage=valid`：必須使用 `implemented` library keyword，且可追到 `testlink_case_id`
+- `coverage=weak`：只使用 wrapper stub / 無可執行斷言
+- `coverage=unknown`：無 TestLink 關鍵字關聯
+
+---
+
+## 附錄 E：Redmine 最新 20 筆 issue 的 coverage 分級（read-only）
+
+> 分級規則沿用附錄 D：`valid / weak / unknown`。
+> 本次結果：`valid=0, weak=0, unknown=20`。
+
+| issue_id | tracker | status | testcase_id_in_issue | coverage | 缺口說明 |
+|---:|---|---|---|---|---|
+| 1926 | Feature | New | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1840 | Bug | Resolved | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1826 | Bug | Resolved | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1925 | Feature | Closed | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1917 | Feature | In Progress | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1884 | Feature | Resolved | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1906 | Support | New | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1907 | Support | Resolved | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1920 | Feature | In Progress | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1919 | Feature | In Progress | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1918 | Feature | In Progress | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1912 | Bug | New | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1915 | Bug | In Progress | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1830 | Bug | Resolved | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1913 | Bug | Resolved | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1894 | Bug | New | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1916 | Bug | New | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1914 | Bug | New | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1842 | Bug | Resolved | - | unknown | 無 issue→testcase 顯式關聯 |
+| 1851 | Bug | Resolved | - | unknown | 無 issue→testcase 顯式關聯 |
+
+### 立即建議（不違反 read-only 階段）
+
+1. 先定義欄位契約（文件層）：`redmine_issue_id`、`testlink_case_id`、`trace_id`。
+2. 在需求/缺陷模板中加入「對應 TestLink Case」欄位（先流程約束，不動資料）。
+3. 先挑前 5 筆 New/In Progress issue 做人工 mapping 草稿（文件內，不寫回系統）。
+
+---
+
+## 附錄 F：Keyword × TestLink 實際差異與補齊表（read-only）
+
+> 目標：先看「執行能力」與「TestLink 現況」的落差，再決定補齊順序。  
+> 依據：repo 靜態掃描 + TestLink XML-RPC 實測（僅讀取）。
+
+### F-1. 實際狀態摘要
+
+- RF wrapper（`resources/testlink_keywords.robot`）17 個 keyword 中，15 個為 stub。
+- RF library（`TestLinkConnector.py`）7 個 keyword 可執行。
+- TestLink `GEN2.5 / Release`：`1681` cases，`exec_status` 分布：
+  - `p=891`, `f=29`, `b=90`, `n=671`
+- `getLastExecutionResult` 對 `exec_status=n` 的案例會回 `{id:-1}`（代表無執行紀錄）。
+
+### F-2. 差異與補齊矩陣（兩邊）
+
+| 能力項目 | Robot keyword 現況 | TestLink 實際狀態 | 差異 | Robot 端需補齊 | TestLink/流程端需補齊 | 優先級 |
+|---|---|---|---|---|---|---|
+| 連線初始化（Given） | wrapper 為 stub；library 已可用 | `tl.about`/`tl.ping` 正常 | wrapper 與 library 脫鉤 | wrapper 改為實際呼叫 `連接到 TestLink` | 固定 project=`GEN2.5`、plan=`Release` 作為預設上下文 | P0 |
+| 連線健康檢查 | wrapper 為 stub；library 已可用 | `ping` 回 `Hello!` | 驗證步驟沒有真正檢查 | wrapper 改呼叫 `檢查 TestLink 連接狀態` 並 assert true | 流程加 preflight gate（連線失敗即中止） | P0 |
+| 單筆結果回報 | wrapper 為 stub；library 可寫入（本階段禁用） | TestLink 有歷史 pass/fail/blocked | 目前流程無法端到端回報 | wrapper 映射 `回報測試結果到 TestLink`（先靜態驗證） | 定義回報欄位格式（notes 包含 trace_id） | P1 |
+| 批次回報 | wrapper 為 stub；helper 可用 | TestLink 支援多次 `reportTCResult` | 批次語意存在但不可執行 | wrapper 映射 `批次回報測試結果到 TestLink` | 定義批次失敗補償策略（文件層） | P1 |
+| 測試案例查詢 | wrapper 為 stub；library 可查 | 可讀取 testcase（`CCU-xxx`） | 查詢路徑未接通 | wrapper 改呼叫 `取得測試案例資訊` | 規範 testcase external id 格式（CCU-xxx） | P1 |
+| 最後狀態斷言 | wrapper 為 stub | 無執行紀錄時回 `{id:-1}` | 斷言邏輯未處理 no-run case | 新增 assert keyword：`id=-1` 視為未執行，不等於 fail | TestLink 報表需區分 `not-run` 與 `failed` | P0 |
+| testcase 存在性檢查 | wrapper 為 stub | 可透過 external id 查詢 | 存在檢查未真正落地 | wrapper 改呼叫 `取得測試案例資訊` 並 assert not null | 在流程模板強制填 `testlink_case_id` | P0 |
+| 專案資訊記錄 | wrapper 為 stub | project/plan/build 可讀 | 目前只 log 文案，無真資料 | wrapper 改呼叫 `取得當前專案資訊` | 建立 run metadata（project/plan/build）輸出格式 | P2 |
+| issue ↔ testcase 對齊 | RF/issue 內容未帶 case id | 最新 20 筆 issue 全為 unknown coverage | 管理面與執行面完全斷裂 | 測試命名/標記納入 `testlink_case_id` | issue 模板加 `對應 TestLink Case` 欄位（先文件） | P0 |
+| 證據關聯 | keyword 層未強制 | TestLink execution notes 可承載文字 | 沒有 trace 主鍵，證據不可追 | keyword 輸出 `trace_id` / artifact 索引 | 統一 notes 結構欄位契約 | P1 |
+
+### F-3. 建議執行順序（不違反 read-only）
+
+1. 先在文件層完成 wrapper→library 映射規格（不改系統資料）
+2. 定義 assert 規則（含 `id=-1` not-run）
+3. 建立 issue/testcase/trace 欄位契約與模板
+4. 再進入下一階段（若放寬權限）做實際回填串接
 
 ---
 
