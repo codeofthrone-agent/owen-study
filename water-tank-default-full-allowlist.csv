@@ -1,0 +1,147 @@
+testcase_external_id,testcase_name,suite,automation_policy,note
+CCU-231154,FRESH 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231157,GRAY_1 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231160,BLACK_1 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231163,GRAY_2 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231166,GRAY_3 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231169,BLACK_2 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231190,FRESH 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231193,GRAY_1 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231196,BLACK_1 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231199,GRAY_2 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231202,GRAY_3 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231205,BLACK_2 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231208,FRESH 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231211,GRAY_1 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231214,BLACK_1 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231217,GRAY_2 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231220,GRAY_3 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231223,BLACK_2 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231262,FRESH 水位在高 [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231265,GRAY_1 水位在高 [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231281,FRESH 水位在高 [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231285,FRESH 水位在高 [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231328,GRAY_1 水位在高 顯示 Full,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231329,BLACK_1 水位在高 顯示 Full,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231330,GRAY_2 水位在高 顯示 Full,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231331,GRAY_3 水位在高 顯示 Full,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231332,BLACK_2 水位在高 顯示 Full,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231333,FRESH 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231337,GRAY_1 水位在高 顯示 Full,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231338,GRAY_1 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231341,BLACK_1 水位在高 顯示 Full,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231342,BLACK_1 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231345,GRAY_2 水位在高 顯示 Full,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231346,GRAY_2 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231349,GRAY_3 水位在高 顯示 Full,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231350,GRAY_3 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231353,BLACK_2 水位在高 顯示 Full,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231354,BLACK_2 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231357,GRAY_1 水位在高 顯示 Full [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231362,GRAY_1 水位在高 [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231366,GRAY_1 水位在高 顯示 Full [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231367,GRAY_1 水位在高 顯示 Full [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231368,GRAY_1 水位在高 [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231371,BLACK_1 水位在高 顯示 Full [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231372,BLACK_1 水位在高 [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231375,BLACK_1 水位在高 顯示 Full [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231376,BLACK_1 水位在高 [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231379,BLACK_1 水位在高 顯示 Full [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231380,BLACK_1 水位在高 [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231383,GRAY_2 水位在高 顯示 Full [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231384,GRAY_2 水位在高 [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231387,GRAY_2 水位在高 顯示 Full [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231388,GRAY_2 水位在高 [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231391,GRAY_2 水位在高 顯示 Full [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231392,GRAY_2 水位在高 [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231395,GRAY_3 水位在高 顯示 Full [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231396,GRAY_3 水位在高 [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231399,GRAY_3 水位在高 顯示 Full [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231400,GRAY_3 水位在高 [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231403,GRAY_3 水位在高 顯示 Full [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231404,GRAY_3 水位在高 [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231407,BLACK_2 水位在高 顯示 Full [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231408,BLACK_2 水位在高 [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231411,BLACK_2 水位在高 顯示 Full [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231412,BLACK_2 水位在高 [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231415,BLACK_2 水位在高 顯示 Full [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231416,BLACK_2 水位在高 [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231419,FRESH 水位在高 [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231423,FRESH 水位在高 [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231427,FRESH 水位在高 [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231431,GRAY_1 水位在高 顯示 Full [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231432,GRAY_1 水位在高 [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231435,GRAY_1 水位在高 顯示 Full [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231436,GRAY_1 水位在高 [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231439,GRAY_1 水位在高 顯示 Full [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231440,GRAY_1 水位在高 [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231443,BLACK_1 水位在高 顯示 Full [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231444,BLACK_1 水位在高 [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231447,BLACK_1 水位在高 顯示 Full [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231448,BLACK_1 水位在高 [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231451,BLACK_1 水位在高 顯示 Full [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231452,BLACK_1 水位在高 [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231455,GRAY_2 水位在高 顯示 Full [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231456,GRAY_2 水位在高 [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231459,GRAY_2 水位在高 顯示 Full [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231460,GRAY_2 水位在高 [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231463,GRAY_2 水位在高 顯示 Full [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231464,GRAY_2 水位在高 [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231467,GRAY_3 水位在高 顯示 Full [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231468,GRAY_3 水位在高 [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231471,GRAY_3 水位在高 顯示 Full [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231472,GRAY_3 水位在高 [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231475,GRAY_3 水位在高 顯示 Full [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231476,GRAY_3 水位在高 [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231479,BLACK_2 水位在高 顯示 Full [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231480,BLACK_2 水位在高 [ 查看LCD ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231483,BLACK_2 水位在高 顯示 Full [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231484,BLACK_2 水位在高 [ 查看Android ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231487,BLACK_2 水位在高 顯示 Full [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231488,BLACK_2 水位在高 [ 查看iOS ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231491,FRESH 水位在高 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231496,GRAY_1 水位在高 [ 紅色燈 ] [ 查看面板 ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231500,BLACK_1 水位在高 [ 紅色燈 ] [ 查看面板 ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231504,GRAY_2 水位在高 [ 紅色燈 ] [ 查看面板 ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231508,GRAY_3 水位在高 [ 紅色燈 ] [ 查看面板 ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231512,BLACK_2 水位在高 [ 紅色燈 ] [ 查看面板 ],02. Function Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231516,FRESH 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231519,GRAY_1 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231522,BLACK_1 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231525,GRAY_2 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231528,GRAY_3 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231531,BLACK_2 水位在高,01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231733,FRESH 水位在高 [ 查看Android ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231741,FRESH 水位在高 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231749,GRAY_1 水位在高 顯示 Full [ 查看Android ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231750,GRAY_1 水位在高 [ 查看Android ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231757,GRAY_1 水位在高 [ 紅色燈 ] [ 查看面板 ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231765,BLACK_1 水位在高 顯示 Full [ 查看Android ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231766,BLACK_1 水位在高 [ 查看Android ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231773,BLACK_1 水位在高 [ 紅色燈 ] [ 查看面板 ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231781,GRAY_2 水位在高 顯示 Full [ 查看Android ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231782,GRAY_2 水位在高 [ 查看Android ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231789,GRAY_2 水位在高 [ 紅色燈 ] [ 查看面板 ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231797,GRAY_3 水位在高 顯示 Full [ 查看Android ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231798,GRAY_3 水位在高 [ 查看Android ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231805,GRAY_3 水位在高 [ 紅色燈 ] [ 查看面板 ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231813,BLACK_2 水位在高 顯示 Full [ 查看Android ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231814,BLACK_2 水位在高 [ 查看Android ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231821,BLACK_2 水位在高 [ 紅色燈 ] [ 查看面板 ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231829,FRESH 水位在高 [ 查看iOS ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231833,FRESH 水位在高 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231841,GRAY_1 水位在高 顯示 Full [ 查看iOS ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231842,GRAY_1 水位在高 [ 查看iOS ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231845,GRAY_1 水位在高 [ 紅色燈 ] [ 查看面板 ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231853,BLACK_1 水位在高 顯示 Full [ 查看iOS ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231854,BLACK_1 水位在高 [ 查看iOS ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231857,BLACK_1 水位在高 [ 紅色燈 ] [ 查看面板 ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231865,GRAY_2 水位在高 顯示 Full [ 查看iOS ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231866,GRAY_2 水位在高 [ 查看iOS ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231869,GRAY_2 水位在高 [ 紅色燈 ] [ 查看面板 ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231877,GRAY_3 水位在高 顯示 Full [ 查看iOS ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231878,GRAY_3 水位在高 [ 查看iOS ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231881,GRAY_3 水位在高 [ 紅色燈 ] [ 查看面板 ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231889,BLACK_2 水位在高 顯示 Full [ 查看iOS ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231890,BLACK_2 水位在高 [ 查看iOS ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化
+CCU-231893,BLACK_2 水位在高 [ 紅色燈 ] [ 查看面板 ],01. Smoke Tests,automation_candidate,依需求：水箱僅保留「預設滿水位/水位在高」檢查可評估自動化

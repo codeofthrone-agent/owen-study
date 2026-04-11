@@ -1,0 +1,230 @@
+testcase_external_id,testcase_name,suite,automation_policy,note
+CCU-230489,#1456 語音命令 Check Tank Levels 必須回應所有 啟動中的水箱資訊,06. Regression Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-230550,#1248 啟動-B模組上的水箱液位輸入將繼續引起通知，即使水箱被停用。,06. Regression Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-230698,#1690 水箱在回應Gray Tank 3聲音反應模糊不清,06. Regression Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231155,FRESH 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231156,FRESH 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231158,GRAY_1 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231159,GRAY_1 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231161,BLACK_1 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231162,BLACK_1 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231164,GRAY_2 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231165,GRAY_2 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231167,GRAY_3 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231168,GRAY_3 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231170,BLACK_2 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231171,BLACK_2 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231191,FRESH 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231192,FRESH 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231194,GRAY_1 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231195,GRAY_1 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231197,BLACK_1 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231198,BLACK_1 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231200,GRAY_2 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231201,GRAY_2 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231203,GRAY_3 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231204,GRAY_3 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231206,BLACK_2 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231207,BLACK_2 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231209,FRESH 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231210,FRESH 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231212,GRAY_1 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231213,GRAY_1 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231215,BLACK_1 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231216,BLACK_1 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231218,GRAY_2 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231219,GRAY_2 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231221,GRAY_3 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231222,GRAY_3 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231224,BLACK_2 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231225,BLACK_2 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231263,FRESH 水位在中 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231264,FRESH 水位在低 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231266,GRAY_1 水位在中 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231267,GRAY_1 水位在低 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231280,FRESH 水位是空的 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231282,FRESH 水位在中 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231283,FRESH 水位在低 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231284,FRESH 水位是空的 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231286,FRESH 水位在中 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231287,FRESH 水位在低 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231288,FRESH 水位是空的 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231289,FRESH 水位是空,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231334,FRESH 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231335,FRESH 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231336,FRESH 水位是空,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231339,GRAY_1 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231340,GRAY_1 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231343,BLACK_1 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231344,BLACK_1 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231347,GRAY_2 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231348,GRAY_2 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231351,GRAY_3 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231352,GRAY_3 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231355,BLACK_2 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231356,BLACK_2 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231363,GRAY_1 水位在中 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231364,GRAY_1 水位在低 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231369,GRAY_1 水位在中 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231370,GRAY_1 水位在低 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231373,BLACK_1 水位在中 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231374,BLACK_1 水位在低 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231377,BLACK_1 水位在中 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231378,BLACK_1 水位在低 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231381,BLACK_1 水位在中 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231382,BLACK_1 水位在低 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231385,GRAY_2 水位在中 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231386,GRAY_2 水位在低 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231389,GRAY_2 水位在中 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231390,GRAY_2 水位在低 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231393,GRAY_2 水位在中 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231394,GRAY_2 水位在低 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231397,GRAY_3 水位在中 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231398,GRAY_3 水位在低 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231401,GRAY_3 水位在中 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231402,GRAY_3 水位在低 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231405,GRAY_3 水位在中 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231406,GRAY_3 水位在低 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231409,BLACK_2 水位在中 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231410,BLACK_2 水位在低 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231413,BLACK_2 水位在中 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231414,BLACK_2 水位在低 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231417,BLACK_2 水位在中 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231418,iOS 水位在低 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231420,FRESH 水位在中 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231421,FRESH 水位在低 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231422,FRESH 水位是空的 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231424,FRESH 水位在中 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231425,FRESH 水位在低 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231426,FRESH 水位是空的 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231428,FRESH 水位在中 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231429,FRESH 水位在低 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231430,FRESH 水位是空的 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231433,GRAY_1 水位在中 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231434,GRAY_1 水位在低 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231437,GRAY_1 水位在中 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231438,GRAY_1 水位在低 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231441,GRAY_1 水位在中 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231442,GRAY_1 水位在低 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231445,BLACK_1 水位在中 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231446,BLACK_1 水位在低 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231449,BLACK_1 水位在中 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231450,BLACK_1 水位在低 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231453,BLACK_1 水位在中 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231454,BLACK_1 水位在低 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231457,GRAY_2 水位在中 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231458,GRAY_2 水位在低 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231461,GRAY_2 水位在中 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231462,GRAY_2 水位在低 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231465,GRAY_2 水位在中 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231466,GRAY_2 水位在低 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231469,GRAY_3 水位在中 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231470,GRAY_3 水位在低 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231473,GRAY_3 水位在中 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231474,GRAY_3 水位在低 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231477,GRAY_3 水位在中 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231478,GRAY_3 水位在低 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231481,BLACK_2 水位在中 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231482,BLACK_2 水位在低 [ 查看LCD ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231485,BLACK_2 水位在中 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231486,BLACK_2 水位在低 [ 查看Android ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231489,BLACK_2 水位在中 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231490,iOS 水位在低 [ 查看iOS ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231492,FRESH 水位在中 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231493,FRESH 水位在低 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231494,FRESH 水位是空的 [ 紅色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231497,GRAY_1 水位在中 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231498,GRAY_1 水位在低 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231499,GRAY_1 水位在空的 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231501,BLACK_1 水位在中 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231502,BLACK_1 水位在低 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231503,BLACK_1 水位在空的 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231505,GRAY_2 水位在中 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231506,GRAY_2 水位在低 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231507,GRAY_2 水位在空的 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231509,GRAY_3 水位在中 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231510,GRAY_3 水位在低 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231511,GRAY_3 水位在空的 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231513,BLACK_2 水位在中 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231514,BLACK_2 水位在低 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231515,BLACK_2 水位在空的 [ 藍色燈 ] [ 查看面板 ],02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231517,FRESH 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231518,FRESH 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231520,GRAY_1 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231521,GRAY_1 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231523,BLACK_1 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231524,BLACK_1 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231526,GRAY_2 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231527,GRAY_2 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231529,GRAY_3 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231530,GRAY_3 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231532,BLACK_2 水位在中,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231533,BLACK_2 水位在低,01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231734,FRESH 水位在中 [ 查看Android ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231735,FRESH 水位在低 [ 查看Android ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231736,FRESH 水位是空的 [ 查看Android ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231742,FRESH 水位在中 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231743,FRESH 水位在低 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231744,FRESH 水位是空的 [ 紅色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231751,GRAY_1 水位在中 [ 查看Android ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231752,GRAY_1 水位在低 [ 查看Android ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231758,GRAY_1 水位在中 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231759,GRAY_1 水位在低 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231760,GRAY_1 水位在空的 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231767,BLACK_1 水位在中 [ 查看Android ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231768,BLACK_1 水位在低 [ 查看Android ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231774,BLACK_1 水位在中 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231775,BLACK_1 水位在低 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231776,BLACK_1 水位在空的 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231783,GRAY_2 水位在中 [ 查看Android ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231784,GRAY_2 水位在低 [ 查看Android ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231790,GRAY_2 水位在中 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231791,GRAY_2 水位在低 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231792,GRAY_2 水位在空的 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231799,GRAY_3 水位在中 [ 查看Android ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231800,GRAY_3 水位在低 [ 查看Android ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231806,GRAY_3 水位在中 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231807,GRAY_3 水位在低 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231808,GRAY_3 水位在空的 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231815,BLACK_2 水位在中 [ 查看Android ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231816,BLACK_2 水位在低 [ 查看Android ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231822,BLACK_2 水位在中 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231823,BLACK_2 水位在低 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231824,BLACK_2 水位在空的 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231830,FRESH 水位在中 [ 查看iOS ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231831,FRESH 水位在低 [ 查看iOS ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231832,FRESH 水位是空的 [ 查看iOS ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231834,FRESH 水位在中 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231835,FRESH 水位在低 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231836,FRESH 水位是空的 [ 紅色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231843,GRAY_1 水位在中 [ 查看iOS ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231844,GRAY_1 水位在低 [ 查看iOS ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231846,GRAY_1 水位在中 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231847,GRAY_1 水位在低 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231848,GRAY_1 水位在空的 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231855,BLACK_1 水位在中 [ 查看iOS ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231856,BLACK_1 水位在低 [ 查看iOS ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231858,BLACK_1 水位在中 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231859,BLACK_1 水位在低 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231860,BLACK_1 水位在空的 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231867,GRAY_2 水位在中 [ 查看iOS ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231868,GRAY_2 水位在低 [ 查看iOS ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231870,GRAY_2 水位在中 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231871,GRAY_2 水位在低 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231872,GRAY_2 水位在空的 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231879,GRAY_3 水位在中 [ 查看iOS ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231880,GRAY_3 水位在低 [ 查看iOS ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231882,GRAY_3 水位在中 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231883,GRAY_3 水位在低 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231884,GRAY_3 水位在空的 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231891,BLACK_2 水位在中 [ 查看iOS ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231892,iOS 水位在低 [ 查看iOS ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231894,BLACK_2 水位在中 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231895,BLACK_2 水位在低 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-231896,BLACK_2 水位在空的 [ 藍色燈 ] [ 查看面板 ],01. Smoke Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-232151,GRAY2 水位顯示 ON,02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-232152,GRAY3 水位顯示 ON,02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-232153,BLACK2 水位顯示 ON,02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-232196,GRAY2 水位顯示 OFF,02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-232197,GRAY3 水位顯示 OFF,02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
+CCU-232198,BLACK2 水位顯示 OFF,02. Function Tests,manual_only,依需求：水箱除「預設滿水位」外，其餘暫不自動化
