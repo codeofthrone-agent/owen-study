@@ -480,40 +480,52 @@ session_search(query="Pablo QA orchestrator HIL TestLink Robot Framework")
 
 ---
 
-## 附錄 F：Keyword × TestLink 實際差異與補齊表（read-only）
+## 附錄 F（修正版）：所有 testcase step × 所有 keyword 差異與補齊表（read-only）
 
-> 目標：先看「執行能力」與「TestLink 現況」的落差，再決定補齊順序。  
-> 依據：repo 靜態掃描 + TestLink XML-RPC 實測（僅讀取）。
+> 你指定的範圍：**TestLink 全部 testcase steps** 對 **repo 內全部既有 keywords**。  
+> 比對基準：字串正規化後的 direct/substring match（保守估計）。
 
-### F-1. 實際狀態摘要
+### F-1. 全量盤點結果（實際數據）
 
-- RF wrapper（`resources/testlink_keywords.robot`）17 個 keyword 中，15 個為 stub。
-- RF library（`TestLinkConnector.py`）7 個 keyword 可執行。
-- TestLink `GEN2.5 / Release`：`1681` cases，`exec_status` 分布：
-  - `p=891`, `f=29`, `b=90`, `n=671`
-- `getLastExecutionResult` 對 `exec_status=n` 的案例會回 `{id:-1}`（代表無執行紀錄）。
+| 項目 | 數量 | 備註 |
+|---|---:|---|
+| Robot keyword 定義總數 | 395 | 來源：全部 `.robot` 檔 |
+| Python `@keyword` 定義總數 | 115 | 來源：全部 library `.py` |
+| 全部 keyword（去重後） | 453 | `395+115` 去重 |
+| TestLink 專案/計畫 | GEN2.5 / Release | XML-RPC 讀取 |
+| Test cases（計畫內） | 1681 | `getTestCasesForTestPlan` |
+| testcase steps（去重後） | 1936 | `getTestCasesForTestSuite(details=full)` 聚合 |
+| step.actions 命中任一現有 keyword | 2 | 命中率 `0.1%` |
+| step.expected_results 命中任一現有 keyword | 0 | 命中率 `0.0%` |
+| 未命中 steps | 1934 | 絕大多數為自然語句 |
 
-### F-2. 差異與補齊矩陣（兩邊）
+### F-2. 實際差異（為何幾乎對不起來）
 
-| 能力項目 | Robot keyword 現況 | TestLink 實際狀態 | 差異 | Robot 端需補齊 | TestLink/流程端需補齊 | 優先級 |
-|---|---|---|---|---|---|---|
-| 連線初始化（Given） | wrapper 為 stub；library 已可用 | `tl.about`/`tl.ping` 正常 | wrapper 與 library 脫鉤 | wrapper 改為實際呼叫 `連接到 TestLink` | 固定 project=`GEN2.5`、plan=`Release` 作為預設上下文 | P0 |
-| 連線健康檢查 | wrapper 為 stub；library 已可用 | `ping` 回 `Hello!` | 驗證步驟沒有真正檢查 | wrapper 改呼叫 `檢查 TestLink 連接狀態` 並 assert true | 流程加 preflight gate（連線失敗即中止） | P0 |
-| 單筆結果回報 | wrapper 為 stub；library 可寫入（本階段禁用） | TestLink 有歷史 pass/fail/blocked | 目前流程無法端到端回報 | wrapper 映射 `回報測試結果到 TestLink`（先靜態驗證） | 定義回報欄位格式（notes 包含 trace_id） | P1 |
-| 批次回報 | wrapper 為 stub；helper 可用 | TestLink 支援多次 `reportTCResult` | 批次語意存在但不可執行 | wrapper 映射 `批次回報測試結果到 TestLink` | 定義批次失敗補償策略（文件層） | P1 |
-| 測試案例查詢 | wrapper 為 stub；library 可查 | 可讀取 testcase（`CCU-xxx`） | 查詢路徑未接通 | wrapper 改呼叫 `取得測試案例資訊` | 規範 testcase external id 格式（CCU-xxx） | P1 |
-| 最後狀態斷言 | wrapper 為 stub | 無執行紀錄時回 `{id:-1}` | 斷言邏輯未處理 no-run case | 新增 assert keyword：`id=-1` 視為未執行，不等於 fail | TestLink 報表需區分 `not-run` 與 `failed` | P0 |
-| testcase 存在性檢查 | wrapper 為 stub | 可透過 external id 查詢 | 存在檢查未真正落地 | wrapper 改呼叫 `取得測試案例資訊` 並 assert not null | 在流程模板強制填 `testlink_case_id` | P0 |
-| 專案資訊記錄 | wrapper 為 stub | project/plan/build 可讀 | 目前只 log 文案，無真資料 | wrapper 改呼叫 `取得當前專案資訊` | 建立 run metadata（project/plan/build）輸出格式 | P2 |
-| issue ↔ testcase 對齊 | RF/issue 內容未帶 case id | 最新 20 筆 issue 全為 unknown coverage | 管理面與執行面完全斷裂 | 測試命名/標記納入 `testlink_case_id` | issue 模板加 `對應 TestLink Case` 欄位（先文件） | P0 |
-| 證據關聯 | keyword 層未強制 | TestLink execution notes 可承載文字 | 沒有 trace 主鍵，證據不可追 | keyword 輸出 `trace_id` / artifact 索引 | 統一 notes 結構欄位契約 | P1 |
+| 差異面向 | TestLink step 現況 | Keyword 現況 | 造成結果 |
+|---|---|---|---|
+| 表達型態 | 自然語句/敘述句（如「點擊…」「查看…」） | 指令型 keyword（可執行） | 文字幾乎無法直接對映 |
+| 粒度 | step 常混合多個動作與預期 | keyword 通常單一動作 | 一對多/多對一難對齊 |
+| 結構品質 | steps 含編號、中英混雜、少量 code-like 內容 | keyword 命名相對規範 | 自動比對命中率極低 |
+| 主鍵 | step 內容未帶 keyword id | keyword 無對應 testcase_step_id | 無法建立穩定關聯鍵 |
 
-### F-3. 建議執行順序（不違反 read-only）
+### F-3. 兩邊要補齊什麼（重點表）
 
-1. 先在文件層完成 wrapper→library 映射規格（不改系統資料）
-2. 定義 assert 規則（含 `id=-1` not-run）
-3. 建立 issue/testcase/trace 欄位契約與模板
-4. 再進入下一階段（若放寬權限）做實際回填串接
+| 方向 | 需補齊項目 | 最小可行規格（MVP） | 產出 |
+|---|---|---|---|
+| TestLink 端 | step 加入可機讀欄位 | 每個 step 增 `automation_keyword`（或 `keyword_id`） | step 能直接映射到可執行 keyword |
+| TestLink 端 | step 拆分規範 | 1 step = 1 action；expected 獨立 | 降低多動作歧義 |
+| TestLink 端 | testcase metadata | case 層補 `testlink_case_id`、`execution_tier` | 管理面可追蹤 |
+| Robot 端 | 建立 alias 層 | 自然語句模板 → canonical keyword 映射表 | 舊 step 不改也可先對齊 |
+| Robot 端 | 補 assert keywords | `驗證最後狀態`、`驗證案例存在` 等可執行斷言 | Then 類步驟可落地 |
+| Robot 端 | keyword catalog | 輸出單一清單：name / args / layer / status | 可被 TestLink 反查 |
+| 流程層 | 對齊 Gate | 未填 `automation_keyword` 的 step 標記 `manual_only` | 防止假自動化覆蓋 |
+
+### F-4. 建議修正順序（先對齊再擴充）
+
+1. **先定義 keyword catalog（權威清單）**：453 個 keyword 分 `canonical / alias / deprecated`。  
+2. **再定義 step 映射欄位**：`automation_keyword`（必要）+ `automation_args`（選填）。  
+3. **先處理高頻動作模板**：`點擊/查看/輸入/設定/檢查` 五類。  
+4. **最後才做全面 coverage 統計**：以「有映射鍵」而非自然語句比對判定覆蓋率。
 
 ---
 
