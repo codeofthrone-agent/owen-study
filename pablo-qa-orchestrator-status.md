@@ -120,6 +120,7 @@ Artifact   = 真相面（證據與真相：截圖 / log / 波形 / 錄影）
   - `hermes-qa-architecture-report.md` — QA 三層 Agent 架構
   - `web-testing-automation-report.md` — Web 自動化策略
   - `gemini-cli-chrome-mcp-web-automation.md` — Chrome DevTools MCP
+  - `pablo-diagrams.md` — 架構圖 / Traceability 流程圖 / 部署拓樸圖（draw.io links）
 
 ---
 
