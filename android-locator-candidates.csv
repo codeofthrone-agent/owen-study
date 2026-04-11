@@ -1,0 +1,11 @@
+screen_name,element_alias,view_id,content_desc,visible_text,class_name,index,bounds,tap_x,tap_y,source_run_id,confidence,notes
+login_screen,login_button,com.example.app:id/btn_login,Login,Login,android.widget.Button,0,"[48,1820][1032,1912]",540,1866,run-2026-04-11-001,high,primary locator by view_id
+login_screen,email_field,com.example.app:id/input_email,Email input,Email,android.widget.EditText,0,"[48,860][1032,980]",540,920,run-2026-04-11-001,high,prefer id; fallback by content-desc
+login_screen,password_field,com.example.app:id/input_password,Password input,Password,android.widget.EditText,1,"[48,1010][1032,1130]",540,1070,run-2026-04-11-001,high,
+login_screen,forgot_password_link,,Forgot password,Forgot Password,android.widget.TextView,0,"[60,1160][420,1220]",240,1190,run-2026-04-11-001,medium,no id; accessibility preferred
+bluetooth_pairing,panel_id_item,,RV Panel ID,WF3511-ABCD,android.widget.TextView,2,"[64,980][1016,1090]",540,1035,run-2026-04-11-002,medium,dynamic text list item
+bluetooth_pairing,next_button,com.example.app:id/btn_next,Next,Next,android.widget.Button,0,"[48,1820][1032,1912]",540,1866,run-2026-04-11-002,high,
+settings_screen,wifi_control_row,com.example.app:id/row_wifi_control,Wi-Fi Control,Wi-Fi Control,android.view.ViewGroup,3,"[0,640][1080,780]",540,710,run-2026-04-11-003,high,
+settings_screen,wifi_status_label,,Wi-Fi status,Connected,android.widget.TextView,0,"[700,650][1030,760]",865,705,run-2026-04-11-003,medium,read-only assert target
+ota_screen,check_update_button,com.example.app:id/btn_check_update,Check for Updates,Check Update,android.widget.Button,0,"[48,1540][1032,1632]",540,1586,run-2026-04-11-004,high,
+ota_screen,stable_version_label,,Stable version,2.5.4.01,android.widget.TextView,1,"[64,420][460,500]",262,460,run-2026-04-11-004,medium,text can change; keep as verification hint
