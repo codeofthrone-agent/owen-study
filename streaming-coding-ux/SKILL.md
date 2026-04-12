@@ -43,47 +43,30 @@ streaming_coder/
 import asyncio
 from streaming_coder import (
     Config, StreamingEditor, StatusReactionController,
-    SessionPool, detect_agent_trigger, AcpEvent, AcpEventType,
+    SessionPool, AcpEvent, AcpEventType,
 )
-from streaming_coder.bridge import spawn_acpx, stream_acpx_output
+from streaming_coder.bridge import (
+    detect_trigger, dispatch_trigger, spawn_acpx, stream_acpx_output,
+    TriggerMode, TriggerResult,
+)
 
-# Detect trigger
+# ── New API: detect_trigger (supports all 4 modes) ──
+trigger = detect_trigger("派 gemini session 幫我看看 code")
+if trigger:
+    # TriggerResult(agent="gemini", mode=TriggerMode.SESSION, prompt="幫我看看 code")
+    result = await dispatch_trigger(
+        trigger=trigger,
+        adapter=discord_adapter,
+        reactions=reaction_controller,
+        session_mgr=session_manager,
+        chat_id="123456",
+        message_id="789",
+    )
+
+# ── Legacy API: detect_agent_trigger (one-shot only) ──
 result = detect_agent_trigger("派 Claude 修這個 bug")
 if result:
     agent, prompt = result  # ("claude", "修這個 bug")
-
-# Configure
-config = Config.from_env()  # Reads STREAMING_CODER_* env vars
-
-# Setup editor
-async def edit_msg(message, content):
-    await message.edit(content=content)
-
-editor = StreamingEditor(edit_fn=edit_msg, message=my_discord_msg)
-
-# Setup reactions
-async def add_emoji(emoji):
-    await my_discord_msg.add_reaction(emoji)
-
-async def remove_emoji(emoji):
-    await my_discord_msg.remove_reaction(emoji)
-
-reactions = StatusReactionController(
-    add_reaction=add_emoji,
-    remove_reaction=remove_emoji,
-)
-
-# Run
-argv = config.build_acpx_argv(prompt)
-session = await spawn_acpx(argv)
-await reactions.set_queued()
-editor.start()
-final = await stream_acpx_output(session, editor, reactions)
-editor.stop()
-if final.event_type == AcpEventType.RESULT:
-    await reactions.set_done()
-else:
-    await reactions.set_error()
 ```
 
 ## From Sync Context (Hermes Agent Thread Pool)
@@ -191,19 +174,60 @@ await pool.shutdown()  # Close all
 
 ## Trigger Patterns
 
-The bridge detects these patterns:
+The bridge detects 4 trigger modes (Chinese + English + @mention):
+
+### 🔥 One-shot (fire-and-forget)
 
 | Pattern | Example |
 |---------|---------|
 | `派 <agent> <task>` | `派 Claude 修 bug` |
 | `叫 <agent> <task>` | `叫 gemini 寫 test` |
 | `丢 <agent> <task>` | `丢 codex 改 config` |
+| `丟給 <agent> <task>` | `丟給 opencode review` |
 | `ask <agent> <task>` | `ask claude to review` |
+| `send to <agent> <task>` | `send to gemini hello` |
+| `tell <agent> <task>` | `tell codex fix auth` |
+| `have <agent> <task>` | `have claude refactor` |
 | `@<agent> <task>` | `@claude fix this` |
+
+### 💬 Session (persistent multi-turn)
+
+| Pattern | Example |
+|---------|---------|
+| `派 <agent> session <task>` | `派 gemini session 你好` |
+| `叫 <agent> 對話 <task>` | `叫 claude 對話 看看 code` |
+| `ask <agent> session <task>` | `ask claude session review PR` |
+| `tell <agent> session <task>` | `tell gemini session fix bug` |
+| `@<agent> session <task>` | `@codex session optimize` |
+
+### 🔄 Session New (reset)
+
+| Pattern | Example |
+|---------|---------|
+| `派 <agent> 新對話` | `派 gemini 新對話` |
+| `叫 <agent> 重來` | `叫 claude 重來` |
+| `丢 <agent> 重新` | `丢 codex 重新` |
+| `派 <agent> session new` | `派 gemini session new` |
+| `派 <agent> new <task>` | `派 claude new 做新的` |
+| `ask <agent> new session` | `ask claude new session` |
+| `ask <agent> reset session` | `tell gemini reset session` |
+| `ask <agent> start over` | `have codex start over` |
+| `@<agent> 新對話` | `@claude 新對話` |
+
+### ❌ Cancel
+
+| Pattern | Example |
+|---------|---------|
+| `派 <agent> 取消` | `派 gemini 取消` |
+| `叫 <agent> 停` | `叫 claude 停` |
+| `丢 <agent> cancel` | `丢 codex cancel` |
+| `ask <agent> cancel` | `ask claude cancel` |
+| `tell <agent> stop` | `tell gemini stop` |
+| `@<agent> 取消` | `@gemini 取消` |
 
 Supported agents: `claude`, `gemini`, `codex`, `opencode`
 
-Patterns also support `丢給` (verb + 給) and `@mention` style.
+Pattern priority: Cancel → Session New → Session → One-shot
 
 ## Auth — Per-Agent Reference
 

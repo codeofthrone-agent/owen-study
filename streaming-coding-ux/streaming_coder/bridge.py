@@ -3,6 +3,7 @@ Hermes integration bridge — connects streaming_coder to the Hermes Discord gat
 
 Provides:
 - Trigger detection for "派 Claude" / "丢 codex" style commands
+- Session mode triggers for persistent multi-turn conversations
 - acpx subprocess management with streaming
 - Stream orchestration: editor + reactions + parser integration
 - Async-to-sync bridge for running inside Hermes's agent thread pool
@@ -14,6 +15,8 @@ import asyncio
 import logging
 import os
 import re
+from dataclasses import dataclass
+from enum import Enum, auto
 from typing import Any, Callable, Dict, Optional, Tuple
 
 from .acp_parser import AcpEvent, AcpEventType, parse_acp_line
@@ -24,23 +27,203 @@ from .reactions import StatusReactionController
 
 logger = logging.getLogger(__name__)
 
-# ── Trigger detection patterns ────────────────────────────────────
+# ── Trigger types ─────────────────────────────────────────────────
 
-# Matches: "派 Claude ...", "丢 codex ...", "ask gemini ...", "send to claude ..."
-TRIGGER_PATTERNS = [
-    # Chinese trigger words — handle optional 給/给 after the verb
-    re.compile(r"(?:派|叫|丟|丢)\s*(?:給|给)?\s*(claude|gemini|codex|opencode)\s*(.*)", re.IGNORECASE),
-    # English trigger words
-    re.compile(r"(?:ask|send to|tell|have)\s*(claude|gemini|codex|opencode)\s*(.*)", re.IGNORECASE),
-    # @mention style
-    re.compile(r"@(claude|gemini|codex|opencode)\s*(.*)", re.IGNORECASE),
-]
+
+class TriggerMode(Enum):
+    """How the agent should be invoked."""
+    ONE_SHOT = auto()    # Fire-and-forget, no context persistence
+    SESSION = auto()     # Persistent named session (thread-bound)
+    SESSION_NEW = auto() # Reset session (equivalent to /new)
+    SESSION_CANCEL = auto()  # Cancel running task
+
+
+@dataclass
+class TriggerResult:
+    """Parsed trigger from a message."""
+    agent: str               # e.g. "gemini", "claude"
+    mode: TriggerMode        # one-shot or session
+    prompt: str              # The user's task (empty for cancel/new without prompt)
+    raw: str                 # Original matched text
+
+
+# ── Agent name ────────────────────────────────────────────────────
 
 SUPPORTED_AGENTS = {"claude", "gemini", "codex", "opencode"}
 
+# ── Trigger detection patterns ────────────────────────────────────
+#
+# Pattern priority (first match wins):
+#   1. Session cancel  — "派 gemini cancel" / "ask claude cancel"
+#   2. Session new     — "派 gemini session new" / "ask claude new session"
+#   3. Session mode    — "派 gemini session xxx" / "ask claude session xxx"
+#   4. One-shot        — "派 gemini xxx" / "ask claude xxx"
+#
+# ── Session Cancel ────────────────────────────────────────────────
+
+CANCEL_PATTERNS = [
+    # Chinese: 取消/停/cancel
+    re.compile(
+        r"(?:派|叫|丟|丢)\s*(?:給|给)?\s*(claude|gemini|codex|opencode)\s+(?:取消|停|cancel)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?:ask|send to|tell|have)\s*(claude|gemini|codex|opencode)\s+(?:cancel|stop)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"@(claude|gemini|codex|opencode)\s+(?:取消|停|cancel|stop)",
+        re.IGNORECASE,
+    ),
+]
+
+# ── Session New (reset) ───────────────────────────────────────────
+
+NEW_SESSION_PATTERNS = [
+    # Chinese: 新對話/重來/重新/new session
+    re.compile(
+        r"(?:派|叫|丟|丢)\s*(?:給|给)?\s*(claude|gemini|codex|opencode)\s+(?:session\s+)?(?:新對話|重來|重新|new)\s*(.*)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?:派|叫|丟|丢)\s*(?:給|给)?\s*(claude|gemini|codex|opencode)\s+session\s+new\s*(.*)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?:ask|send to|tell|have)\s*(claude|gemini|codex|opencode)\s+(?:new session|reset session|start over)\s*(.*)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"@(claude|gemini|codex|opencode)\s+(?:新對話|重來|重新|new session|reset)\s*(.*)",
+        re.IGNORECASE,
+    ),
+]
+
+# ── Session Mode (persistent conversation) ────────────────────────
+
+SESSION_PATTERNS = [
+    # Chinese: 派 gemini session xxx
+    re.compile(
+        r"(?:派|叫|丟|丢)\s*(?:給|给)?\s*(claude|gemini|codex|opencode)\s+(?:對話|session)\s*(.*)",
+        re.IGNORECASE,
+    ),
+    # English: ask claude session xxx
+    re.compile(
+        r"(?:ask|send to|tell|have)\s*(claude|gemini|codex|opencode)\s+session\s*(.*)",
+        re.IGNORECASE,
+    ),
+    # @mention: @gemini session xxx
+    re.compile(
+        r"@(claude|gemini|codex|opencode)\s+(?:對話|session)\s*(.*)",
+        re.IGNORECASE,
+    ),
+]
+
+# ── One-shot (fire-and-forget) ────────────────────────────────────
+
+ONE_SHOT_PATTERNS = [
+    # Chinese trigger words — handle optional 給/给 after the verb
+    re.compile(
+        r"(?:派|叫|丟|丢)\s*(?:給|给)?\s*(claude|gemini|codex|opencode)\s*(.*)",
+        re.IGNORECASE,
+    ),
+    # English trigger words
+    re.compile(
+        r"(?:ask|send to|tell|have)\s*(claude|gemini|codex|opencode)\s*(.*)",
+        re.IGNORECASE,
+    ),
+    # @mention style
+    re.compile(
+        r"@(claude|gemini|codex|opencode)\s*(.*)",
+        re.IGNORECASE,
+    ),
+]
+
+
+def detect_trigger(text: str) -> Optional[TriggerResult]:
+    """Detect agent trigger mode from a message.
+
+    Scans patterns in priority order:
+      cancel → session new → session → one-shot
+
+    Args:
+        text: The message content.
+
+    Returns:
+        TriggerResult if a valid trigger is detected, None otherwise.
+    """
+    text = text.strip()
+
+    # 1. Cancel
+    for pattern in CANCEL_PATTERNS:
+        m = pattern.match(text)
+        if m:
+            agent = m.group(1).lower()
+            if agent in SUPPORTED_AGENTS:
+                return TriggerResult(
+                    agent=agent,
+                    mode=TriggerMode.SESSION_CANCEL,
+                    prompt="",
+                    raw=m.group(0),
+                )
+
+    # 2. Session New
+    for pattern in NEW_SESSION_PATTERNS:
+        m = pattern.match(text)
+        if m:
+            agent = m.group(1).lower()
+            prompt = (m.group(2) or "").strip()
+            if agent in SUPPORTED_AGENTS:
+                return TriggerResult(
+                    agent=agent,
+                    mode=TriggerMode.SESSION_NEW,
+                    prompt=prompt,
+                    raw=m.group(0),
+                )
+
+    # 3. Session Mode
+    for pattern in SESSION_PATTERNS:
+        m = pattern.match(text)
+        if m:
+            agent = m.group(1).lower()
+            prompt = (m.group(2) or "").strip()
+            if agent in SUPPORTED_AGENTS and prompt:
+                return TriggerResult(
+                    agent=agent,
+                    mode=TriggerMode.SESSION,
+                    prompt=prompt,
+                    raw=m.group(0),
+                )
+
+    # 4. One-shot
+    for pattern in ONE_SHOT_PATTERNS:
+        m = pattern.match(text)
+        if m:
+            agent = m.group(1).lower()
+            prompt = (m.group(2) or "").strip()
+            if agent in SUPPORTED_AGENTS and prompt:
+                return TriggerResult(
+                    agent=agent,
+                    mode=TriggerMode.ONE_SHOT,
+                    prompt=prompt,
+                    raw=m.group(0),
+                )
+
+    return None
+
+
+# ── Backward compat: old detect_agent_trigger ─────────────────────
+
+# Legacy patterns (kept for backward compat with existing code)
+TRIGGER_PATTERNS = [
+    re.compile(r"(?:派|叫|丟|丢)\s*(?:給|给)?\s*(claude|gemini|codex|opencode)\s*(.*)", re.IGNORECASE),
+    re.compile(r"(?:ask|send to|tell|have)\s*(claude|gemini|codex|opencode)\s*(.*)", re.IGNORECASE),
+    re.compile(r"@(claude|gemini|codex|opencode)\s*(.*)", re.IGNORECASE),
+]
+
 
 def detect_agent_trigger(text: str) -> Optional[Tuple[str, str]]:
-    """Detect if a message triggers an external coding agent.
+    """Detect if a message triggers an external coding agent (legacy API).
 
     Args:
         text: The message content.
@@ -48,14 +231,9 @@ def detect_agent_trigger(text: str) -> Optional[Tuple[str, str]]:
     Returns:
         (agent_name, prompt) if a trigger is detected, None otherwise.
     """
-    text = text.strip()
-    for pattern in TRIGGER_PATTERNS:
-        match = pattern.match(text)
-        if match:
-            agent = match.group(1).lower()
-            prompt = match.group(2).strip()
-            if agent in SUPPORTED_AGENTS and prompt:
-                return (agent, prompt)
+    result = detect_trigger(text)
+    if result and result.mode == TriggerMode.ONE_SHOT and result.prompt:
+        return (result.agent, result.prompt)
     return None
 
 
@@ -144,7 +322,6 @@ async def stream_acpx_output(
             await reactions.set_thinking()
 
         elif event.event_type == AcpEventType.THOUGHT_CHUNK:
-            # Thinking text — don't show in editor, just reaction
             await reactions.set_thinking()
 
         elif event.event_type == AcpEventType.TOOL_CALL:
@@ -156,7 +333,6 @@ async def stream_acpx_output(
                 editor.set_tool_done(event.tool_call_id, event.tool_title, event.tool_status)
                 await reactions.set_thinking()
             else:
-                # Running/progress update
                 editor.add_tool_start(event.tool_call_id, event.tool_title)
                 await reactions.set_tool(event.tool_title or event.tool_kind)
 
@@ -176,6 +352,97 @@ async def stream_acpx_output(
     return final_event
 
 
+# ── Dispatcher: route TriggerResult to correct handler ─────────────
+
+
+async def dispatch_trigger(
+    trigger: TriggerResult,
+    adapter: Any,
+    reactions: Any,
+    session_mgr: AcpxSessionManager,
+    chat_id: str,
+    message_id: str,
+    workdir: str = ".",
+    config: Optional[Config] = None,
+) -> Dict[str, Any]:
+    """Route a TriggerResult to the correct handler (one-shot / session / cancel).
+
+    Args:
+        trigger: Parsed trigger from detect_trigger().
+        adapter: Hermes DiscordAdapter.
+        reactions: StreamingReactionController.
+        session_mgr: AcpxSessionManager for session lifecycle.
+        chat_id: Discord channel/thread ID.
+        message_id: Placeholder message ID to edit.
+        workdir: Working directory.
+        config: Optional Config.
+
+    Returns:
+        Dict with result info.
+    """
+    if trigger.mode == TriggerMode.SESSION_CANCEL:
+        cancelled = await session_mgr.cancel(chat_id)
+        return {
+            "success": True,
+            "text": "✅ 已取消" if cancelled else "⚠️ 沒有正在執行的任務",
+            "mode": "cancel",
+        }
+
+    elif trigger.mode == TriggerMode.SESSION_NEW:
+        # Reset session, then run prompt if provided
+        session_name = await session_mgr.reset(chat_id)
+        if trigger.prompt:
+            return await run_session_task(
+                thread_id=chat_id,
+                agent=trigger.agent,
+                prompt=trigger.prompt,
+                adapter=adapter,
+                reactions=reactions,
+                session_mgr=session_mgr,
+                chat_id=chat_id,
+                message_id=message_id,
+                workdir=workdir,
+                config=config,
+                is_new=False,  # Already reset above
+            )
+        return {
+            "success": True,
+            "text": f"🔄 已重置 session: `{session_name}`，請開始新的對話",
+            "mode": "session_new",
+            "session_name": session_name,
+        }
+
+    elif trigger.mode == TriggerMode.SESSION:
+        return await run_session_task(
+            thread_id=chat_id,
+            agent=trigger.agent,
+            prompt=trigger.prompt,
+            adapter=adapter,
+            reactions=reactions,
+            session_mgr=session_mgr,
+            chat_id=chat_id,
+            message_id=message_id,
+            workdir=workdir,
+            config=config,
+            is_new=False,
+        )
+
+    else:  # ONE_SHOT
+        return await run_streaming_task_adapter(
+            agent=trigger.agent,
+            prompt=trigger.prompt,
+            chat_id=chat_id,
+            message_id=message_id,
+            adapter=adapter,
+            reactions=reactions,
+            workdir=workdir,
+            config=config,
+        )
+
+
+# ── Legacy entry points ───────────────────────────────────────────
+
+
 def run_streaming_task(
     loop: asyncio.AbstractEventLoop,
     config: Config,
@@ -189,27 +456,7 @@ def run_streaming_task(
     thread_id: str = "",
     pool: Optional[SessionPool] = None,
 ) -> asyncio.Task:
-    """Launch a streaming task on the event loop (thread-safe).
-
-    This is the main entry point from a sync context (Hermes agent thread pool).
-    Uses asyncio.run_coroutine_threadsafe to schedule on the gateway's event loop.
-
-    Args:
-        loop: The asyncio event loop (from the gateway).
-        config: Streaming coder configuration.
-        agent: Agent name ("claude", "gemini", "codex").
-        prompt: The user's task prompt.
-        message: Discord message object to edit.
-        edit_fn: async (message, content) — edit message.
-        add_reaction_fn: async (emoji) — add reaction.
-        remove_reaction_fn: async (emoji) — remove reaction.
-        cwd: Working directory for acpx.
-        thread_id: Discord thread/channel ID for session pool.
-        pool: Optional SessionPool for reuse.
-
-    Returns:
-        The asyncio.Task (for cancellation if needed).
-    """
+    """Launch a streaming task on the event loop (thread-safe)."""
     coro = _run_streaming_async(
         config=config,
         agent=agent,
@@ -237,14 +484,7 @@ async def _run_streaming_async(
     thread_id: str = "",
     pool: Optional[SessionPool] = None,
 ) -> Dict[str, Any]:
-    """Full async streaming flow.
-
-    Returns a result dict with:
-        - success: bool
-        - text: str (final text)
-        - error: str (if failed)
-        - session_id: str
-    """
+    """Full async streaming flow (legacy)."""
     editor = StreamingEditor(edit_fn=edit_fn, message=message)
     reactions = StatusReactionController(
         add_reaction=add_reaction_fn,
@@ -256,36 +496,24 @@ async def _run_streaming_async(
     result = {"success": False, "text": "", "error": "", "session_id": ""}
 
     try:
-        # Build acpx command
         argv = config.build_acpx_argv(prompt, cwd=cwd)
         logger.info("Spawning: %s", " ".join(argv[:6]) + " ...")
 
-        # Spawn subprocess
         session = await spawn_acpx(argv)
         if thread_id and pool:
             session.thread_id = thread_id
 
-        # Set initial reaction
         await reactions.set_queued()
-
-        # Start editor loop
         editor.start()
 
-        # Stream output
         final_event = await stream_acpx_output(session, editor, reactions)
 
-        # Stop editor
         editor.stop()
 
-        # Final edit with full content
         chunks = editor.split_final(config.editor.max_message_chars)
         if chunks:
             await edit_fn(message, chunks[0])
 
-        # Send overflow chunks as new messages (via edit_fn returns, or second callback)
-        # This is left to the integration layer — we just expose the chunks.
-
-        # Final reaction
         if final_event.event_type == AcpEventType.RESULT:
             await reactions.set_done()
             result["success"] = True
@@ -297,7 +525,6 @@ async def _run_streaming_async(
         result["session_id"] = session.session_id or ""
         result["chunks"] = chunks
 
-        # Clean up process
         if session.alive():
             try:
                 session.process.terminate()
@@ -329,35 +556,13 @@ async def run_streaming_task_adapter(
     workdir: str = ".",
     config: Optional[Config] = None,
 ) -> Dict[str, Any]:
-    """Run a streaming coding task using the Hermes adapter API.
-
-    This is the async entry point called directly from the gateway's
-    ``_handle_streaming_coding_task`` method.  It uses the adapter's
-    ``edit_message(chat_id, message_id, content)`` for live editing
-    instead of the older callback-based approach.
-
-    Args:
-        agent: Agent name ("claude", "gemini", "codex").
-        prompt: The user's task prompt.
-        chat_id: Discord channel/thread ID for sending messages.
-        message_id: Placeholder message ID to edit in-place.
-        adapter: Hermes DiscordAdapter instance (provides edit_message, send).
-        reactions: StreamingReactionController for emoji state management.
-        workdir: Working directory for acpx subprocess.
-        config: Optional Config; uses defaults if None.
-
-    Returns:
-        Dict with keys: success (bool), text (str), error (str),
-        chunks (list[str]), session_id (str).
-    """
+    """Run a one-shot streaming coding task using the Hermes adapter API."""
     cfg = config or Config()
     editor_cfg = cfg.editor
 
-    # Build the edit callback that the StreamingEditor will invoke
     async def edit_fn(_msg: Any, content: str) -> None:
         await adapter.edit_message(chat_id, message_id, content)
 
-    # Create editor — message=None since we use chat_id/message_id via edit_fn
     editor = StreamingEditor(
         edit_fn=edit_fn,
         message=None,
@@ -373,35 +578,24 @@ async def run_streaming_task_adapter(
     }
 
     try:
-        # Spawn acpx subprocess
         argv = cfg.build_acpx_argv(prompt, cwd=workdir)
         logger.info("Spawning (adapter): %s ...", " ".join(argv[:6]))
 
         session = await spawn_acpx(argv)
 
-        # Set initial reaction
         await reactions.set_queued()
-
-        # Start editor background loop
         editor.start()
 
-        # Stream output — reuses existing stream_acpx_output which handles
-        # all ACP event types, editor updates, and reaction management
         final_event = await stream_acpx_output(session, editor, reactions)
 
-        # Stop editor
         editor.stop()
 
-        # Final edit with composed display
         chunks = editor.split_final(editor_cfg.max_message_chars)
         if chunks:
             await edit_fn(None, chunks[0])
-
-        # Send overflow chunks as follow-up messages in the same channel
         for chunk in chunks[1:]:
             await adapter.send(chat_id, chunk, metadata={"thread_id": chat_id})
 
-        # Build result
         if final_event.event_type == AcpEventType.RESULT:
             result["success"] = True
         else:
@@ -411,7 +605,6 @@ async def run_streaming_task_adapter(
         result["session_id"] = session.session_id or ""
         result["chunks"] = chunks
 
-        # Clean up process
         if session.alive():
             try:
                 session.process.terminate()
@@ -430,7 +623,7 @@ async def run_streaming_task_adapter(
     return result
 
 
-# ── Named-session entry point (with /new, cancel, follow-up support) ──
+# ── Session task entry point ──────────────────────────────────────
 
 
 async def run_session_task(
@@ -446,42 +639,17 @@ async def run_session_task(
     config: Optional[Config] = None,
     is_new: bool = False,
 ) -> Dict[str, Any]:
-    """Run a streaming task using a persistent acpx named session.
-
-    Supports:
-    - First prompt: auto-creates named session
-    - Follow-up prompts: reuses session (has context!)
-    - is_new=True: resets session (equivalent to /new)
-    - Cancel: call session_mgr.cancel(thread_id) externally
-
-    Args:
-        thread_id: Discord thread ID (used as session key).
-        agent: Agent name (claude/gemini/opencode/codex).
-        prompt: The user's prompt.
-        adapter: Hermes DiscordAdapter (edit_message, send).
-        reactions: StreamingReactionController.
-        session_mgr: AcpxSessionManager for session lifecycle.
-        chat_id: Discord channel ID (defaults to thread_id).
-        message_id: Placeholder message ID to edit.
-        workdir: Working directory.
-        config: Optional Config.
-        is_new: If True, reset session before running.
-
-    Returns:
-        Dict with: success, text, error, chunks, session_name.
-    """
+    """Run a streaming task using a persistent acpx named session."""
     cfg = config or Config()
     editor_cfg = cfg.editor
     if not chat_id:
         chat_id = thread_id
 
-    # Ensure session exists (or reset if /new)
     if is_new:
         session_name = await session_mgr.reset(thread_id)
     else:
         session_name = await session_mgr.ensure_session(thread_id)
 
-    # Build edit callback
     async def edit_fn(_msg: Any, content: str) -> None:
         await adapter.edit_message(chat_id, message_id, content)
 
@@ -500,7 +668,6 @@ async def run_session_task(
     }
 
     try:
-        # Build acpx argv targeting named session
         argv = session_mgr.build_acpx_argv(
             thread_id=thread_id,
             prompt=prompt,
@@ -523,14 +690,12 @@ async def run_session_task(
 
         editor.stop()
 
-        # Final edit
         chunks = editor.split_final(editor_cfg.max_message_chars)
         if chunks:
             await edit_fn(None, chunks[0])
         for chunk in chunks[1:]:
             await adapter.send(chat_id, chunk, metadata={"thread_id": chat_id})
 
-        # Result
         if final_event.event_type == AcpEventType.RESULT:
             await reactions.set_done()
             result["success"] = True
@@ -540,9 +705,6 @@ async def run_session_task(
 
         result["text"] = editor.compose_display()
         result["chunks"] = chunks
-
-        # Don't kill the process — let the named session persist for follow-ups
-        # Just let the one-shot subprocess exit naturally
 
     except Exception as e:
         logger.exception("Session task failed for thread %s", thread_id)

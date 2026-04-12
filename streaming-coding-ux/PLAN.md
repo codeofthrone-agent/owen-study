@@ -650,7 +650,7 @@ session_ttl_hours = 24
 - thread_id ↔ session 對應
 
 **Task 3.3: `cli_bridge.py`** — 與 Hermes 的橋接
-- detect_agent_trigger（觸發詞檢測）
+- detect_trigger（觸發詞檢測 — 4 種模式：one-shot / session / session new / cancel）
 - build_acpx_command / build_print_command
 - stream_prompt 完整流程（spawn → edit loop → reactions → final split）
 
@@ -709,22 +709,23 @@ Hermes Agent（我）
 ### 3.2 與 `external-coding-cli` skill 的關係
 
 ```
-用戶說「派 Claude 修 bug」
+用戶說「派 Claude session 修 bug」
     │
     ▼
-detect_agent_trigger() → ("claude", "修 bug")
+detect_trigger() → TriggerResult(agent="claude", mode=SESSION, prompt="修 bug")
     │
     ▼
-分支判斷：
-├── 如果 CLI 支援 ACP（claude --acp, gemini --acp）
-│   → streaming_coder（本計畫，完整 streaming UX）
-│
-├── 如果 CLI 只有 print 模式（claude -p, codex exec）
-│   → 原有 external-coding-cli 模式（一次性結果）
-│
-└── 如果用戶沒指定 agent
-    → Hermes 自己做（terminal tools）
+dispatch_trigger() 路由：
+├── ONE_SHOT  → run_streaming_task()（一次性，無上下文）
+├── SESSION   → run_session_task()（持久對話，thread 綁定 session）
+├── SESSION_NEW → session_mgr.reset()（重置 session）
+└── SESSION_CANCEL → session_mgr.cancel()（取消執行中任務）
+    │
+    ▼
+spawn acpx → ACP JSON-RPC streaming → Discord edit + reactions
 ```
+
+如果用戶沒指定 agent → Hermes 自己做（terminal tools）
 
 ### 3.3 相容策略
 

@@ -25,19 +25,24 @@ Hermes Gateway → detect trigger → spawn acpx → stream JSON-RPC
 │                                                      │
 │  _handle_message_with_agent()                        │
 │      │                                               │
-│      ├── detect_agent_trigger() ──► streaming_coder  │
-│      │                              │                │
-│      │                         spawn acpx            │
-│      │                              │                │
-│      │                    ┌─────────┴─────────┐      │
-│      │                    │ ACP JSON-RPC      │      │
-│      │                    │ agent_message_chunk│──► StreamingEditor
-│      │                    │ tool_call          │    (1.5s edit loop)
-│      │                    │ tool_call_update   │──► ReactionsController
-│      │                    └───────────────────┘    (👀🤔🔥👍😊)
-│      │                              │                │
-│      │                    adapter.edit_message()     │
-│      │                    adapter._add_reaction()    │
+│      ├── detect_trigger() ──► TriggerResult          │
+│      │      │                                        │
+│      │      ├─ ONE_SHOT  ──► run_streaming_task()    │
+│      │      ├─ SESSION   ──► run_session_task()      │
+│      │      ├─ SESSION_NEW   ──► session_mgr.reset() │
+│      │      └─ SESSION_CANCEL ──► session_mgr.cancel()│
+│      │                     │                         │
+│      │                spawn acpx                      │
+│      │                     │                         │
+│      │           ┌─────────┴─────────┐               │
+│      │           │ ACP JSON-RPC      │               │
+│      │           │ agent_message_chunk│──► StreamingEditor
+│      │           │ tool_call          │   (1.5s edit loop)
+│      │           │ tool_call_update   │──► ReactionsController
+│      │           └───────────────────┘   (👀🤔🔥👍😊)
+│      │                     │                         │
+│      │           adapter.edit_message()              │
+│      │           adapter._add_reaction()             │
 │      │                                               │
 │      └── normal flow ──► AIAgent.run_conversation() │
 │                                                      │
@@ -55,7 +60,7 @@ Hermes Gateway → detect trigger → spawn acpx → stream JSON-RPC
 | `acp_adapter.py` | Bridge ACP events to `GatewayStreamConsumer` deltas |
 | `editor.py` | `StreamingEditor` — 1.5s edit loop, tool line tracking, compose/split |
 | `reactions.py` | `StatusReactionController` — debounce (700ms), stall (10s→🥱, 30s→😨), tool classification |
-| `bridge.py` | Hermes integration — trigger detection, acpx spawning, streaming orchestration |
+| `bridge.py` | Hermes integration — trigger detection (4 modes), acpx spawning, dispatch routing |
 | `pool.py` | Session tracking (thread_id → acpx session) |
 
 ### gateway/run.py Modifications
@@ -63,16 +68,95 @@ Hermes Gateway → detect trigger → spawn acpx → stream JSON-RPC
 - **Trigger intercept** (line ~3470): Checks incoming messages for coding triggers before normal agent loop
 - **`_handle_streaming_coding_task()`** (line ~3807): Manages the full streaming lifecycle
 
-## Trigger Patterns
+## Trigger Modes
 
-| Input | Agent | Prompt |
-|-------|-------|--------|
-| `派 Claude 修 bug` | claude | 修 bug |
-| `丟給 codex fix auth` | codex | fix auth |
-| `叫 gemini review code` | gemini | review code |
-| `叫 opencode 寫 test` | opencode | 寫 test |
-| `@claude explain this` | claude | explain this |
-| `hello world` | — | (no trigger, normal flow) |
+The system supports 4 trigger modes, detected by `detect_trigger()` → `TriggerResult(agent, mode, prompt)`.
+
+### 🔥 One-shot (fire-and-forget, no context)
+
+| 中文 | 英文 | @mention |
+|------|------|----------|
+| `派 gemini 1+1=？` | `ask claude refactor` | `@codex fix auth` |
+| `叫 claude 修 bug` | `send to gemini hello` | `@gemini explain` |
+| `丢 codex 寫 test` | `tell opencode test` | |
+| `丟給 gemini 解釋` | `have claude review` | |
+
+Routes to: `run_streaming_task()` / `run_streaming_task_adapter()`
+
+### 💬 Session (persistent multi-turn conversation)
+
+| 中文 | 英文 | @mention |
+|------|------|----------|
+| `派 gemini session 你好` | `ask claude session review PR` | `@codex session optimize` |
+| `叫 claude 對話 看看 code` | `tell gemini session fix bug` | |
+| `丢 codex session write tests` | | |
+
+Routes to: `run_session_task()` — auto-creates named session on first use, reuses on follow-ups.
+
+### 🔄 Session New (reset conversation)
+
+| 中文 | 英文 | @mention |
+|------|------|----------|
+| `派 gemini 新對話` | `ask claude new session` | `@claude 新對話` |
+| `叫 claude 重來` | `tell gemini reset session` | `@gemini reset` |
+| `丢 codex 重新` | `have codex start over` | |
+| `派 gemini session new` | `ask claude new session fix bugs` | |
+| `派 gemini new 做新的` | | |
+
+Routes to: `session_mgr.reset()` — closes old session + creates fresh one.
+
+### ❌ Cancel (stop running task)
+
+| 中文 | 英文 | @mention |
+|------|------|----------|
+| `派 gemini 取消` | `ask claude cancel` | `@gemini 取消` |
+| `叫 claude 停` | `tell gemini stop` | `@claude cancel` |
+| `丢 codex cancel` | | |
+
+Routes to: `session_mgr.cancel()` — kills subprocess + sends `acpx cancel`.
+
+### Pattern Priority (first match wins)
+
+```
+1. Cancel      → "派 gemini 取消" / "ask claude cancel"
+2. Session New → "派 gemini 新對話" / "ask claude new session"
+3. Session     → "派 gemini session xxx" / "ask claude session xxx"
+4. One-shot    → "派 gemini xxx" / "ask claude xxx"
+```
+
+### Dispatch API
+
+```python
+from streaming_coder.bridge import detect_trigger, dispatch_trigger, TriggerMode
+
+# Parse
+trigger = detect_trigger("派 gemini session 幫我看看 code")
+# → TriggerResult(agent="gemini", mode=TriggerMode.SESSION, prompt="幫我看看 code")
+
+# Route
+result = await dispatch_trigger(
+    trigger=trigger,
+    adapter=discord_adapter,
+    reactions=reaction_controller,
+    session_mgr=session_manager,
+    chat_id="123456",
+    message_id="789",
+)
+```
+
+### Supported Agents
+
+`claude`, `gemini`, `codex`, `opencode`
+
+### Legacy API (backward compatible)
+
+```python
+from streaming_coder.bridge import detect_agent_trigger
+
+result = detect_agent_trigger("派 Claude 修 bug")
+if result:
+    agent, prompt = result  # ("claude", "修 bug") — one-shot only
+```
 
 ## Configuration
 

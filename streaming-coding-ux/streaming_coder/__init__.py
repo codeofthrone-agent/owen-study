@@ -8,7 +8,7 @@ acpx ACP JSON-RPC streaming.
 Quick start:
     from streaming_coder import Config, StreamingEditor, StatusReactionController
     from streaming_coder import SessionPool, AcpEvent, AcpEventType
-    from streaming_coder.bridge import detect_agent_trigger, run_streaming_task
+    from streaming_coder.bridge import detect_trigger, dispatch_trigger, TriggerMode
 """
 
 from .config import Config, EditorConfig, PoolConfig, ReactionEmojis, ReactionTiming
@@ -18,7 +18,11 @@ from .pool import SessionInfo, SessionPool, PoolExhaustedError, AcpxSessionManag
 from .acp_parser import AcpEvent, AcpEventType, parse_acp_line, classify_message
 from .acp_adapter import AcpStreamAdapter
 from .bridge import (
-    detect_agent_trigger,
+    TriggerMode,
+    TriggerResult,
+    detect_trigger,
+    dispatch_trigger,
+    detect_agent_trigger,  # backward compat
     spawn_acpx,
     stream_acpx_output,
     run_streaming_task,
@@ -26,7 +30,7 @@ from .bridge import (
     run_session_task,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     # Config
@@ -55,8 +59,12 @@ __all__ = [
     "classify_message",
     # ACP Adapter
     "AcpStreamAdapter",
-    # Bridge
-    "detect_agent_trigger",
+    # Bridge (trigger detection + dispatch)
+    "TriggerMode",
+    "TriggerResult",
+    "detect_trigger",
+    "dispatch_trigger",
+    "detect_agent_trigger",  # legacy
     "spawn_acpx",
     "stream_acpx_output",
     "run_streaming_task",

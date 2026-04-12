@@ -129,17 +129,15 @@ class StreamingReactionController:
 
 ```python
 # === STREAMING CODER INTERCEPT ===
-# Check if this message triggers an external coding agent
+# Check if this message triggers an external coding agent (4 modes)
 try:
-    from streaming_coder.bridge import detect_agent_trigger
-    trigger = detect_agent_trigger(message_text)
+    from streaming_coder.bridge import detect_trigger, dispatch_trigger, TriggerMode
+    trigger = detect_trigger(message_text)
     if trigger:
-        agent_name, prompt = trigger
         streaming_result = await self._handle_streaming_coding_task(
             event=event,
             source=source,
-            agent_name=agent_name,
-            prompt=prompt,
+            trigger=trigger,  # TriggerResult with agent/mode/prompt
             message_text=message_text,
         )
         if streaming_result is not None:
@@ -155,9 +153,13 @@ except ImportError:
 
 ```python
 async def _handle_streaming_coding_task(
-    self, event, source, agent_name: str, prompt: str, message_text: str
+    self, event, source, trigger, message_text: str
 ) -> Optional[str]:
-    """處理 coding trigger：spawn acpx → stream → edit message → reactions。"""
+    """處理 coding trigger：dispatch to one-shot / session / cancel。
+
+    Args:
+        trigger: TriggerResult from detect_trigger() with agent, mode, prompt.
+    """
 
     adapter = self.adapters.get(source.platform)
     if not adapter:
@@ -166,40 +168,34 @@ async def _handle_streaming_coding_task(
     # 1. 取得原始訊息（用於 reaction）
     raw_message = event.raw_message
 
-    # 2. 👀 reaction（開始處理）
+    # 2. Cancel 模式不需要 placeholder
+    if trigger.mode == TriggerMode.SESSION_CANCEL:
+        from streaming_coder.pool import AcpxSessionManager, SessionPool
+        pool = SessionPool()
+        session_mgr = AcpxSessionManager(pool, agent=trigger.agent)
+        result = await session_mgr.cancel(source.chat_id)
+        return "✅ 已取消" if result else "⚠️ 沒有正在執行的任務"
+
+    # 3. 👀 reaction（開始處理）
     await adapter.on_processing_start(event)
 
-    # 3. 發送 placeholder 訊息
+    # 4. 發送 placeholder 訊息
     placeholder = await adapter.send(source.chat_id, "...")
     if not placeholder.success:
         return None
     placeholder_msg_id = placeholder.message_id
 
-    # 4. 決定是否開 thread（頻道中開，thread 中不開）
-    thread_id = None
+    # 5. 決定是否開 thread（頻道中開，thread 中不開）
     chat_id = source.chat_id
-    if hasattr(raw_message, 'create_thread'):
-        # 在頻道中 → 開 thread
-        try:
-            thread = await raw_message.create_thread(
-                name=prompt[:40],
-                auto_archive_duration=1440,
-            )
-            thread_id = str(thread.id)
-            # 把 placeholder 移到 thread 裡（重新發）
-            await adapter.edit_message(chat_id, placeholder_msg_id, "...")
-            # 在 thread 裡發新的 placeholder
-            thread_placeholder = await adapter.send(
-                chat_id, "...", metadata={"thread_id": thread_id}
-            )
-            placeholder_msg_id = thread_placeholder.message_id
-            chat_id = thread_id
-        except Exception:
-            pass  # 開 thread 失敗，繼續在原頻道
+    # ... thread creation logic (same as before) ...
 
-    # 5. 啟動 streaming
-    from streaming_coder.bridge import run_streaming_task
+    # 6. 啟動 streaming（使用 dispatch_trigger 路由）
+    from streaming_coder.bridge import dispatch_trigger
+    from streaming_coder.pool import AcpxSessionManager, SessionPool
     from streaming_coder.reactions import StreamingReactionController
+
+    pool = getattr(self, '_session_pool', None) or SessionPool()
+    session_mgr = AcpxSessionManager(pool, agent=trigger.agent)
 
     reactions = StreamingReactionController(
         adapter=adapter,
@@ -208,17 +204,17 @@ async def _handle_streaming_coding_task(
         timing=...,
     )
 
-    result = await run_streaming_task(
-        agent=agent_name,
-        prompt=prompt,
-        chat_id=chat_id,
-        message_id=placeholder_msg_id,
+    result = await dispatch_trigger(
+        trigger=trigger,
         adapter=adapter,
         reactions=reactions,
+        session_mgr=session_mgr,
+        chat_id=chat_id,
+        message_id=placeholder_msg_id,
         workdir=self._get_workdir(source),
     )
 
-    # 6. 完成 reaction
+    # 7. 完成 reaction
     if result.get("success"):
         await reactions.set_done()
     else:
@@ -229,84 +225,22 @@ async def _handle_streaming_coding_task(
         ProcessingOutcome.SUCCESS if result.get("success") else ProcessingOutcome.FAILURE
     )
 
-    return result.get("response", "")
+    return result.get("text", result.get("response", ""))
 ```
 
-### Task 5: 更新 `streaming_coder/bridge.py` 的 `run_streaming_task`
+### Task 5: 更新 `streaming_coder/bridge.py` — 新增 `detect_trigger` + `dispatch_trigger`
 
-**檔案：** `streaming_coder/bridge.py`（修改）
+**檔案：** `streaming_coder/bridge.py`（已完成 ✅）
 
-將 `run_streaming_task` 改為接受 adapter 參數，使用 Hermes 的 `edit_message` 而非假設的 Discord message object：
+新增：
+- `TriggerMode` enum — `ONE_SHOT`, `SESSION`, `SESSION_NEW`, `SESSION_CANCEL`
+- `TriggerResult` dataclass — `(agent, mode, prompt, raw)`
+- `detect_trigger(text)` — 掃描 4 層 pattern（cancel → new → session → one-shot）
+- `dispatch_trigger(trigger, ...)` — 根據 mode 路由到正確的 handler
+- `run_session_task()` — 使用 `AcpxSessionManager` 管理 persistent session
+- `detect_agent_trigger()` — 保留舊 API（只回傳 one-shot）
 
-```python
-async def run_streaming_task(
-    agent: str,
-    prompt: str,
-    chat_id: str,
-    message_id: str,
-    adapter,  # DiscordAdapter instance
-    reactions: StreamingReactionController,
-    workdir: str = ".",
-    config: Optional[Config] = None,
-) -> dict:
-    """
-    完整串流任務：
-    1. spawn acpx subprocess
-    2. 解析 JSON-RPC stream
-    3. 每 1.5s edit Discord message
-    4. 更新 reactions
-    """
-    cfg = config or Config()
-
-    # Spawn acpx
-    proc = await spawn_acpx(agent, prompt, workdir, cfg)
-
-    # 建立 edit callback（使用 adapter 的 edit_message）
-    async def edit_fn(chat_id, msg_id, content):
-        await adapter.edit_message(chat_id, msg_id, content)
-
-    # Streaming loop
-    editor = StreamingEditor(
-        edit_fn=lambda msg, content: edit_fn(chat_id, message_id, content),
-        message=None,
-        interval=1.5,
-    )
-
-    # 啟動 edit loop
-    editor.start()
-
-    try:
-        # 解析 acpx stdout
-        async for event in stream_acpx_output(proc):
-            if event.event_type == AcpEventType.TEXT_CHUNK:
-                editor.add_text(event.text)
-            elif event.event_type == AcpEventType.TOOL_CALL:
-                editor.add_tool_start(event.tool_call_id, event.tool_title)
-                await reactions.set_tool(event.tool_title)
-            elif event.event_type == AcpEventType.TOOL_CALL_UPDATE:
-                editor.set_tool_done(
-                    event.tool_call_id, event.tool_title, event.tool_status
-                )
-                if event.tool_status in ("completed", "failed"):
-                    await reactions.set_thinking()
-            elif event.event_type == AcpEventType.THOUGHT_CHUNK:
-                await reactions.set_thinking()
-            elif event.event_type == AcpEventType.ERROR:
-                editor.add_text(f"\n⚠️ {event.error_message}")
-            elif event.event_type == AcpEventType.RESULT:
-                break
-    finally:
-        editor.stop()
-
-    # Final split and send
-    chunks = editor.split_final(2000)
-    if chunks:
-        await edit_fn(chat_id, message_id, chunks[0])
-        for chunk in chunks[1:]:
-            await adapter.send(chat_id, chunk, metadata={"thread_id": chat_id})
-
-    return {"success": True, "response": editor.text_buf}
-```
+Pattern 覆蓋：中文 (派/叫/丟/丟給 + 取消/停/新對話/重來/重新/對話/session) + 英文 (ask/send to/tell/have + cancel/stop/new session/reset session/start over/session) + @mention
 
 ---
 
