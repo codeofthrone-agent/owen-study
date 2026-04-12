@@ -3,6 +3,9 @@ Session pool — manages thread_id → acpx session mappings.
 
 Tracks active acpx subprocess sessions keyed by Discord thread ID,
 with TTL-based cleanup and max-session limits.
+
+Also manages acpx named sessions (persistent ACP sessions with context)
+via `acpx {agent} sessions` commands.
 """
 
 from __future__ import annotations
@@ -26,6 +29,8 @@ class SessionInfo:
     thread_id: str
     process: Any  # asyncio.subprocess.Process
     session_id: Optional[str] = None
+    acpx_session_name: Optional[str] = None  # Named session in acpx
+    agent_name: str = "claude"
     created_at: float = field(default_factory=time.time)
     last_active: float = field(default_factory=time.time)
     stdin: Any = None  # asyncio.StreamWriter
@@ -180,6 +185,157 @@ class SessionPool:
             await self.close(tid)
         logger.info("Session pool shut down (%d sessions closed)", len(thread_ids))
 
+    @staticmethod
+    def thread_to_session_name(thread_id: str) -> str:
+        """Convert a Discord thread ID to an acpx session name.
+
+        Args:
+            thread_id: Discord thread/channel ID.
+
+        Returns:
+            Sanitized session name safe for acpx.
+        """
+        return f"dc-{thread_id}"
+
+    async def ensure_named_session(
+        self,
+        thread_id: str,
+        agent: str = "claude",
+    ) -> str:
+        """Ensure an acpx named session exists for this thread.
+
+        Creates a new named session if one doesn't exist.
+        Uses `acpx {agent} sessions new --name {name}`.
+
+        Args:
+            thread_id: Discord thread ID.
+            agent: Agent name (claude/gemini/opencode/codex).
+
+        Returns:
+            The acpx session name.
+        """
+        session_name = self.thread_to_session_name(thread_id)
+
+        # Check if we already have this session tracked
+        session = self._sessions.get(thread_id)
+        if session and session.acpx_session_name == session_name:
+            return session_name
+
+        # Create the named session via acpx
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "acpx", agent, "sessions", "new", "--name", session_name,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+            if proc.returncode == 0:
+                logger.info(
+                    "Created acpx session %s for thread %s (agent=%s)",
+                    session_name, thread_id, agent,
+                )
+            else:
+                logger.warning(
+                    "Failed to create acpx session %s: %s",
+                    session_name, stderr.decode(errors="replace"),
+                )
+        except Exception:
+            logger.exception("Error creating acpx session %s", session_name)
+
+        return session_name
+
+    async def close_named_session(
+        self,
+        thread_id: str,
+        agent: str = "claude",
+    ) -> None:
+        """Close an acpx named session for this thread.
+
+        Uses `acpx {agent} sessions close {name}`.
+
+        Args:
+            thread_id: Discord thread ID.
+            agent: Agent name.
+        """
+        session_name = self.thread_to_session_name(thread_id)
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "acpx", agent, "sessions", "close", session_name,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await proc.communicate()
+            logger.info("Closed acpx session %s", session_name)
+        except Exception:
+            logger.exception("Error closing acpx session %s", session_name)
+
+        # Also close the subprocess tracking
+        await self.close(thread_id)
+
+    async def cancel_active_prompt(
+        self,
+        thread_id: str,
+        agent: str = "claude",
+    ) -> bool:
+        """Cancel the active prompt in an acpx session.
+
+        Uses `acpx {agent} cancel` and also terminates the subprocess.
+
+        Args:
+            thread_id: Discord thread ID.
+            agent: Agent name.
+
+        Returns:
+            True if a session was cancelled, False if no active session.
+        """
+        session = self._sessions.get(thread_id)
+        had_active = session is not None and session.alive()
+
+        # Kill the subprocess if running
+        if had_active:
+            await self.close(thread_id)
+
+        # Also send acpx cancel (in case there's a queued prompt)
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "acpx", agent, "cancel",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await proc.communicate()
+        except Exception:
+            logger.debug("acpx cancel failed (may be expected)")
+
+        return had_active
+
+    async def new_session(
+        self,
+        thread_id: str,
+        agent: str = "claude",
+    ) -> str:
+        """Start a fresh session for this thread (close old + create new).
+
+        Equivalent to /new in Discord.
+
+        Args:
+            thread_id: Discord thread ID.
+            agent: Agent name.
+
+        Returns:
+            The new acpx session name.
+        """
+        # Close old session if any
+        old_session = self._sessions.get(thread_id)
+        if old_session and old_session.alive():
+            await self.close(thread_id)
+
+        # Also close old named session
+        await self.close_named_session(thread_id, agent)
+
+        # Create fresh session
+        return await self.ensure_named_session(thread_id, agent)
+
     @property
     def active_count(self) -> int:
         return sum(1 for s in self._sessions.values() if s.alive())
@@ -187,3 +343,76 @@ class SessionPool:
     @property
     def session_ids(self) -> list:
         return list(self._sessions.keys())
+
+
+class AcpxSessionManager:
+    """High-level session manager for Discord thread → acpx session lifecycle.
+
+    Combines SessionPool with acpx named session management.
+
+    Usage::
+
+        mgr = AcpxSessionManager(pool, agent="gemini")
+        # First prompt in thread → creates named session
+        await mgr.start_task(thread_id, prompt)
+        # Follow-up → reuses same session (has context)
+        await mgr.start_task(thread_id, follow_up)
+        # /new → resets session
+        await mgr.reset(thread_id)
+        # Cancel running task
+        await mgr.cancel(thread_id)
+    """
+
+    def __init__(self, pool: SessionPool, agent: str = "claude"):
+        self.pool = pool
+        self.agent = agent
+
+    async def ensure_session(self, thread_id: str) -> str:
+        """Ensure named session exists, return session name."""
+        return await self.pool.ensure_named_session(thread_id, self.agent)
+
+    async def cancel(self, thread_id: str) -> bool:
+        """Cancel active prompt in this thread's session."""
+        return await self.pool.cancel_active_prompt(thread_id, self.agent)
+
+    async def reset(self, thread_id: str) -> str:
+        """Reset session (close + new). Equivalent to /new."""
+        return await self.pool.new_session(thread_id, self.agent)
+
+    async def close(self, thread_id: str) -> None:
+        """Permanently close this thread's session."""
+        await self.pool.close_named_session(thread_id, self.agent)
+
+    def get_session_name(self, thread_id: str) -> str:
+        """Get the acpx session name for a thread (no creation)."""
+        return self.pool.thread_to_session_name(thread_id)
+
+    def build_acpx_argv(
+        self,
+        thread_id: str,
+        prompt: str,
+        cwd: str = ".",
+        approve_all: bool = True,
+        timeout: int = 120,
+    ) -> list[str]:
+        """Build acpx argv for a named session prompt.
+
+        Uses `-s session_name` to target the persistent session.
+
+        Args:
+            thread_id: Discord thread ID.
+            prompt: The user's prompt.
+            cwd: Working directory.
+            approve_all: Auto-approve all permissions.
+            timeout: Timeout in seconds.
+
+        Returns:
+            Command argv list.
+        """
+        session_name = self.get_session_name(thread_id)
+        argv = ["acpx", "--format", "json", "--json-strict"]
+        if approve_all:
+            argv.append("--approve-all")
+        argv += ["--timeout", str(timeout)]
+        argv += [self.agent, "-s", session_name, prompt]
+        return argv

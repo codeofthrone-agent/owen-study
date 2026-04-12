@@ -19,7 +19,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 from .acp_parser import AcpEvent, AcpEventType, parse_acp_line
 from .config import Config
 from .editor import StreamingEditor
-from .pool import SessionInfo, SessionPool
+from .pool import SessionInfo, SessionPool, AcpxSessionManager
 from .reactions import StatusReactionController
 
 logger = logging.getLogger(__name__)
@@ -420,6 +420,132 @@ async def run_streaming_task_adapter(
 
     except Exception as e:
         logger.exception("Adapter streaming task failed")
+        editor.stop()
+        try:
+            await reactions.set_error()
+        except Exception:
+            pass
+        result["error"] = str(e)
+
+    return result
+
+
+# ── Named-session entry point (with /new, cancel, follow-up support) ──
+
+
+async def run_session_task(
+    thread_id: str,
+    agent: str,
+    prompt: str,
+    adapter: Any,
+    reactions: Any,
+    session_mgr: AcpxSessionManager,
+    chat_id: str = "",
+    message_id: str = "",
+    workdir: str = ".",
+    config: Optional[Config] = None,
+    is_new: bool = False,
+) -> Dict[str, Any]:
+    """Run a streaming task using a persistent acpx named session.
+
+    Supports:
+    - First prompt: auto-creates named session
+    - Follow-up prompts: reuses session (has context!)
+    - is_new=True: resets session (equivalent to /new)
+    - Cancel: call session_mgr.cancel(thread_id) externally
+
+    Args:
+        thread_id: Discord thread ID (used as session key).
+        agent: Agent name (claude/gemini/opencode/codex).
+        prompt: The user's prompt.
+        adapter: Hermes DiscordAdapter (edit_message, send).
+        reactions: StreamingReactionController.
+        session_mgr: AcpxSessionManager for session lifecycle.
+        chat_id: Discord channel ID (defaults to thread_id).
+        message_id: Placeholder message ID to edit.
+        workdir: Working directory.
+        config: Optional Config.
+        is_new: If True, reset session before running.
+
+    Returns:
+        Dict with: success, text, error, chunks, session_name.
+    """
+    cfg = config or Config()
+    editor_cfg = cfg.editor
+    if not chat_id:
+        chat_id = thread_id
+
+    # Ensure session exists (or reset if /new)
+    if is_new:
+        session_name = await session_mgr.reset(thread_id)
+    else:
+        session_name = await session_mgr.ensure_session(thread_id)
+
+    # Build edit callback
+    async def edit_fn(_msg: Any, content: str) -> None:
+        await adapter.edit_message(chat_id, message_id, content)
+
+    editor = StreamingEditor(
+        edit_fn=edit_fn,
+        message=None,
+        interval=editor_cfg.update_interval_ms / 1000.0,
+        max_chars=editor_cfg.max_display_chars,
+    )
+
+    result: Dict[str, Any] = {
+        "success": False,
+        "text": "",
+        "error": "",
+        "session_name": session_name,
+    }
+
+    try:
+        # Build acpx argv targeting named session
+        argv = session_mgr.build_acpx_argv(
+            thread_id=thread_id,
+            prompt=prompt,
+            cwd=workdir,
+            approve_all=cfg.approve_all,
+            timeout=cfg.acpx_timeout_secs,
+        )
+        logger.info("Session task: agent=%s session=%s prompt=%s...",
+                     agent, session_name, prompt[:40])
+
+        session = await spawn_acpx(argv)
+        session.thread_id = thread_id
+        session.acpx_session_name = session_name
+        session.agent_name = agent
+
+        await reactions.set_queued()
+        editor.start()
+
+        final_event = await stream_acpx_output(session, editor, reactions)
+
+        editor.stop()
+
+        # Final edit
+        chunks = editor.split_final(editor_cfg.max_message_chars)
+        if chunks:
+            await edit_fn(None, chunks[0])
+        for chunk in chunks[1:]:
+            await adapter.send(chat_id, chunk, metadata={"thread_id": chat_id})
+
+        # Result
+        if final_event.event_type == AcpEventType.RESULT:
+            await reactions.set_done()
+            result["success"] = True
+        else:
+            await reactions.set_error()
+            result["error"] = final_event.error_message or "Unknown error"
+
+        result["text"] = editor.compose_display()
+        result["chunks"] = chunks
+
+        # Don't kill the process — let the named session persist for follow-ups
+        # Just let the one-shot subprocess exit naturally
+
+    except Exception as e:
+        logger.exception("Session task failed for thread %s", thread_id)
         editor.stop()
         try:
             await reactions.set_error()

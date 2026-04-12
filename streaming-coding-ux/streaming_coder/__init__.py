@@ -14,7 +14,7 @@ Quick start:
 from .config import Config, EditorConfig, PoolConfig, ReactionEmojis, ReactionTiming
 from .editor import StreamingEditor, ToolLine, ToolState
 from .reactions import StatusReactionController, StreamingReactionController, classify_tool
-from .pool import SessionInfo, SessionPool, PoolExhaustedError
+from .pool import SessionInfo, SessionPool, PoolExhaustedError, AcpxSessionManager
 from .acp_parser import AcpEvent, AcpEventType, parse_acp_line, classify_message
 from .acp_adapter import AcpStreamAdapter
 from .bridge import (
@@ -23,6 +23,7 @@ from .bridge import (
     stream_acpx_output,
     run_streaming_task,
     run_streaming_task_adapter,
+    run_session_task,
 )
 
 __version__ = "0.1.0"
@@ -46,6 +47,7 @@ __all__ = [
     "SessionInfo",
     "SessionPool",
     "PoolExhaustedError",
+    "AcpxSessionManager",
     # Parser
     "AcpEvent",
     "AcpEventType",
@@ -59,4 +61,5 @@ __all__ = [
     "stream_acpx_output",
     "run_streaming_task",
     "run_streaming_task_adapter",
+    "run_session_task",
 ]
