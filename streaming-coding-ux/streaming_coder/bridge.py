@@ -602,7 +602,7 @@ async def _run_streaming_async(
         argv = config.build_acpx_argv(prompt, cwd=cwd)
         logger.info("Spawning: %s", " ".join(argv[:6]) + " ...")
 
-        session = await spawn_acpx(argv)
+        session = await spawn_acpx(argv, env={"HOME": config.host_home} if config.host_home else None)
         if thread_id and pool:
             session.thread_id = thread_id
 
@@ -684,7 +684,7 @@ async def run_streaming_task_adapter(
         argv = cfg.build_acpx_argv(prompt, cwd=workdir)
         logger.info("Spawning (adapter): %s ...", " ".join(argv[:6]))
 
-        session = await spawn_acpx(argv)
+        session = await spawn_acpx(argv, env={"HOME": cfg.host_home} if cfg.host_home else None)
 
         await reactions.set_queued()
         editor.start()
@@ -781,7 +781,7 @@ async def run_session_task(
         logger.info("Session task: agent=%s session=%s prompt=%s...",
                      agent, session_name, prompt[:40])
 
-        session = await spawn_acpx(argv)
+        session = await spawn_acpx(argv, env={"HOME": cfg.host_home} if cfg.host_home else None)
         session.thread_id = thread_id
         session.acpx_session_name = session_name
         session.agent_name = agent

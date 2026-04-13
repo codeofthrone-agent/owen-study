@@ -82,6 +82,7 @@ class Config:
     acpx_timeout_secs: int = 120
     approve_all: bool = True
     default_model: Optional[str] = None
+    host_home: str = "/Users/owen"  # Real machine HOME for auth (keychain, config files)
 
     # Auth
     # Uses CLAUDE_CODE_OAUTH_TOKEN env var by default
