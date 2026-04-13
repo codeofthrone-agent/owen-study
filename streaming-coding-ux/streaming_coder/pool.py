@@ -62,6 +62,8 @@ class SessionPool:
         cleanup_interval_secs: int = 60,
     ):
         self._sessions: Dict[str, SessionInfo] = {}
+        self._thread_agents: Dict[str, str] = {}  # thread_id → agent_name
+        self._expired_sessions: Dict[str, str] = {}  # thread_id → session_name
         self._lock = asyncio.Lock()
         self.max_sessions = max_sessions
         self.session_ttl_secs = session_ttl_hours * 3600
@@ -124,10 +126,48 @@ class SessionPool:
             return session
         return None
 
+    def set_thread_agent(self, thread_id: str, agent: str) -> None:
+        """Record which agent a thread is using."""
+        self._thread_agents[thread_id] = agent.lower()
+
+    def get_thread_agent(self, thread_id: str) -> Optional[str]:
+        """Get the agent name for an active thread session, or None."""
+        return self._thread_agents.get(thread_id)
+
+    def clear_thread_agent(self, thread_id: str) -> None:
+        """Clear agent mapping when session ends."""
+        self._thread_agents.pop(thread_id, None)
+
+    def has_active_session(self, thread_id: str) -> bool:
+        """Check if this thread has an active streaming session."""
+        return thread_id in self._thread_agents
+
+    def set_session_name(self, thread_id: str, session_name: str) -> None:
+        """Record the acpx session name for a thread (for resume)."""
+        self._expired_sessions[thread_id] = session_name
+
+    def mark_session_expired(self, thread_id: str) -> None:
+        """Mark a session as expired (process dead, named session persists)."""
+        if thread_id not in self._expired_sessions:
+            self._expired_sessions[thread_id] = self.thread_to_session_name(thread_id)
+
+    def has_expired_session(self, thread_id: str) -> bool:
+        """Check if thread has an expired but resumable session."""
+        return thread_id in self._expired_sessions
+
+    def get_session_name(self, thread_id: str) -> Optional[str]:
+        """Get the acpx session name for a thread."""
+        return self._expired_sessions.get(thread_id)
+
+    def resume_session(self, thread_id: str) -> None:
+        """Clear expired flag (session is active again)."""
+        self._expired_sessions.pop(thread_id, None)
+
     async def close(self, thread_id: str) -> None:
         """Close and remove a specific session."""
         async with self._lock:
             session = self._sessions.pop(thread_id, None)
+        self._thread_agents.pop(thread_id, None)
         if session and session.alive():
             try:
                 session.process.terminate()
@@ -150,6 +190,10 @@ class SessionPool:
                 to_reap.append(tid)
 
         for tid in to_reap:
+            # Record session name for resume before closing
+            session = self._sessions.get(tid)
+            if session and session.acpx_session_name:
+                self._expired_sessions[tid] = session.acpx_session_name
             await self.close(tid)
 
         if to_reap:
@@ -407,6 +451,7 @@ class AcpxSessionManager:
 
     async def ensure_session(self, thread_id: str) -> str:
         """Ensure named session exists, return session name."""
+        self.pool.set_thread_agent(thread_id, self.agent)
         return await self.pool.ensure_named_session(thread_id, self.agent)
 
     async def cancel(self, thread_id: str) -> bool:
@@ -420,6 +465,7 @@ class AcpxSessionManager:
     async def close(self, thread_id: str) -> None:
         """Permanently close this thread's session."""
         await self.pool.close_named_session(thread_id, self.agent)
+        self.pool.clear_thread_agent(thread_id)
 
     def get_session_name(self, thread_id: str) -> str:
         """Get the acpx session name for a thread (no creation)."""
