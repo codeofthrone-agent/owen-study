@@ -11,7 +11,9 @@ via `acpx {agent} sessions` commands.
 from __future__ import annotations
 
 import asyncio
+import atexit
 import logging
+import signal
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Optional
@@ -65,6 +67,10 @@ class SessionPool:
         self.session_ttl_secs = session_ttl_hours * 3600
         self.cleanup_interval_secs = cleanup_interval_secs
         self._cleanup_task: Optional[asyncio.Task] = None
+        self._shutting_down = False
+
+        # Register atexit handler for orphan cleanup
+        atexit.register(self._emergency_cleanup)
 
     async def get_or_create(
         self,
@@ -179,11 +185,43 @@ class SessionPool:
 
     async def shutdown(self) -> None:
         """Close all sessions and stop cleanup loop."""
+        if self._shutting_down:
+            return
+        self._shutting_down = True
         self.stop_cleanup_loop()
         thread_ids = list(self._sessions.keys())
         for tid in thread_ids:
-            await self.close(tid)
+            session = self._sessions.get(tid)
+            if session and session.alive():
+                try:
+                    session.process.terminate()
+                    try:
+                        await asyncio.wait_for(session.process.wait(), timeout=5)
+                    except asyncio.TimeoutError:
+                        logger.warning("Session %s did not terminate in 5s, killing", tid)
+                        session.process.kill()
+                        await asyncio.wait_for(session.process.wait(), timeout=2)
+                except Exception:
+                    logger.exception("Error closing session %s during shutdown", tid)
+            self._sessions.pop(tid, None)
         logger.info("Session pool shut down (%d sessions closed)", len(thread_ids))
+
+    def _emergency_cleanup(self) -> None:
+        """Synchronous atexit handler — kill all remaining subprocesses.
+
+        This is a last resort for orphan process prevention when the
+        Gateway crashes or exits without calling async shutdown().
+        """
+        killed = 0
+        for tid, session in list(self._sessions.items()):
+            if session and session.alive():
+                try:
+                    session.process.kill()
+                    killed += 1
+                except Exception:
+                    pass
+        if killed:
+            logger.warning("Emergency cleanup: killed %d orphan acpx processes", killed)
 
     @staticmethod
     def thread_to_session_name(thread_id: str) -> str:

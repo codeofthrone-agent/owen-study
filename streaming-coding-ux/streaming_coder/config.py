@@ -6,9 +6,12 @@ Defaults match OpenAB's config.toml exactly for cross-project compatibility.
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from typing import Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -104,6 +107,59 @@ class Config:
             cfg.default_model = val
         return cfg
 
+    # ── Auth validation ──────────────────────────────────────────────
+
+    AGENT_AUTH_VARS = {
+        "claude": {
+            "env_var": "CLAUDE_CODE_OAUTH_TOKEN",
+            "guide": "請先執行 `claude setup-token` 設定 OAuth token（格式 sk-ant-oat01-...）",
+        },
+        "gemini": {
+            "env_var": "GEMINI_OAUTH_FILE",
+            "default_path": "~/.gemini/oauth_creds.json",
+            "guide": "請先執行 `gemini` CLI 完成 OAuth 登入，憑證位於 ~/.gemini/oauth_creds.json",
+        },
+        "codex": {
+            "env_var": "OPENAI_API_KEY",
+            "guide": "請先設定 OPENAI_API_KEY 環境變數",
+        },
+        "opencode": {
+            "env_var": "OPENCODE_AUTH",
+            "guide": "請先設定 OpenCode 的 Copilot OAuth 憑證",
+        },
+    }
+
+    def validate_agent_auth(self, agent: str) -> Optional[str]:
+        """Check if the agent's auth credentials are available.
+
+        Returns:
+            None if auth is OK, or an error message string with guidance.
+        """
+        agent = agent.lower()
+        info = self.AGENT_AUTH_VARS.get(agent)
+        if not info:
+            return f"⚠️ 未知的 agent: `{agent}`（支援: {', '.join(SUPPORTED_AGENTS) if 'SUPPORTED_AGENTS' in dir() else 'claude, gemini, codex, opencode'}）"
+
+        # Check env var
+        env_var = info.get("env_var", "")
+        if env_var and os.environ.get(env_var):
+            return None  # Auth OK
+
+        # For gemini, also check the default file path
+        if agent == "gemini":
+            default_path = info.get("default_path", "")
+            if default_path and os.path.expanduser(default_path):
+                expanded = os.path.expanduser(default_path)
+                if os.path.exists(expanded):
+                    return None
+
+        # Auth missing — return guidance
+        return (
+            f"❌ **{agent}** 缺少認證憑證\n"
+            f"環境變數 `{env_var}` 未設定。\n"
+            f"→ {info.get('guide', '請先完成認證設定')}"
+        )
+
     def build_acpx_argv(self, prompt: str, cwd: str = ".") -> list[str]:
         """Build the acpx command-line arguments."""
         argv = [self.acpx_command]
@@ -116,3 +172,31 @@ class Config:
         argv += ["--cwd", cwd]
         argv += ["claude", "exec", prompt]
         return argv
+
+
+# ── Warmup ───────────────────────────────────────────────────────
+
+def warmup_acpx(acpx_command: str = "acpx") -> bool:
+    """Pre-execute acpx --version to download adapter on first run.
+
+    Call this at gateway startup to avoid 10-30s delay on first user request.
+    Returns True if acpx is available, False if not found.
+    """
+    import subprocess
+    try:
+        result = subprocess.run(
+            [acpx_command, "--version"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode == 0:
+            logger.info("acpx warmup OK: %s", result.stdout.strip())
+            return True
+        else:
+            logger.warning("acpx warmup failed (exit %d): %s", result.returncode, result.stderr.strip())
+            return False
+    except FileNotFoundError:
+        logger.error("acpx not found at '%s' — streaming_coder will not work", acpx_command)
+        return False
+    except subprocess.TimeoutExpired:
+        logger.warning("acpx warmup timed out after 30s — first request may be slow")
+        return False

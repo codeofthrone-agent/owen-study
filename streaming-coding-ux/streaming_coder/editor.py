@@ -141,6 +141,14 @@ class StreamingEditor:
         out += self.text_buf.strip()
         return out
 
+    # TODO: Media output support — when agent generates images or file attachments
+    # (detected via "MEDIA:/path/to/file" in stream), extract path and send as
+    # Discord attachment via adapter instead of embedding in text display.
+    # Requires:
+    # 1. Pattern detection in _append_text() for MEDIA: prefix
+    # 2. Separate media_queue: List[str] in StreamingEditor
+    # 3. adapter.send_file(path) or GatewayStreamConsumer.file_path field
+
     def truncate_chars(self, text: str, limit: int, ellipsis: str = "…") -> str:
         """Truncate a string to `limit` characters, appending ellipsis if truncated."""
         if len(text) <= limit:

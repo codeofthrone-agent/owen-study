@@ -11,7 +11,7 @@ Quick start:
     from streaming_coder.bridge import detect_trigger, dispatch_trigger, TriggerMode
 """
 
-from .config import Config, EditorConfig, PoolConfig, ReactionEmojis, ReactionTiming
+from .config import Config, EditorConfig, PoolConfig, ReactionEmojis, ReactionTiming, warmup_acpx
 from .editor import StreamingEditor, ToolLine, ToolState
 from .reactions import StatusReactionController, StreamingReactionController, classify_tool
 from .pool import SessionInfo, SessionPool, PoolExhaustedError, AcpxSessionManager
@@ -39,6 +39,7 @@ __all__ = [
     "PoolConfig",
     "ReactionEmojis",
     "ReactionTiming",
+    "warmup_acpx",
     # Editor
     "StreamingEditor",
     "ToolLine",
