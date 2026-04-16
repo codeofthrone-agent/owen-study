@@ -3,9 +3,9 @@ name = "robot-multiplatform-automation"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
-    "aiohomekit>=0.6.11",
+    "aiohomekit==3.2.20",
     "appium-python-client>=2.0.0",
     "flask>=2.0.0",
     "gtts>=2.3.0",
