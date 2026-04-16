@@ -58,9 +58,15 @@ class FP2StateManager:
 
     def check_state(self) -> str:
         occupied = sum(1 for v in self.zone_states.values() if v == 1)
+        total = len(self.zone_states)
         slide_threshold = int(self.current_options.get("slide_threshold", 1))
         awning_threshold = int(self.current_options.get("awning_threshold", 2))
-        
+        # 若實際 zone 數量少於設定的閾值，自動下調至 1（避免永遠無法觸發）
+        if total < awning_threshold:
+            awning_threshold = 1
+        if total < slide_threshold:
+            slide_threshold = 1
+
         if self.current_mode == "slide":
             return "🚐 車廂已收起 (變小/被牆壁佔用)" if occupied >= slide_threshold else "🚙 車廂已展開 (變大/淨空)"
         else:
@@ -68,7 +74,6 @@ class FP2StateManager:
 
     def on_event(self, events: dict):
         ts = format_time()
-
         for (aid, iid), data in events.items():
             key = (aid, iid)
             value = data.get("value", data) if isinstance(data, dict) else data
@@ -481,8 +486,52 @@ async def do_monitor(alias: str, mode: str, pairing_file: str = PAIRING_FILE):
     try:
         await pairing.subscribe(subscribe_targets)
         pairing.dispatcher_connect(state_mgr.on_event)
+        tick = 0
         while True:
             await asyncio.sleep(1)
+            tick += 1
+            # 每 5 秒主動輪詢一次，作為 push 事件失效時的備援
+            # 使用 list_accessories_and_characteristics（與初始連線同一路徑，已驗證可用）
+            if tick % 5 == 0:
+                try:
+                    fresh = await asyncio.wait_for(
+                        pairing.list_accessories_and_characteristics(), timeout=12
+                    )
+                    fresh_accs = fresh if isinstance(fresh, list) else fresh.get("accessories", [])
+                    for acc in fresh_accs:
+                        aid = acc.get("aid", 1)
+                        for svc in acc.get("services", []):
+                            for char in svc.get("characteristics", []):
+                                ctype = char.get("type", "")
+                                iid = char["iid"]
+                                key = (aid, iid)
+                                if OCCUPANCY_UUID.upper() in ctype.upper() or ctype.upper() == "71":
+                                    if key in state_mgr.zone_states:
+                                        old = state_mgr.zone_states[key]
+                                        new_val = int(char.get("value", 0))
+                                        if old != new_val:
+                                            state_mgr.zone_states[key] = new_val
+                                            label = state_mgr.zone_labels.get(key, f"[{aid},{iid}]")
+                                            status = "🛑 空間被佔用" if new_val == 1 else "⚪ 空間淨空"
+                                            print(f"[{format_time()}] 🔄 輪詢更新 {label}: {status}  (舊={old}→新={new_val})")
+                                            new_state = state_mgr.check_state()
+                                            if new_state != state_mgr.current_state:
+                                                state_mgr.current_state = new_state
+                                                occ = sum(1 for v in state_mgr.zone_states.values() if v == 1)
+                                                print(f"\n[{format_time()}] ══ 系統狀態改變: {state_mgr.current_state} "
+                                                      f"（{occ}/{len(state_mgr.zone_states)} 個區域有訊號）══\n")
+                                elif LIGHT_LEVEL_UUID.upper() in ctype.upper() or ctype.upper() == "6B":
+                                    if key in state_mgr.light_levels:
+                                        new_lx = float(char.get("value", 0))
+                                        old_lx = state_mgr.light_levels[key]
+                                        if abs(new_lx - old_lx) >= 1.0:
+                                            state_mgr.light_levels[key] = new_lx
+                                            print(f"[{format_time()}] 🔄 輪詢更新 💡 光照度: {new_lx} lux (舊={old_lx})")
+                except Exception as poll_err:
+                    print(f"[{format_time()}] ⚠️ 輪詢失敗: {type(poll_err).__name__}: {poll_err}")
+            if tick % 30 == 0:
+                occupied_count = sum(1 for v in state_mgr.zone_states.values() if v == 1)
+                print(f"[{format_time()}] ♥ 心跳確認 — 目前狀態: {state_mgr.current_state}（{occupied_count}/{len(state_mgr.zone_states)} 個區域有訊號）")
     except KeyboardInterrupt:
         pass
     finally:
