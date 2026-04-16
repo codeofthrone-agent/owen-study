@@ -21,16 +21,20 @@ tests/
 │   ├── system_maintenance/            # - 系統狀態與磁碟檢查
 │   └── voice_control/                 # - 單一音訊設備 (Scarlett) TTS 播放
 │
-└── e2e/                               # 端對端測試 (End-to-End Tests) — 多個硬體聯動
-    ├── login_test.robot               # - 跨平台登錄流程 (多設備)
-    ├── robot_arm/                     # - Arm + Cam 二合一視覺整合
-    │   └── vision_integration_test.robot
-    └── multimodal/                    # - 語音 + UART + 視覺 + 手臂聯動
-        ├── multimodal_detection_test.robot
-        ├── multimodal_uart_detection_test.robot
-        ├── remote_config_validation_test.robot
-        ├── uart_audio_detection_test.robot
-        └── asrpro/                    # - ASR Pro 語音指令與多感官整合
+├── e2e/                               # 端對端測試 (End-to-End Tests) — 多個硬體聯動
+│   ├── login_test.robot               # - 跨平台登錄流程 (多設備)
+│   ├── robot_arm/                     # - Arm + Cam 二合一視覺整合
+│   │   └── vision_integration_test.robot
+│   └── multimodal/                    # - 語音 + UART + 視覺 + 手臂聯動
+│       ├── multimodal_detection_test.robot
+│       ├── multimodal_uart_detection_test.robot
+│       ├── remote_config_validation_test.robot
+│       ├── uart_audio_detection_test.robot
+│       └── asrpro/                    # - ASR Pro 語音指令與多感官整合
+│
+└── manual/                            # 手動/輔助測試 (Manual/Helper Tests)
+    ├── test_speak_default.robot       # - 語音播放人工驗證工具
+    └── testlink_integration/          # - TestLink 測試案例同步與狀態更新工具
 ```
 
 ---
@@ -64,6 +68,12 @@ tests/
   - ✅ **必須同時連接多台真實硬體**。
   - ✅ 執行前需確認所有硬體狀態與校準。
 - **目標**: 最後一道防線，驗證多裝置整合是否達到預期使用場景。
+
+### 4. 手動/輔助測試 (Manual/Helper Tests)
+- **存放路徑**: `tests/manual/`
+- **測試工具**: `Robot Framework` / `Python`
+- **定義範圍**: 需人工介入驗證的場景，或用於輔助開發的工具腳本。
+- **目標**: 提供穩定的人工驗證流程，或簡化重複性的手動同步工作。
 
 ---
 

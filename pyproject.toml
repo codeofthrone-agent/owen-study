@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
+    "aiohomekit>=0.6.11",
     "appium-python-client>=2.0.0",
     "flask>=2.0.0",
     "gtts>=2.3.0",

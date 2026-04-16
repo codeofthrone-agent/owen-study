@@ -178,10 +178,10 @@ v4.0.0（新版）: Client（本機影像判定）+ Server（僅提供影像截�
 - `tests/robot_arm/button_press_feedback_test.robot` - 按壓反饋測試
 
 **相關文檔:**
-- `docs/vision_detection_local_spec.md` - 技術規格書
-- `docs/vision_detection_tdd_guide.md` - TDD 開發指南
-- `docs/vision_detection_quick_start_guide.md` - 快速上手指南
-- `docs/keyword_design_guidelines.md` - BDD 關鍵字設計規範
+- `../robot_arm_vision/vision_detection_local_spec.md` - 技術規格書
+- `../robot_arm_vision/vision_detection_tdd_guide.md` - TDD 開發指南
+- `../robot_arm_vision/vision_detection_quick_start_guide.md` - 快速上手指南
+- `../keyword_design_guidelines.md` - BDD 關鍵字設計規範
 
 **版本歷程:**
 - v1.0.0 (2025-11-05): 基礎 Socket 控制
@@ -218,9 +218,9 @@ v4.0.0（新版）: Client（本機影像判定）+ Server（僅提供影像截�
   - 按壓反饋: `tests/robot_arm/button_press_feedback_test.robot`
   - 亮度檢測: `tests/robot_arm/brightness_level_test.robot`
 - **設計文檔**:
-  - 技術規格: `docs/vision_detection_local_spec.md`
-  - 關鍵字設計: `docs/keyword_design_guidelines.md`
-  - 快速上手: `docs/vision_detection_quick_start_guide.md`
+  - 技術規格: `../robot_arm_vision/vision_detection_local_spec.md`
+  - 關鍵字設計: `../keyword_design_guidelines.md`
+  - 快速上手: `../robot_arm_vision/vision_detection_quick_start_guide.md`
 - **最後更新**: 2025-11-18
 
 ### 🎯 使用說明
@@ -562,7 +562,7 @@ RuntimeError: 移動到初始位置超時
 
 ### 📚 相關文檔
 
-- **完整設計文檔**: `docs/robot_arm_socket_control_design.md`
+- **完整設計文檔**: `../robot_arm_vision/robot_arm_socket_control_design.md`
 - **配置文件**: `config/robot_arm/button_positions.yaml`
 - **核心控制器**: `libraries/robot_arm_control/mycobot_socket_controller.py`
 - **配置載入器**: `libraries/robot_arm_control/button_config_loader.py`

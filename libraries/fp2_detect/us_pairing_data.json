@@ -5,11 +5,11 @@
     "iOSPairingId": "553e42d7-5e74-418f-9acf-8052e0ebbf10",
     "iOSDeviceLTSK": "079bf635f4799c6c032e655b9592942bf656514ff2301476e154b25e9571fc48",
     "iOSDeviceLTPK": "b654740e6ffcd016b842e35122031a027b30932dafaaf44735bd466508b9beb1",
-    "AccessoryIP": "10.42.0.96",
+    "AccessoryIP": "10.42.0.24",
     "AccessoryIPs": [
       "10.42.0.24"
     ],
-    "AccessoryPort": 51806,
+    "AccessoryPort": 63879,
     "Connection": "IP"
   }
 }

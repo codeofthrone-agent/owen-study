@@ -13,7 +13,7 @@ libraries/voice_control/
 ├── TTSManager.py             # 文字轉語音管理器
 ├── AudioKeywords.py          # 額外的 Robot Framework 關鍵字
 ├── ultimate_play.py          # 獨立音訊播放腳本
-├── setup_pipewire_routing_v3.sh  # 全自動 PipeWire 設定腳本
+├── setup_pipewire_routing_v5.sh  # 全自動 PipeWire 設定腳本（含自動啟動安裝）
 ├── requirements.txt          # Python 依賴清單
 └── docs/                     # 說明文件目錄
 ```
@@ -110,16 +110,19 @@ sudo apt install -y alsa-scarlett-gui
 # 進入語音控制模組目錄
 cd /home/thortron/Tools/robot-multiplatform-automation/libraries/voice_control
 
-# 執行 v5 版本全自動設定腳本
-./setup_pipewire_routing_v3.sh
+# 執行全自動設定腳本（首次部署）
+./setup_pipewire_routing_v5.sh
 
 # 腳本會自動完成：
 # ✅ 檢測 Scarlett 4i4 設備
 # ✅ 自動切換到 Pro Audio 模式
-# ✅ 建立 4 個獨立虛擬音訊節點
-# ✅ 設定完整的音訊路由
+# ✅ 建立 Scarlett_1-2 / Scarlett_3-4 虛擬音訊節點
+# ✅ 透過 pw-link 接線到 4 個實體輸出
 # ✅ 修復 surround-21/surround-50 模式問題
-# ✅ 驗證設定正確性
+# ✅ 自動播放測試音訊驗證各聲道
+
+# 安裝登入自動啟動（首次部署後執行一次）
+./setup_pipewire_routing_v5.sh --install
 ```
 
 ### 3. 驗證設定
@@ -309,7 +312,7 @@ python3 ultimate_play.py music.mp3 3     # 播放到聲道 3，預設 5 秒
 cd /path/to/voice_control
 
 # 2. 執行自動設定腳本
-./setup_pipewire_routing_v3.sh
+./setup_pipewire_routing_v5.sh
 
 # 3. 測試播放（確認每個輸出都有聲音）
 python3 ultimate_play.py file_example_WAV_2MG.wav 1  # 測試輸出 1
@@ -339,12 +342,12 @@ cd voice_control
 pip install -r requirements.txt
 
 # 4. 設定執行權限
-chmod +x setup_pipewire_routing_v3.sh
+chmod +x setup_pipewire_routing_v5.sh
 chmod +x fix_scarlett_usb.sh
 chmod +x run_tests.sh
 
 # 5. 執行自動設定
-./setup_pipewire_routing_v3.sh
+./setup_pipewire_routing_v5.sh
 
 # 6. 測試功能
 python3 ultimate_play.py file_example_WAV_2MG.wav 1
@@ -403,52 +406,49 @@ newgrp audio
 cd /path/to/voice_control
 
 # 賦予執行權限（首次需要）
-chmod +x setup_pipewire_routing_v3.sh
+chmod +x setup_pipewire_routing_v5.sh
 
-# 執行設定
-./setup_pipewire_routing_v3.sh
+# 執行完整設定（包含 Pro Audio 模式切換 + 路由建立 + 音訊測試）
+./setup_pipewire_routing_v5.sh
 
 # 確認看到以下訊息
 # ✅ 已成功切換到 Pro Audio 模式
-# ✅ 輸出 1 已連接
-# ✅ 輸出 2 已連接
-# ✅ 輸出 3 已連接
-# ✅ 輸出 4 已連接
-# ✅ 設定完成 - Pro Audio 模式
+# ✅ Scarlett_1-2 -> playback_AUX0
+# ✅ Scarlett_1-2 -> playback_AUX1
+# ✅ Scarlett_3-4 -> playback_AUX2
+# ✅ Scarlett_3-4 -> playback_AUX3
+# ✅ 路由設定完成！
 ```
 
 #### ☑️ 5. 測試播放
 ```bash
-# 準備測試音訊檔案（或使用你自己的 .wav 檔案）
-# 測試 4 個獨立輸出
-python3 ultimate_play.py file_example_WAV_2MG.wav 1  # 測試輸出 1
-python3 ultimate_play.py file_example_WAV_2MG.wav 2  # 測試輸出 2
-python3 ultimate_play.py file_example_WAV_2MG.wav 3  # 測試輸出 3
-python3 ultimate_play.py file_example_WAV_2MG.wav 4  # 測試輸出 4
+# 測試 4 個獨立輸出（需先完成步驟 4）
+uv run python ultimate_play.py file_example_WAV_2MG.wav 1  # 測試輸出 1
+uv run python ultimate_play.py file_example_WAV_2MG.wav 2  # 測試輸出 2
+uv run python ultimate_play.py file_example_WAV_2MG.wav 3  # 測試輸出 3
+uv run python ultimate_play.py file_example_WAV_2MG.wav 4  # 測試輸出 4
 
 # 確認每個輸出都能聽到聲音
 # 注意：請確認硬體音量旋鈕不在最小位置
 ```
 
-#### ☑️ 6. 設定開機自動啟動（推薦）
+#### ☑️ 6. 安裝登入自動啟動（必做）
 ```bash
-# 複製 systemd 服務檔案
-mkdir -p ~/.config/systemd/user
-cp pipewire_scarlett_setup.service ~/.config/systemd/user/
+# 一鍵安裝 systemd user service
+./setup_pipewire_routing_v5.sh --install
 
-# 重新載入 systemd
-systemctl --user daemon-reload
+# 立即測試服務
+systemctl --user start scarlett-routing.service
 
-# 啟用開機自動執行
-systemctl --user enable pipewire_scarlett_setup.service
-
-# 立即啟動服務（測試）
-systemctl --user start pipewire_scarlett_setup.service
-
-# 檢查服務狀態
-systemctl --user status pipewire_scarlett_setup.service
+# 檢查狀態
+systemctl --user status scarlett-routing.service
 # 應該看到：Active: active (exited)
+
+# 查看日誌（排查問題）
+journalctl --user -u scarlett-routing.service
 ```
+
+> **為什麼必須安裝自動啟動？** 詳見故障排除「ultimate_play.py 播放沒有聲音」章節。
 
 ### 常見問題快速排查
 
@@ -462,10 +462,14 @@ A: 執行診斷腳本：
 ```
 
 **Q: 播放沒有聲音？**
-A: 檢查：
-1. Scarlett 前面板的音量旋鈕是否調整到中間位置
-2. 喇叭/耳機是否正確連接到對應的物理輸出
-3. 執行 `wpctl status | grep Scarlett` 確認設備被識別
+A: 最常見的原因是 `pw-link` 接線消失。依序檢查：
+1. `pw-link -l | grep -i Scarlett` — 確認 4 條接線存在，沒有接線表示需要重新執行 setup 或 `--routing-only`
+2. Scarlett 前面板的音量旋鈕是否調整到中間位置
+3. 喇叭/耳機是否正確連接到對應的物理輸出
+4. 安裝自動啟動 `./setup_pipewire_routing_v5.sh --install` 避免重複發生
+
+**Q: 為什麼 setup 腳本有聲音，但單獨執行 ultimate_play.py 沒有聲音？**
+A: 詳見故障排除「ultimate_play.py 播放沒有聲音」章節。
 
 **Q: 需要同時使用兩台 Scarlett 設備？**
 A: 當前腳本設計為單設備使用。如需多設備支援，請聯繫開發者。
@@ -530,12 +534,12 @@ pip install -r requirements.txt
 **v5 版本的腳本已完全自動化**，會自動完成以下操作：
 - ✅ 自動檢測當前 PipeWire Profile
 - ✅ 自動切換到 Pro Audio 模式（Direct 模式）
-- ✅ 自動創建虛擬音訊設備
-- ✅ 自動連接到 Scarlett 4i4 的 4 個獨立輸出
+- ✅ 自動創建虛擬音訊設備（Scarlett_1-2 / Scarlett_3-4）
+- ✅ 透過 pw-link 接線到 Scarlett 4i4 的 4 個獨立輸出
 
 ```bash
 cd libraries/voice_control
-./setup_pipewire_routing_v3.sh
+./setup_pipewire_routing_v5.sh
 ```
 
 **執行結果範例：**
@@ -569,10 +573,10 @@ Scarlett 4i4 PipeWire 路由設定 (v5)
 
 ```bash
 # 測試 4 個獨立輸出
-python3 ultimate_play.py file_example_WAV_2MG.wav 1  # 輸出 1
-python3 ultimate_play.py file_example_WAV_2MG.wav 2  # 輸出 2
-python3 ultimate_play.py file_example_WAV_2MG.wav 3  # 輸出 3
-python3 ultimate_play.py file_example_WAV_2MG.wav 4  # 輸出 4
+uv run python ultimate_play.py file_example_WAV_2MG.wav 1  # 輸出 1
+uv run python ultimate_play.py file_example_WAV_2MG.wav 2  # 輸出 2
+uv run python ultimate_play.py file_example_WAV_2MG.wav 3  # 輸出 3
+uv run python ultimate_play.py file_example_WAV_2MG.wav 4  # 輸出 4
 ```
 
 ### 舊版設定方式（僅供參考）
@@ -596,58 +600,43 @@ python3 ultimate_play.py file_example_WAV_2MG.wav 4  # 輸出 4
 
 </details>
 
-### 步驟 3: 設定開機自動執行（推薦）
+### 步驟 3: 安裝登入自動啟動（必做）
 
-使用 systemd 服務讓路由設定在每次開機後自動執行：
+`pw-link` 的接線**不是永久性的**，PipeWire 重啟或重新登入後會消失，導致 `ultimate_play.py` 播放沒有聲音。
+必須安裝 systemd user service，讓每次登入後自動重建路由。
 
 ```bash
-# 1. 複製服務檔案到用戶 systemd 目錄
-mkdir -p ~/.config/systemd/user
-cp pipewire_scarlett_setup.service ~/.config/systemd/user/
+# 一鍵安裝（自動建立並啟用 systemd user service）
+./setup_pipewire_routing_v5.sh --install
 
-# 2. 重新載入 systemd 配置
-systemctl --user daemon-reload
+# 立即啟動服務（無需重開機）
+systemctl --user start scarlett-routing.service
 
-# 3. 啟用服務（開機自動執行）
-systemctl --user enable pipewire_scarlett_setup.service
+# 驗證服務狀態（應顯示 active (exited)）
+systemctl --user status scarlett-routing.service
 
-# 4. 立即啟動服務（無需重開機）
-systemctl --user start pipewire_scarlett_setup.service
-
-# 檢查服務狀態
-systemctl --user status pipewire_scarlett_setup.service
+# 查看詳細日誌
+journalctl --user -u scarlett-routing.service
 ```
 
-**注意事項：**
-- 服務檔案中的腳本路徑使用 `%h` 代表用戶家目錄
-- 如果腳本位置不同，請修改 `pipewire_scarlett_setup.service` 中的 `ExecStart` 路徑
-- 服務會在 PipeWire 啟動後自動執行
-- 如果執行失敗，會在 5 秒後自動重試
-
-**驗證服務是否正常運作：**
+**驗證路由是否正常：**
 ```bash
-# 檢查服務狀態（應顯示 active (exited) 且 status=0/SUCCESS）
-systemctl --user status pipewire_scarlett_setup.service
+# 確認虛擬設備存在
+pactl list sinks short | grep Scarlett
+# 應該看到：Scarlett_1-2 和 Scarlett_3-4
 
-# 檢查虛擬設備是否創建成功
-wpctl status | grep Scarlett
-# 應該看到：
-#   - Scarlett_1-2 Audio/Sink sink
-#   - Scarlett_3-4 Audio/Sink sink
-#   - Scarlett 4i4 4th Gen (實體設備)
+# 確認接線完整
+pw-link -l | grep -i "Scarlett\|Focusrite"
+# 應該看到 4 條接線：monitor_FL/FR -> playback_AUX0/1/2/3
 
-# 測試播放到各個聲道
-python3 ultimate_play.py file_example_WAV_2MG.wav 1  # 測試輸出 1
-python3 ultimate_play.py file_example_WAV_2MG.wav 4  # 測試輸出 4
+# 測試播放
+uv run python ultimate_play.py file_example_WAV_2MG.wav 1
+uv run python ultimate_play.py file_example_WAV_2MG.wav 4
 ```
 
-**停用開機自動啟動（如需要）：**
+**移除自動啟動：**
 ```bash
-# 停用服務
-systemctl --user disable pipewire_scarlett_setup.service
-
-# 停止當前運行的服務
-systemctl --user stop pipewire_scarlett_setup.service
+./setup_pipewire_routing_v5.sh --uninstall
 ```
 
 #### 部署到其他機器的檢查清單
@@ -669,7 +658,7 @@ systemctl --user stop pipewire_scarlett_setup.service
 
 3. ✅ 腳本具有執行權限
    ```bash
-   chmod +x setup_pipewire_routing_v3.sh
+   chmod +x setup_pipewire_routing_v5.sh
    ```
 
 4. ✅ 服務檔案路徑正確
@@ -690,24 +679,107 @@ groups | grep audio || sudo usermod -a -G audio $USER
 # 2. 登出重新登入或執行
 newgrp audio
 
-# 3. 安裝服務
-mkdir -p ~/.config/systemd/user
-cp pipewire_scarlett_setup.service ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable pipewire_scarlett_setup.service
+# 3. 首次完整設定（建立 Pro Audio 模式 + 路由）
+chmod +x setup_pipewire_routing_v5.sh
+./setup_pipewire_routing_v5.sh
 
-# 4. 重新開機測試
+# 4. 安裝登入自動啟動
+./setup_pipewire_routing_v5.sh --install
+
+# 5. 重新開機測試
 sudo reboot
 
-# 5. 開機後驗證
-systemctl --user status pipewire_scarlett_setup.service
-wpctl status | grep Scarlett
-python3 ultimate_play.py file_example_WAV_2MG.wav 1
+# 6. 開機後驗證
+systemctl --user status scarlett-routing.service
+pactl list sinks short | grep Scarlett
+uv run python ultimate_play.py file_example_WAV_2MG.wav 1
+```
+
+---
+
+## 音量控制
+
+### 調整虛擬 Sink 音量
+
+```bash
+# 設定 Scarlett_1-2 音量（輸出 1、2）
+pactl set-sink-volume Scarlett_1-2 80%
+
+# 設定 Scarlett_3-4 音量（輸出 3、4）
+pactl set-sink-volume Scarlett_3-4 50%
+
+# 查看目前音量
+pactl get-sink-volume Scarlett_1-2
+pactl get-sink-volume Scarlett_3-4
+```
+
+### 調整實體輸出音量
+
+```bash
+# 實體輸出音量（同時影響所有接到此設備的輸出）
+CARD="alsa_output.usb-Focusrite_Scarlett_4i4_4th_Gen_S4UQEAE5487CB5-00.pro-output-0"
+pactl set-sink-volume "$CARD" 70%
+```
+
+### 在 ultimate_play.py 使用 ffmpeg volume filter
+
+若需要在播放時動態控制音量，可在 `pan_filter` 前加上 `volume=` filter：
+
+```python
+# 原本（100% 音量）
+self.pan_filter = "pan=stereo|c0=1*c0|c1=0*c0"
+
+# 加上 50% 音量
+self.pan_filter = "volume=0.5,pan=stereo|c0=1*c0|c1=0*c0"
 ```
 
 ---
 
 ## 故障排除
+
+### 常見問題 0：ultimate_play.py 播放沒有聲音
+
+#### 症狀
+- `setup_pipewire_routing_v5.sh` 執行後有聲音
+- 重新登入或 PipeWire 重啟後，單獨執行 `uv run python ultimate_play.py` 沒有聲音
+- `ultimate_play.py` 顯示「✅ 播放完毕」但聽不到任何聲音
+
+#### 原因
+
+```
+pactl list sinks short | grep Scarlett
+→ Scarlett_1-2  IDLE   ← 存在但沒有收到音訊（或無出口）
+→ Scarlett_3-4  IDLE
+```
+
+`pw-link` 接線**不是永久性的**。每次 PipeWire 重啟後：
+- 虛擬 sink（Scarlett_1-2 / Scarlett_3-4）有時保留
+- 但 pw-link 接線**消失**，音訊送進虛擬 sink 後沒有出路
+
+`ultimate_play.py` 用 `pacat --device=Scarlett_1-2` 播放，若接線不存在則無聲，且 exit code 仍為 0（pacat 寫入成功但音訊去向已斷）。
+
+#### 診斷
+
+```bash
+# 確認接線是否存在
+pw-link -l | grep -i "Scarlett\|Focusrite"
+# 應有 4 條接線，如果為空則確認是此問題
+```
+
+#### 解決方案
+
+```bash
+# 方法 1：重新執行 setup（臨時修復）
+./setup_pipewire_routing_v5.sh
+
+# 方法 2：只重建路由（已有 Pro Audio 設定時使用）
+./setup_pipewire_routing_v5.sh --routing-only
+
+# 方法 3：安裝自動啟動（永久修復，每次登入自動重建）
+./setup_pipewire_routing_v5.sh --install
+```
+
+---
 
 ### 常見問題 1：音訊模式錯誤（已自動修復）
 
@@ -726,7 +798,7 @@ PipeWire 預設使用環繞音效 Profile（surround-21/surround-50），而非 
 
 只需執行：
 ```bash
-./setup_pipewire_routing_v3.sh
+./setup_pipewire_routing_v5.sh
 ```
 
 腳本會自動：
@@ -751,7 +823,7 @@ pactl set-card-profile alsa_card.usb-Focusrite_Scarlett_4i4_4th_Gen_* pro-audio
 - `lsusb` 可以看到 Focusrite Scarlett 設備
 - `aplay -l` 看不到 Scarlett 設備
 - PipeWire 無法識別 Scarlett
-- 執行 `setup_pipewire_routing_v3.sh` 時出現「找不到 Scarlett 設備」錯誤
+- 執行 `setup_pipewire_routing_v5.sh` 時出現「找不到 Scarlett 設備」錯誤
 
 #### 原因
 USB 音訊驅動（`snd_usb_audio`）未正確載入或需要重新初始化。這通常發生在：
@@ -822,7 +894,7 @@ wpctl status | grep -i scarlett
 這確保了無論您如何連接設備（直接連接或透過延長線），系統都能穩定運作。
 
 # 6. 重新執行路由設定
-./setup_pipewire_routing_v3.sh
+./setup_pipewire_routing_v5.sh
 ```
 
 #### 預防措施
@@ -890,6 +962,30 @@ python3 ultimate_play.py your_audio_file.wav 1
 ---
 
 ## 版本歷史
+
+### setup_pipewire_routing_v5.sh 指令參考
+
+| 指令 | 說明 |
+|------|------|
+| `./setup_pipewire_routing_v5.sh` | 完整設定（Pro Audio + 路由 + 音訊測試） |
+| `./setup_pipewire_routing_v5.sh --routing-only` | 僅重建虛擬 sink 與 pw-link 接線 |
+| `./setup_pipewire_routing_v5.sh --install` | 安裝 systemd user service，每次登入自動執行 |
+| `./setup_pipewire_routing_v5.sh --uninstall` | 移除自動啟動服務 |
+| `./setup_pipewire_routing_v5.sh --test` | 僅執行音訊測試 |
+| `./setup_pipewire_routing_v5.sh --cleanup` | 清理所有虛擬裝置 |
+
+### 路由架構說明
+
+```
+ultimate_play.py (channel 1) → pacat → Scarlett_1-2 → pw-link → playback_AUX0 → 實體 Output 1
+ultimate_play.py (channel 2) → pacat → Scarlett_1-2 → pw-link → playback_AUX1 → 實體 Output 2
+ultimate_play.py (channel 3) → pacat → Scarlett_3-4 → pw-link → playback_AUX2 → 實體 Output 3
+ultimate_play.py (channel 4) → pacat → Scarlett_3-4 → pw-link → playback_AUX3 → 實體 Output 4
+```
+
+**注意：** `pw-link` 接線不是永久性的，必須安裝 `--install` 自動啟動。
+
+---
 
 ### v6.0 (2025-11-11)
 **重大模組重構與 Robot Framework 深度整合**

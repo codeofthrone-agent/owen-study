@@ -97,13 +97,14 @@ python3 robot_arm_server.py \
 
 | 參數 | 說明 | 預設值 |
 |------|------|--------|
-| `--host` | 伺服器 IP 地址 | 自動偵測 |
+| `--host` | 伺服器 IP 地址（`0.0.0.0` 監聽所有介面，建議使用） | `0.0.0.0` |
 | `--port` | 伺服器 Port | 9000 |
 | `--serial` | 串口設備路徑 | /dev/ttyTHS1 |
 | `--baud` | 串口鮑率 | 1000000 |
-| `--interface` | 網路介面（用於自動 IP 偵測） | wlan0 |
+| `--interface` | 網路介面（用於自動 IP 偵測，`--host` 未指定時使用） | wlan0 |
 | `--reconnect-interval` | 重連間隔（秒） | 2 |
 | `--max-reconnect-attempts` | 最大重連次數 | 5 |
+| `--yolo-model-path` | YOLO 模型檔案路徑 | `models/best.pt` |
 
 ### 查看幫助
 
@@ -121,13 +122,18 @@ python3 robot_arm_server.py \
     --interface wlan0
 ```
 
-### 2. NVIDIA Jetson 環境
+### 2. NVIDIA Jetson 環境（建議）
 
 ```bash
+export PYTHONPATH="/home/er/thortron:$PYTHONPATH"
 python3 robot_arm_server.py \
     --serial /dev/ttyTHS1 \
-    --interface eth0
+    --host 0.0.0.0 \
+    --yolo-model-path /home/er/thortron/models/best.pt
 ```
+
+> `--host 0.0.0.0` 確保在 VPN（如 Tailscale）或 DHCP 重新取得 IP 後仍可連線。
+> YOLO 模型在背景載入，server 啟動後立即可接受連線。
 
 ### 3. 一般 Linux（USB 連接）
 

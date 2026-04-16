@@ -368,10 +368,10 @@ brightness = float(np.mean(gray[center_region]))
 ### 相關文檔
 
 - **完整 API 文檔**: `libraries/ipcam_light_detection/README.md`
-- **安裝指南**: `docs/ipcam_setup_guide.md`
-- **快速開始**: `docs/ipcam_quick_start.md`
+- **安裝指南**: `../ipcam/ipcam_setup_guide.md`
+- **快速開始**: `../ipcam/ipcam_quick_start.md`
 - **測試案例**: `tests/ipcam_testing/ipcam_light_detection_test.robot`
-- **模組摘要**: `docs/ipcam_module_summary.md`
+- **模組摘要**: `../ipcam/ipcam_module_summary.md`
 
 ---
 

@@ -319,11 +319,8 @@ buttons:
     type: lcd_light
     panel_section: 3611c
     # down_angles: [37.2, -52.0, -108, 54.0, 0.5, -4.5]
-    down_angles: [35.4, -54.5, -115.0, 73.6, 0.5, -4.5]
-    up_angles: [37.2, -49.5, -116.8, 66.4, 0.5, -4.5]
-    
-    # down_angles: [37.2, -52.0, -108, 54.0, 0.5, -4.5]
-    # up_angles: [37.2, -20, -106, 54.0, 0.5, -4.5]
+    down_angles: [36.8, -60.3, -122.3, 92.5, 0.5, -4.5]
+    up_angles: [36.5, -30, -123.0, 95, 0.5, -4.5]
     speed: 50
     count: 1
     lift_duration: 0.01
@@ -337,8 +334,9 @@ buttons:
     type: lcd_light
     environment_light: level1_light_2
     panel_section: 3611c
-    down_angles: [42, -55, -111, 66.4, 0, -4.5]
-    up_angles: [42, -20, -108, 66.4, 0, -4.5]
+    # 根據 lcd_a 和 lcd_left 之間的位置關係計算 (以 vision.roi x 座標為基準線性內插)
+    down_angles: [42, -60.3, -117, 85.5, 0.5, -4.5]
+    up_angles: [41.7, -30, -117, 85.2, 0.5, -4.5]
     speed: 50
     count: 1
     lift_duration: 0.01
@@ -352,9 +350,10 @@ buttons:
     type: lcd_light
     environment_light: level1_light_1
     panel_section: 3611c
-    down_angles: [45.6, -57, -89, 35.0, 0, -4.5]
-    up_angles: [45.6, -20, -87, 35.0, 0, -4.5]
-    speed: 70
+    # 根據 lcd_a, lcd_b, lcd_right 的實際測試穩定數值，透過二次曲線回歸(Quadratic Fit)優化
+    down_angles: [46.5, -60.9, -111.9, 81.7, 0.3, -4.5]
+    up_angles: [46.5, -30, -111.9, 81.7, 0.3, -4.5]
+    speed: 30
     count: 1
     lift_duration: 0.01
     press_duration: 0.01
@@ -367,8 +366,9 @@ buttons:
     type: lcd_light
     environment_light: level1_light_2
     panel_section: 3611c
-    down_angles: [49.2, -58.0, -81.9, 31.5, 0, -4.5]
-    up_angles: [49.2, -20, -80, 31.5, 0, -4.5]
+    # 根據 lcd_a -> lcd_b -> lcd_left 推估 (以 vision.roi x 座標距離為基準外插)
+    down_angles: [49.9, -62.3, -107.4, 81.3, 0, -4.5]
+    up_angles: [49.9, -30, -107.4, 81.5, 0, -4.5]
     speed: 30
     count: 1
     lift_duration: 0.01
@@ -382,8 +382,8 @@ buttons:
     type: lcd_light
     environment_light: level1_light_1
     panel_section: 3611c
-    down_angles: [64.8, -55.6, -97.4, 49.1, 0, -4.5]
-    up_angles: [64.8, -25, -95, 49.1, 0, -4.5]
+    down_angles: [64.9, -57.5, -99.3, 52.3, 0, 14.0]
+    up_angles: [64.9, -25, -99.3, 52.3, 0, 14.0]
     speed: 30
     count: 1
     lift_duration: 0.01
@@ -397,8 +397,8 @@ buttons:
     type: lcd_light
     environment_light: level1_light_2
     panel_section: 3611c
-    down_angles: [58.3, -58.7, -93.5, 54.0, 0, -4.5]
-    up_angles: [58.3, -20, -91, 54.0, 0, -4.5]
+    down_angles: [60, -63, -71.7, 21.8, 0, -4.5]
+    up_angles: [60, -30, -71.7, 21.8, 0, -4.5]
     speed: 30
     count: 1
     lift_duration: 0.01
@@ -412,8 +412,8 @@ buttons:
     type: lcd_light
     environment_light: level1_light_1
     panel_section: 3611c
-    down_angles: [57.0, -63.1, -73.8, 31.7, 0, -4.5]
-    up_angles: [57.0, -20, -73.8, 31.7, 0, -4.5]
+    down_angles: [55.3, -65, -88.7, 58.5, 0, -4.5]
+    up_angles: [55.3, -30, -88.7, 58.5, 0, -4.5]
     speed: 30
     count: 1
     lift_duration: 0.01
@@ -427,8 +427,8 @@ buttons:
     type: lcd_light
     environment_light: level1_light_2
     panel_section: 3611c
-    down_angles: [65.0, -54.4, -97.4, 44.0, 0, -4.5]
-    up_angles: [65.0, -20, -95, 44.0, 0, -4.5]
+    down_angles: [70.5, -55.2, -105, 53.6, -0.6, 51.6]
+    up_angles: [70.5, -30, -105, 53.6, -0.6, 51.6]
     speed: 30
     count: 1
     lift_duration: 0.01

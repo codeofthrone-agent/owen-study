@@ -16,7 +16,7 @@ import threading
 import json
 import yaml
 from datetime import datetime
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, Any, Callable
 import math
 import numpy as np
 import cv2
@@ -61,7 +61,7 @@ Enhanced features:
 
 has_return = [0x01,0x02,0x03,0x04,0x09,0x12, 0x14, 0x15, 0x17,0x1B, 0x20,0x23, 0x27, 0x2A,0x2B,0x2D,0x2E, 0x3B,0x3D, 0x40,0x42,0x43,0x44,0x4A, 0x4B,0x50,0x51,0x53,0x62,0x65,0x69,0x90,0x91,0x92,0xC0, 0xC3,0x82,0x84,0x86,0x88,0x8A,0xD0,0xD1,0xD5,0xE1,0xE2,0xE3,0xE4,0xE5,0XE6, 0xB0]
 
-SERVER_VERSION = "v5.6.2"
+SERVER_VERSION = "v5.6.3"
 
 # ==================== CONFIGURATION CONSTANTS ====================
 
@@ -183,7 +183,17 @@ def resolve_detection_conflicts(detections: List[Dict]) -> List[Dict]:
 class HTTPAPIServer:
     """HTTP API Server (v5.6.0) - Flask Implementation with YOLO + STag ROI support"""
 
-    def __init__(self, host, port, camera_capture, camera_lock, logger, yolo_detector=None, stag_detector=None):
+    def __init__(
+        self,
+        host,
+        port,
+        camera_capture,
+        camera_lock,
+        logger,
+        yolo_detector=None,
+        stag_detector=None,
+        retry_helper: Optional[Callable[[Callable[[], Optional[Any]], int, float, str, bool], Optional[Any]]] = None,
+    ):
         self.host = host
         self.port = port
         self.camera_capture = camera_capture
@@ -191,6 +201,7 @@ class HTTPAPIServer:
         self.logger = logger
         self.yolo_detector = yolo_detector
         self.stag_detector = stag_detector
+        self.retry_helper = retry_helper
         self.app = Flask(__name__)
         self.server = None
         self.server_thread = None
@@ -344,23 +355,49 @@ class HTTPAPIServer:
 
     def _detect_with_retry(self, image, confidence=0.5):
         """Helper for robust detection: retries with 180 rotation if needed"""
-        # 1. First attempt
+        if self.retry_helper:
+            state = {"attempt": 0}
+
+            def _attempt_detection():
+                if state["attempt"] == 0:
+                    state["attempt"] += 1
+                    detections = self.yolo_detector.detect(image, confidence=confidence)
+                    if detections:
+                        return detections, image, False
+                    return None
+
+                self.logger.info("⚠️ 初次檢測未發現物件，嘗試旋轉 180 度重試...")
+                rotated_image = cv2.rotate(image, cv2.ROTATE_180)
+                rotated_detections = self.yolo_detector.detect(rotated_image, confidence=confidence)
+
+                if rotated_detections:
+                    self.logger.info(f"✅ 旋轉後檢測成功: 找到 {len(rotated_detections)} 個物件")
+                    return rotated_detections, rotated_image, True
+
+                return [], image, False
+
+            result = self.retry_helper(
+                _attempt_detection,
+                max_retries=2,
+                delay=0.0,
+                label="YOLO 偵測",
+            )
+            if result is None:
+                return [], image, False
+            return result
+
         detections = self.yolo_detector.detect(image, confidence=confidence)
-        
-        # 2. If valid detections found, return immediately
         if len(detections) > 0:
             return detections, image, False
 
-        # 3. If failed, try 180 degree rotation (upside down)
         self.logger.info("⚠️ 初次檢測未發現物件，嘗試旋轉 180 度重試...")
         rotated_image = cv2.rotate(image, cv2.ROTATE_180)
         rotated_detections = self.yolo_detector.detect(rotated_image, confidence=confidence)
-        
+
         if len(rotated_detections) > 0:
             self.logger.info(f"✅ 旋轉後檢測成功: 找到 {len(rotated_detections)} 個物件")
-            # Note: We return the rotated image so bounding boxes match the visual
             return rotated_detections, rotated_image, True
-            
+
         return detections, image, False
 
     def yolo_detect(self):
@@ -1146,6 +1183,69 @@ class MycobotServer(object):
             yolo_device: YOLO inference device, "cuda" or "cpu" (default: cuda).
 
         """
+        self._init_variables(
+            host=host,
+            port=port,
+            serial_num=serial_num,
+            baud=baud,
+            reconnect_interval=reconnect_interval,
+            max_reconnect_attempts=max_reconnect_attempts,
+            read_timeout=read_timeout,
+            socket_timeout=socket_timeout,
+            log_level=log_level,
+            camera_device=camera_device,
+            enable_vision=enable_vision,
+            enable_http=enable_http,
+            http_port=http_port,
+            enable_yolo=enable_yolo,
+            yolo_model_path=yolo_model_path,
+            yolo_confidence=yolo_confidence,
+            yolo_device=yolo_device,
+        )
+
+        self._init_socket(host, port)
+
+        # 初始化串口連接 (包含獨佔鎖檢查)
+        if not self._init_serial():
+            self.logger.error("伺服器啟動失敗，因為無法取得序列埠的獨佔存取權。")
+            self.shutdown()
+            sys.exit(1)
+
+        # ==================== 自動歸位功能已禁用 ====================
+        # 根據與官方 Server.py 的比對，此處的自動歸位邏輯可能是導致通訊問題的根源。
+        # 官方伺服器是一個純粹的被動橋樑，不主動發送任何指令。
+        # 我們的伺服器在啟動時主動歸位，可能導致機器手臂韌體進入異常狀態。
+        # 現在我們將此功能禁用，將歸位職責完全交還給客戶端。
+        # =================================================================
+
+        self._init_vision()
+        self._init_http(host)
+        self._start_yolo_background()
+
+        # 啟動連接處理
+        self.connect()
+
+    def _init_variables(
+        self,
+        host,
+        port,
+        serial_num,
+        baud,
+        reconnect_interval,
+        max_reconnect_attempts,
+        read_timeout,
+        socket_timeout,
+        log_level,
+        camera_device,
+        enable_vision,
+        enable_http,
+        http_port,
+        enable_yolo,
+        yolo_model_path,
+        yolo_confidence,
+        yolo_device,
+    ):
+        """初始化 Logger、旗標與共用資源"""
         if GPIO_AVAILABLE:
             try:
                 GPIO.setwarnings(False)
@@ -1153,6 +1253,8 @@ class MycobotServer(object):
                 print(f"GPIO initialization warning: {e}")
 
         self.logger = get_logger("AS", log_level)
+        self.host = host
+        self.port = port
         self.mc: Optional[serial.Serial] = None
         self.serial_num = serial_num
         self.baud = baud
@@ -1190,16 +1292,22 @@ class MycobotServer(object):
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "config", "global_offset.json"
         )
-        # NOTE: Global offsets are loaded on-demand via 'reload_offset' command
-        # rather than automatically at startup. Uncomment to enable auto-loading:
-        # self._load_global_offsets()
+        # NOTE: Global offsets are loaded on-demand via 'reload_offset'
+        # command rather than automatically at startup.
 
         # STag 視覺偏移系統 (v5.1.0 Phase 13.5)
         self.stag_offset = [0.0, 0.0, 0.0]      # [x, y, z] in mm (位置空間)
         self.stag_enabled = False                # STag 偏移啟用狀態
         self.stag_reference = {}                 # 參考標記資訊
 
-        # 初始化 socket
+        # 預設 Vision/FK/STag/磁碟資源
+        self.fk_calculator = None
+        self.ik_solver = None
+        self.stag_detector = None
+        self.disk_manager = DiskManager(logger=self.logger)
+
+    def _init_socket(self, host, port):
+        """建立並綁定 Socket 伺服器"""
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.s.bind((host, port))
@@ -1207,169 +1315,211 @@ class MycobotServer(object):
         print("Binding succeeded!")
         self.s.listen(1)
 
-        # 初始化串口連接 (包含獨佔鎖檢查)
-        if not self._init_serial():
-            self.logger.error("伺服器啟動失敗，因為無法取得序列埠的獨佔存取權。")
-            self.shutdown()
-            sys.exit(1)
+    def _init_vision(self):
+        """初始化影像、運動學與 STag 系統"""
+        if not self.enable_vision:
+            return
 
-        # ==================== 自動歸位功能已禁用 ====================
-        # 根據與官方 Server.py 的比對，此處的自動歸位邏輯可能是導致通訊問題的根源。
-        # 官方伺服器是一個純粹的被動橋樑，不主動發送任何指令。
-        # 我們的伺服器在啟動時主動歸位，可能導致機器手臂韌體進入異常狀態。
-        # 現在我們將此功能禁用，將歸位職責完全交還給客戶端。
-        # =================================================================
-
-        # 初始化影像截取系統（v4.0.0：只提供影像截取，判定在本機端）
-        if self.enable_vision:
-            try:
-                self.camera_capture = CameraCapture(camera_device, self.logger)
-                self.logger.info("✅ 影像截取系統已啟用（影像判定在本機端執行）")
-            except Exception as e:
-                self.logger.warning(f"⚠️ 影像截取系統初始化失敗: {e}")
-                self.logger.warning("   伺服器將以無視覺模式運行")
-                self.enable_vision = False
+        try:
+            self.camera_capture = CameraCapture(self.camera_device, self.logger)
+            self.logger.info("✅ 影像截取系統已啟用（影像判定在本機端執行）")
+        except Exception as e:
+            self.logger.warning(f"⚠️ 影像截取系統初始化失敗: {e}")
+            self.logger.warning("   伺服器將以無視覺模式運行")
+            self.enable_vision = False
+            return
 
         # 初始化 FK/IK 運動學系統（v5.1.0 Phase 13.5）
-        self.fk_calculator = None
-        self.ik_solver = None
-        if self.enable_vision:  # 只在 Vision 啟用時載入（STag 偏移依賴 Vision）
-            try:
-                # 確保專案根目錄在 sys.path
-                project_root = os.path.abspath(os.path.join(
-                    os.path.dirname(__file__), '..'
-                ))
-                if project_root not in sys.path:
-                    sys.path.insert(0, project_root)
+        try:
+            project_root = os.path.abspath(os.path.join(
+                os.path.dirname(__file__), '..'
+            ))
+            if project_root not in sys.path:
+                sys.path.insert(0, project_root)
 
-                from library.planning.dh_fk_calculator_original import DHForwardKinematics
-                from library.planning.ik_solver import IKSolver
+            from library.planning.dh_fk_calculator_original import DHForwardKinematics
+            from library.planning.ik_solver import IKSolver
 
-                self.fk_calculator = DHForwardKinematics()
-                self.ik_solver = IKSolver(self.fk_calculator)  # 使用共享的 FK 實例
-                self.logger.info("✅ FK/IK 運動學系統已整合 (Phase 13.5)")
-                self.logger.info("   FK 精度: XY 0.2%, Z 3.85mm std")
-                self.logger.info("   IK 精度: < 5mm (Phase 12)")
-
-            except Exception as e:
-                self.logger.warning(f"⚠️ FK/IK 系統載入失敗: {e}")
-                self.logger.warning("   STag 偏移功能將不可用（不影響現有功能）")
-                self.fk_calculator = None
-                self.ik_solver = None
+            self.fk_calculator = DHForwardKinematics()
+            self.ik_solver = IKSolver(self.fk_calculator)
+            self.logger.info("✅ FK/IK 運動學系統已整合 (Phase 13.5)")
+            self.logger.info("   FK 精度: XY 0.2%, Z 3.85mm std")
+            self.logger.info("   IK 精度: < 5mm (Phase 12)")
+        except Exception as e:
+            self.logger.warning(f"⚠️ FK/IK 系統載入失敗: {e}")
+            self.logger.warning("   STag 偏移功能將不可用（不影響現有功能）")
+            self.fk_calculator = None
+            self.ik_solver = None
 
         # 初始化 STag 檢測器（v5.1.0 Phase 13.5B）
-        self.stag_detector = None
-        if self.enable_vision:
-            try:
-                from library.vision.stag_detector import StagCoordinateSystem, STAG_AVAILABLE
+        try:
+            from library.vision.stag_detector import StagCoordinateSystem, STAG_AVAILABLE
 
-                if STAG_AVAILABLE:
-                    # 載入全域視覺設定
-                    app_config_path = os.path.join(
-                        os.path.dirname(os.path.dirname(__file__)),
-                        'config', 'app', 'app.yaml'
-                    )
-                    
-                    marker_size_m = 0.05  # 預設 50mm
-                    stag_hd = 11
-                    
-                    if os.path.exists(app_config_path):
-                        try:
-                            with open(app_config_path, 'r', encoding='utf-8') as f:
-                                app_config = yaml.safe_load(f)
-                                vision_cfg = app_config.get('vision', {})
-                                marker_size_mm = vision_cfg.get('marker_size', 50.0)
-                                marker_size_m = marker_size_mm / 1000.0
-                                stag_hd = vision_cfg.get('stag_hd_library', 11)
-                                self.logger.info(f"✅ 從 {app_config_path} 載入標記尺寸: {marker_size_mm}mm")
-                        except Exception as e:
-                            self.logger.warning(f"⚠️ 讀取 app.yaml 失敗: {e}，使用預設值")
-                    else:
-                        self.logger.warning(f"⚠️ 找不到 {app_config_path}，使用預設值")
-
-                    # 載入攝影機校正參數
-                    camera_intrinsics_path = os.path.join(
-                        os.path.dirname(os.path.dirname(__file__)),
-                        'config', 'camera_intrinsics.npz'
-                    )
-
-                    camera_matrix = None
-                    dist_coeffs = None
-
-                    if os.path.exists(camera_intrinsics_path):
-                        calib_data = np.load(camera_intrinsics_path)
-                        camera_matrix = calib_data.get('mtx')
-                        dist_coeffs = calib_data.get('dist')
-                        self.logger.info(f"✅ 載入攝影機校正參數: {camera_intrinsics_path}")
-                    else:
-                        self.logger.warning("⚠️ 未找到攝影機校正參數，使用預設值")
-
-                    # 初始化 STag 檢測器
-                    self.stag_detector = StagCoordinateSystem(
-                        camera_matrix=camera_matrix,
-                        dist_coeffs=dist_coeffs,
-                        marker_size=marker_size_m,
-                        library_hd=stag_hd
-                    )
-                    self.logger.info(f"✅ STag 檢測器已整合 (Phase 13.5B), Size: {marker_size_m*1000:.1f}mm")
-                else:
-                    self.logger.warning("⚠️ stag-python 模組未安裝，STag 檢測器不可用")
-
-            except Exception as e:
-                self.logger.warning(f"⚠️ STag 檢測器載入失敗: {e}")
-                self.stag_detector = None
-
-        # 初始化 YOLO 物件檢測系統（v4.3.0）- 在 HTTP Server 之前初始化
-        if self.enable_yolo:
-            if not self.enable_vision or not self.camera_capture:
-                self.logger.warning("⚠️ YOLO 檢測需要 Vision 系統，但 Vision 系統未啟用")
-                self.logger.warning("   YOLO 檢測功能將不會啟動")
-                self.enable_yolo = False
-            else:
-                try:
-                    from library.vision.yolo_detector import YOLODetector
-                    self.yolo_detector = YOLODetector(
-                        model_path=self.yolo_model_path,
-                        confidence=self.yolo_confidence,
-                        device=self.yolo_device,
-                        logger=self.logger
-                    )
-                    self.logger.info("✅ YOLO 物件檢測系統已啟用")
-                    self.logger.info(f"   模型: {self.yolo_model_path}")
-                    self.logger.info(f"   裝置: {self.yolo_device}")
-                except Exception as e:
-                    self.logger.warning("   伺服器將繼續運行（無 YOLO 功能）")
-                    self.enable_yolo = False
-
-        # 初始化磁碟管理器 (v5.1.1)
-        self.disk_manager = DiskManager(logger=self.logger)
-
-        # 初始化 HTTP API Server（v4.4.0）- 在 YOLO 初始化之後
-        if self.enable_http:
-            try:
-                self.http_server = HTTPAPIServer(
-                    host=host,
-                    port=self.http_port,
-                    camera_capture=self.camera_capture,
-                    camera_lock=self.camera_lock,
-                    logger=self.logger,
-                    yolo_detector=self.yolo_detector if self.enable_yolo else None,
-                    stag_detector=self.stag_detector  # v4.4.0: 添加 STag 檢測器
+            if STAG_AVAILABLE:
+                app_config_path = os.path.join(
+                    os.path.dirname(os.path.dirname(__file__)),
+                    'config', 'app', 'app.yaml'
                 )
-                self.http_server.start()
-                self.logger.info("✅ HTTP API Server 已啟用")
-                self.logger.info(f"   HTTP 端口: {self.http_port}")
-                if self.yolo_detector:
-                    self.logger.info("   YOLO 端點: /api/v1/yolo/detect")
-                if self.yolo_detector and self.stag_detector:
-                    self.logger.info("   STag ROI YOLO 端點: /api/v1/stag_roi/yolo_detect")
-            except Exception as e:
-                self.logger.error(f"❌ HTTP API Server 初始化失敗: {e}")
-                self.logger.warning("   伺服器將繼續運行（無 HTTP API 功能）")
-                self.enable_http = False
 
-        # 啟動連接處理
-        self.connect()
+                marker_size_m = 0.05
+                stag_hd = 11
+
+                if os.path.exists(app_config_path):
+                    try:
+                        with open(app_config_path, 'r', encoding='utf-8') as f:
+                            app_config = yaml.safe_load(f)
+                            vision_cfg = app_config.get('vision', {})
+                            marker_size_mm = vision_cfg.get('marker_size', 50.0)
+                            marker_size_m = marker_size_mm / 1000.0
+                            stag_hd = vision_cfg.get('stag_hd_library', 11)
+                            self.logger.info(f"✅ 從 {app_config_path} 載入標記尺寸: {marker_size_mm}mm")
+                    except Exception as e:
+                        self.logger.warning(f"⚠️ 讀取 app.yaml 失敗: {e}，使用預設值")
+                else:
+                    self.logger.warning(f"⚠️ 找不到 {app_config_path}，使用預設值")
+
+                camera_intrinsics_path = os.path.join(
+                    os.path.dirname(os.path.dirname(__file__)),
+                    'config', 'camera_intrinsics.npz'
+                )
+
+                camera_matrix = None
+                dist_coeffs = None
+
+                if os.path.exists(camera_intrinsics_path):
+                    calib_data = np.load(camera_intrinsics_path)
+                    camera_matrix = calib_data.get('mtx')
+                    dist_coeffs = calib_data.get('dist')
+                    self.logger.info(f"✅ 載入攝影機校正參數: {camera_intrinsics_path}")
+                else:
+                    self.logger.warning("⚠️ 未找到攝影機校正參數，使用預設值")
+
+                self.stag_detector = StagCoordinateSystem(
+                    camera_matrix=camera_matrix,
+                    dist_coeffs=dist_coeffs,
+                    marker_size=marker_size_m,
+                    library_hd=stag_hd
+                )
+                self.logger.info(f"✅ STag 檢測器已整合 (Phase 13.5B), Size: {marker_size_m*1000:.1f}mm")
+            else:
+                self.logger.warning("⚠️ stag-python 模組未安裝，STag 檢測器不可用")
+        except Exception as e:
+            self.logger.warning(f"⚠️ STag 檢測器載入失敗: {e}")
+            self.stag_detector = None
+
+    def _init_http(self, host):
+        """啟動 HTTP API Server（若啟用）"""
+        if not self.enable_http:
+            return
+
+        try:
+            self.http_server = HTTPAPIServer(
+                host=host,
+                port=self.http_port,
+                camera_capture=self.camera_capture,
+                camera_lock=self.camera_lock,
+                logger=self.logger,
+                yolo_detector=self.yolo_detector if self.enable_yolo else None,
+                stag_detector=self.stag_detector,
+                retry_helper=self._with_retry,
+            )
+            self.http_server.start()
+            self.logger.info("✅ HTTP API Server 已啟用")
+            self.logger.info(f"   HTTP 端口: {self.http_port}")
+            if self.yolo_detector:
+                self.logger.info("   YOLO 端點: /api/v1/yolo/detect")
+            if self.yolo_detector and self.stag_detector:
+                self.logger.info("   STag ROI YOLO 端點: /api/v1/stag_roi/yolo_detect")
+        except Exception as e:
+            self.logger.error(f"❌ HTTP API Server 初始化失敗: {e}")
+            self.logger.warning("   伺服器將繼續運行（無 HTTP API 功能）")
+            self.enable_http = False
+
+    def _start_yolo_background(self):
+        """在背景載入 YOLO，避免阻塞啟動"""
+        if not self.enable_yolo:
+            return
+
+        if not self.enable_vision or not self.camera_capture:
+            self.logger.warning("⚠️ YOLO 檢測需要 Vision 系統，但 Vision 系統未啟用，YOLO 將不啟動")
+            self.enable_yolo = False
+            return
+
+        def _load_yolo_background():
+            try:
+                self.logger.info("🔄 背景載入 YOLO 模型中...")
+                from library.vision.yolo_detector import YOLODetector
+
+                detector = YOLODetector(
+                    model_path=self.yolo_model_path,
+                    confidence=self.yolo_confidence,
+                    device=self.yolo_device,
+                    logger=self.logger,
+                )
+                self.yolo_detector = detector
+                if self.http_server:
+                    self.http_server.yolo_detector = detector
+                self.logger.info(f"✅ YOLO 模型載入完成: {self.yolo_model_path} (裝置: {self.yolo_device})")
+            except Exception as e:
+                self.logger.warning(f"⚠️ YOLO 模型載入失敗: {e}，伺服器繼續運行（無 YOLO 功能）")
+                self.enable_yolo = False
+
+        threading.Thread(target=_load_yolo_background, daemon=True, name="yolo-loader").start()
+
+    def _with_retry(
+        self,
+        func: Callable[[], Optional[Any]],
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        delay: float = 1.0,
+        label: str = "操作",
+        raise_last: bool = False,
+    ) -> Optional[Any]:
+        """統一的重試輔助方法"""
+        last_error: Optional[Exception] = None
+        for attempt in range(max_retries):
+            try:
+                result = func()
+                if result is not None:
+                    return result
+                self.logger.warning(f"{label} 第 {attempt + 1}/{max_retries} 次返回空結果，重試中...")
+            except Exception as exc:
+                last_error = exc
+                self.logger.warning(f"{label} 第 {attempt + 1}/{max_retries} 次失敗: {exc}")
+            if attempt < max_retries - 1:
+                time.sleep(delay)
+
+        self.logger.error(f"{label} 重試 {max_retries} 次後仍失敗")
+        if raise_last and last_error:
+            raise last_error
+        return None
+
+    def _cmd_response(self, success: bool, message: str, **extra: Any) -> Dict[str, Any]:
+        """統一命令回傳格式"""
+        response = {"status": "success" if success else "error", "message": message}
+        response.update(extra)
+        return response
+
+    def _cmd_response_from_result(self, result: dict, default_ok: str = "點擊完成", default_err: str = "點擊失敗") -> dict:
+        """將 _execute_click_with_fallback 等內部結果 dict 轉換為統一回傳格式"""
+        success = result.get("status") == "success"
+        message = result.get("message") or (default_ok if success else default_err)
+        payload = {k: v for k, v in result.items() if k not in {"status", "message"}}
+        return self._cmd_response(success, message, **payload)
+
+    def _validate_vision_system(self) -> Optional[Dict]:
+        """驗證視覺系統是否可用，不可用時回傳錯誤 dict，可用時回傳 None"""
+        if not self.enable_vision or not self.camera_capture:
+            return self._cmd_response(False, "影像系統未啟用")
+        return None
+
+    def _validate_yolo_system(self) -> Optional[Dict]:
+        """驗證 YOLO 系統是否可用，不可用時回傳錯誤 dict，可用時回傳 None"""
+        vision_err = self._validate_vision_system()
+        if vision_err:
+            return vision_err
+        if not self.enable_yolo or not self.yolo_detector:
+            return self._cmd_response(False, "YOLO 檢測系統未啟用或模型尚未載入完成")
+        return None
 
     def _load_global_offsets(self):
         """載入全局偏移補償設定"""
@@ -1612,24 +1762,23 @@ class MycobotServer(object):
         嘗試多次讀取角度，專門用於動作完成後的最終確認。
         包含緩衝區清空與延遲機制。
         """
-        # 1. 初始靜置，讓串口訊號穩定
         time.sleep(delay)
 
-        for i in range(max_retries):
-            # 2. 清空緩衝區 (確保讀到最新狀態，而非堆積的 Busy 訊號)
+        def _attempt_read():
             with self.serial_lock:
                 if self.mc and self.mc.is_open:
                     self.mc.reset_input_buffer()
-            
-            # 3. 嘗試讀取
             angles = self.get_angles()
             if angles and None not in angles:
                 return angles
-            
-            self.logger.warning(f"角度讀取重試 {i+1}/{max_retries}...")
-            time.sleep(delay)
-            
-        return None
+            return None
+
+        return self._with_retry(
+            _attempt_read,
+            max_retries=max_retries,
+            delay=delay,
+            label="角度讀取",
+        )
 
     def _get_final_position(self) -> Tuple[Optional[List[float]], Optional[List[float]]]:
         """
@@ -2081,7 +2230,7 @@ class MycobotServer(object):
             command_type = cmd.get("command")
 
             if not command_type:
-                return {"status": "error", "message": "缺少 'command' 欄位"}
+                return self._cmd_response(False, "缺少 'command' 欄位")
 
             # 控制命令
             if command_type == "move_to_angles":
@@ -2096,12 +2245,12 @@ class MycobotServer(object):
             # 補償命令 (v5.0.0)
             elif command_type == "reload_offset":
                 self._load_global_offsets()
-                return {"status": "success", "offsets": self.global_offsets, "enabled": self.correction_enabled}
+                return self._cmd_response(True, "偏移設定已載入", offsets=self.global_offsets, enabled=self.correction_enabled)
             elif command_type == "set_correction":
                 self.correction_enabled = bool(cmd.get("enable", True))
-                return {"status": "success", "enabled": self.correction_enabled}
+                return self._cmd_response(True, "補償已更新", enabled=self.correction_enabled)
             elif command_type == "get_correction_status":
-                return {"status": "success", "enabled": self.correction_enabled, "offsets": self.global_offsets}
+                return self._cmd_response(True, "補償狀態已獲取", enabled=self.correction_enabled, offsets=self.global_offsets)
 
             # 控制命令 (v5.3.0 Power Control)
             elif command_type == "power_on":
@@ -2124,21 +2273,13 @@ class MycobotServer(object):
                 return self._cmd_move_to_angles_with_stag(cmd)
             elif command_type == "enable_stag_offset":
                 self.stag_enabled = bool(cmd.get("enable", True))
-                return {"status": "success", "enabled": self.stag_enabled}
+                return self._cmd_response(True, "STag 偏移已更新", enabled=self.stag_enabled)
             elif command_type == "get_stag_offset":
-                return {
-                    "status": "success",
-                    "enabled": self.stag_enabled,
-                    "offset": self.stag_offset
-                }
+                return self._cmd_response(True, "STag 偏移已獲取", enabled=self.stag_enabled, offset=self.stag_offset)
             elif command_type == "clear_stag_offset":
                 self.stag_offset = [0.0, 0.0, 0.0]
                 self.stag_enabled = False
-                return {
-                    "status": "success",
-                    "offset": self.stag_offset,
-                    "enabled": False
-                }
+                return self._cmd_response(True, "STag 偏移已清除", offset=self.stag_offset, enabled=False)
             elif command_type == "diagnose_stag_offset":
                 return self._cmd_diagnose_stag_offset(cmd)
 
@@ -2151,11 +2292,11 @@ class MycobotServer(object):
                 return self._cmd_click_relative_to_stag(cmd)
 
             else:
-                return {"status": "error", "message": f"未知的命令類型: {command_type}"}
+                return self._cmd_response(False, f"未知的命令類型: {command_type}")
 
         except Exception as e:
             self.logger.error(f"JSON 命令處理失敗: {e}")
-            return {"status": "error", "message": str(e)}
+            return self._cmd_response(False, str(e))
 
     # ========== v4.0.0 已移除的命令 ==========
     # _cmd_detect_button() 已移除，影像判定已遷移至本機端
@@ -2181,21 +2322,13 @@ class MycobotServer(object):
 
             # 檢查是否有無效角度
             if not angles or None in angles:
-                return {
-                    "status": "error",
-                    "message": "讀取角度失敗",
-                    "angles": angles
-                }
+                return self._cmd_response(False, "讀取角度失敗", angles=angles)
 
-            return {
-                "status": "success",
-                "angles": angles,
-                "message": "讀取角度成功"
-            }
+            return self._cmd_response(True, "讀取角度成功", angles=angles)
 
         except Exception as e:
             self.logger.error(f"讀取角度失敗: {e}")
-            return {"status": "error", "message": str(e)}
+            return self._cmd_response(False, str(e))
 
     def _cmd_get_coords(self, cmd: dict) -> dict:
         """讀取當前手臂座標 (6DOF)
@@ -2217,19 +2350,11 @@ class MycobotServer(object):
             # 1. 獲取角度
             angles = self.get_angles()
             if not angles or None in angles:
-                return {
-                    "status": "error",
-                    "message": "讀取角度失敗，無法計算座標",
-                    "angles": angles
-                }
+                return self._cmd_response(False, "讀取角度失敗，無法計算座標", angles=angles)
 
             # 2. 檢查 FK 計算器
             if not self.fk_calculator:
-                return {
-                    "status": "error",
-                    "message": "FK 計算器未載入，無法計算座標",
-                    "angles": angles
-                }
+                return self._cmd_response(False, "FK 計算器未載入，無法計算座標", angles=angles)
 
             # 3. 計算 FK (座標 + 姿態)
             # forward_kinematics 只返回 xyz，我们需要 full 才能拿 RPY
@@ -2256,16 +2381,16 @@ class MycobotServer(object):
                 # 如果沒有 full 方法，就只回傳 XYZ + 000
                 coords = [float(c) for c in xyz] + [0.0, 0.0, 0.0]
 
-            return {
-                "status": "success",
-                "coords": [round(c, 2) for c in coords],
-                "angles": angles,
-                "message": "讀取座標成功"
-            }
+            return self._cmd_response(
+                True,
+                "讀取座標成功",
+                coords=[round(c, 2) for c in coords],
+                angles=angles,
+            )
 
         except Exception as e:
             self.logger.error(f"讀取座標失敗: {e}")
-            return {"status": "error", "message": str(e)}
+            return self._cmd_response(False, str(e))
 
     def _cmd_power_on(self, cmd: dict) -> dict:
         """開啟伺服馬達 (Power On)"""
@@ -2273,10 +2398,10 @@ class MycobotServer(object):
             self.write(CMD_POWER_ON)
             time.sleep(0.1) # Wait for effect
             self.logger.info("已執行 Power On 指令")
-            return {"status": "success", "message": "已開啟伺服馬達"}
+            return self._cmd_response(True, "已開啟伺服馬達")
         except Exception as e:
             self.logger.error(f"Power On 失敗: {e}")
-            return {"status": "error", "message": str(e)}
+            return self._cmd_response(False, str(e))
 
     def _cmd_power_off(self, cmd: dict) -> dict:
         """關閉伺服馬達 (Power Off / Release)"""
@@ -2284,10 +2409,10 @@ class MycobotServer(object):
             self.write(CMD_POWER_OFF)
             time.sleep(0.1)
             self.logger.info("已執行 Power Off 指令")
-            return {"status": "success", "message": "已關閉伺服馬達"}
+            return self._cmd_response(True, "已關閉伺服馬達")
         except Exception as e:
             self.logger.error(f"Power Off 失敗: {e}")
-            return {"status": "error", "message": str(e)}
+            return self._cmd_response(False, str(e))
 
     def _cmd_move_to_angles(self, cmd: dict) -> dict:
         """移動到指定角度 (支援自動補償)
@@ -2297,7 +2422,7 @@ class MycobotServer(object):
         try:
             angles = cmd.get("angles")
             if not angles or len(angles) != 6:
-                return {"status": "error", "message": "angles 參數必須包含 6 個關節角度"}
+                return self._cmd_response(False, "angles 參數必須包含 6 個關節角度")
 
             speed = cmd.get("speed", DEFAULT_MOVE_SPEED)
 
@@ -2311,13 +2436,13 @@ class MycobotServer(object):
                 final_angles = list(angles)
                 if self.correction_enabled:
                     final_angles = [a + o for a, o in zip(angles, self.global_offsets)]
-                return {"status": "success", "message": "已發送移動命令", "target_angles": final_angles}
+                return self._cmd_response(True, "已發送移動命令", target_angles=final_angles)
             else:
-                return {"status": "error", "message": "發送角度命令失敗"}
+                return self._cmd_response(False, "發送角度命令失敗")
 
         except Exception as e:
             self.logger.error(f"移動命令失敗: {e}")
-            return {"status": "error", "message": str(e)}
+            return self._cmd_response(False, str(e))
 
     def _cmd_press_button_angles(self, cmd: dict) -> dict:
         """原子化按壓按鈕指令 (v5.4.0)
@@ -2330,9 +2455,9 @@ class MycobotServer(object):
             up_angles = cmd.get("up_angles")
             
             if not down_angles or len(down_angles) != 6:
-                return {"status": "error", "message": "down_angles 參數錯誤"}
+                return self._cmd_response(False, "down_angles 參數錯誤")
             if not up_angles or len(up_angles) != 6:
-                return {"status": "error", "message": "up_angles 參數錯誤"}
+                return self._cmd_response(False, "up_angles 參數錯誤")
                 
             speed = cmd.get("speed", DEFAULT_MOVE_SPEED)
             press_duration = float(cmd.get("press_duration", 0.1))
@@ -2343,7 +2468,7 @@ class MycobotServer(object):
             # 1. Move Down
             self.logger.info("  [1/4] 下壓...")
             if not self._send_angles_internal(down_angles, speed):
-                return {"status": "error", "message": "發送下壓指令失敗"}
+                return self._cmd_response(False, "發送下壓指令失敗")
             
             # 等待到達 (嚴格模式)
             if not self._wait_for_arrival(down_angles, threshold=ARRIVAL_WARNING_THRESHOLD_DEG):
@@ -2356,7 +2481,7 @@ class MycobotServer(object):
             # 3. Move Up
             self.logger.info("  [3/4] 抬起...")
             if not self._send_angles_internal(up_angles, speed):
-                return {"status": "error", "message": "發送抬起指令失敗"}
+                return self._cmd_response(False, "發送抬起指令失敗")
                 
             # 等待到達
             if not self._wait_for_arrival(up_angles, threshold=ARRIVAL_WARNING_THRESHOLD_DEG):
@@ -2367,11 +2492,11 @@ class MycobotServer(object):
             time.sleep(lift_duration)
             
             self.logger.info("✅ 原子按壓完成")
-            return {"status": "success", "message": "按壓完成"}
+            return self._cmd_response(True, "按壓完成")
             
         except Exception as e:
             self.logger.error(f"原子按壓失敗: {e}")
-            return {"status": "error", "message": str(e)}
+            return self._cmd_response(False, str(e))
 
     def _cmd_capture_image(self, cmd: dict) -> dict:
         """截圖並返回 Base64 編碼
@@ -2391,8 +2516,8 @@ class MycobotServer(object):
                 "message": str
             }
         """
-        if not self.enable_vision or not self.camera_capture:
-            return {"status": "error", "message": "影像截取系統未啟用"}
+        if err := self._validate_vision_system():
+            return err
 
         try:
             import base64
@@ -2409,24 +2534,19 @@ class MycobotServer(object):
             elif image_format == "png":
                 success, buffer = cv2.imencode('.png', image)
             else:
-                return {"status": "error", "message": f"不支援的圖像格式: {image_format}"}
+                return self._cmd_response(False, f"不支援的圖像格式: {image_format}")
 
             if not success:
-                return {"status": "error", "message": "圖像編碼失敗"}
+                return self._cmd_response(False, "圖像編碼失敗")
 
             # Base64 編碼
             image_base64 = base64.b64encode(buffer).decode('utf-8')
 
-            return {
-                "status": "success",
-                "image_base64": image_base64,
-                "format": image_format,
-                "message": "截圖成功"
-            }
+            return self._cmd_response(True, "截圖成功", image_base64=image_base64, format=image_format)
 
         except Exception as e:
             self.logger.error(f"截圖失敗: {e}")
-            return {"status": "error", "message": str(e)}
+            return self._cmd_response(False, str(e))
 
     def _cmd_yolo_detect(self, cmd: dict) -> dict:
         """YOLO 物件檢測（v4.3.0）
@@ -2463,11 +2583,8 @@ class MycobotServer(object):
                 "message": str
             }
         """
-        if not self.enable_yolo or not self.yolo_detector:
-            return {"status": "error", "message": "YOLO 檢測系統未啟用"}
-
-        if not self.enable_vision or not self.camera_capture:
-            return {"status": "error", "message": "影像截取系統未啟用"}
+        if err := self._validate_yolo_system():
+            return err
 
         try:
             import time
@@ -2483,7 +2600,7 @@ class MycobotServer(object):
             image = self.camera_capture.capture_multi_frame_average(num_frames)
 
             if image is None:
-                return {"status": "error", "message": "圖像截取失敗"}
+                return self._cmd_response(False, "圖像截取失敗")
 
             # 2. 執行 YOLO 檢測
             start_time = time.time()
@@ -2497,17 +2614,17 @@ class MycobotServer(object):
             self.logger.info(f"YOLO 檢測完成：檢測到 {len(detections)} 個物件")
 
             # 3. 準備返回結果
-            result = {
-                "status": "success",
-                "detections": detections,
-                "metadata": {
+            result = self._cmd_response(
+                True,
+                f"檢測完成，找到 {len(detections)} 個物件",
+                detections=detections,
+                metadata={
                     "model": self.yolo_model_path,
                     "inference_time_ms": round(inference_time, 2),
                     "num_frames": num_frames,
-                    "num_detections": len(detections)
+                    "num_detections": len(detections),
                 },
-                "message": f"檢測完成，找到 {len(detections)} 個物件"
-            }
+            )
 
             # 4. 儲存圖片（如果需要）
             if save_image:
@@ -2542,7 +2659,7 @@ class MycobotServer(object):
             self.logger.error(f"YOLO 檢測失敗: {e}")
             import traceback
             traceback.print_exc()
-            return {"status": "error", "message": str(e)}
+            return self._cmd_response(False, str(e))
 
     # ==================== STag 偏移命令處理方法 (v5.1.0 Phase 13.5) ====================
 
@@ -2587,23 +2704,18 @@ class MycobotServer(object):
                 detected_pos[2] - reference_pos[2]
             ]
             self.stag_offset = offset
-            return {
-                "status": "success",
-                "offset": offset,
-                "detected_position": detected_pos,
-                "reference_position": reference_pos,
-                "marker_id": marker_id,
-                "detection_mode": "sample",
-                "message": "偏移計算完成（示例數據，STag 檢測器不可用）"
-            }
+            return self._cmd_response(
+                True,
+                "偏移計算完成（示例數據，STag 檢測器不可用）",
+                offset=offset,
+                detected_position=detected_pos,
+                reference_position=reference_pos,
+                marker_id=marker_id,
+                detection_mode="sample",
+            )
 
-        # 檢查攝影機是否可用
-        if not self.camera_capture:
-            return {
-                "status": "error",
-                "message": "攝影機不可用",
-                "offset": [0.0, 0.0, 0.0]
-            }
+        if err := self._validate_vision_system():
+            return self._cmd_response(False, err["message"], offset=[0.0, 0.0, 0.0])
 
         try:
             # 擷取影像
@@ -2612,23 +2724,19 @@ class MycobotServer(object):
                 image = self.camera_capture.capture_multi_frame_average(num_frames)
 
             if image is None:
-                return {
-                    "status": "error",
-                    "message": "影像擷取失敗",
-                    "offset": [0.0, 0.0, 0.0]
-                }
+                return self._cmd_response(False, "影像擷取失敗", offset=[0.0, 0.0, 0.0])
 
             # 執行 STag 檢測
             results = self.stag_detector.detect_markers(image)
 
             if results['markers_found'] == 0:
                 self.logger.warning(f"⚠️ 未檢測到任何 STag 標記")
-                return {
-                    "status": "error",
-                    "message": "未檢測到 STag 標記",
-                    "offset": [0.0, 0.0, 0.0],
-                    "markers_found": 0
-                }
+                return self._cmd_response(
+                    False,
+                    "未檢測到 STag 標記",
+                    offset=[0.0, 0.0, 0.0],
+                    markers_found=0,
+                )
 
             # 尋找指定的 marker_id
             target_marker = None
@@ -2640,12 +2748,12 @@ class MycobotServer(object):
             if not target_marker:
                 detected_ids = [m['id'] for m in results['markers']]
                 self.logger.warning(f"⚠️ 未找到 marker_id={marker_id}，已檢測到: {detected_ids}")
-                return {
-                    "status": "error",
-                    "message": f"未找到 marker_id={marker_id}",
-                    "detected_ids": detected_ids,
-                    "offset": [0.0, 0.0, 0.0]
-                }
+                return self._cmd_response(
+                    False,
+                    f"未找到 marker_id={marker_id}",
+                    detected_ids=detected_ids,
+                    offset=[0.0, 0.0, 0.0],
+                )
 
             # 提取檢測到的位置 (相機座標系，單位：米 → 毫米)
             pos_3d = target_marker['position_3d']
@@ -2678,27 +2786,23 @@ class MycobotServer(object):
             self.logger.info(f"   檢測位置: [{detected_pos[0]:.2f}, {detected_pos[1]:.2f}, {detected_pos[2]:.2f}]")
             self.logger.info(f"   偏移量: [{offset[0]:.2f}, {offset[1]:.2f}, {offset[2]:.2f}] mm")
 
-            return {
-                "status": "success",
-                "offset": offset,
-                "detected_position": detected_pos,
-                "reference_position": reference_pos,
-                "marker_id": marker_id,
-                "detection_mode": "real",
-                "detection_quality": target_marker.get('detection_quality', 1.0),
-                "distance_mm": target_marker.get('distance_mm', 0),
-                "message": "STag 偏移計算完成"
-            }
+            return self._cmd_response(
+                True,
+                "STag 偏移計算完成",
+                offset=offset,
+                detected_position=detected_pos,
+                reference_position=reference_pos,
+                marker_id=marker_id,
+                detection_mode="real",
+                detection_quality=target_marker.get('detection_quality', 1.0),
+                distance_mm=target_marker.get('distance_mm', 0),
+            )
 
         except Exception as e:
             self.logger.error(f"❌ STag 偏移計算失敗: {e}")
             import traceback
             self.logger.debug(traceback.format_exc())
-            return {
-                "status": "error",
-                "message": f"STag 偏移計算異常: {str(e)}",
-                "offset": [0.0, 0.0, 0.0]
-            }
+            return self._cmd_response(False, f"STag 偏移計算異常: {str(e)}", offset=[0.0, 0.0, 0.0])
 
     def _cmd_move_to_angles_with_stag(self, cmd: dict) -> dict:
         """帶 STag 偏移的移動命令
@@ -2731,15 +2835,12 @@ class MycobotServer(object):
 
             # 2. 檢查 FK/IK 是否可用
             if not self.fk_calculator or not self.ik_solver:
-                return {
-                    "status": "error",
-                    "message": "FK/IK 系統未載入，STag 偏移功能不可用"
-                }
+                return self._cmd_response(False, "FK/IK 系統未載入，STag 偏移功能不可用")
 
             # 3. 執行 FK → 偏移 → IK 流程
             angles = cmd.get("angles")
             if not angles or len(angles) != 6:
-                return {"status": "error", "message": "angles 參數必須包含 6 個關節角度"}
+                return self._cmd_response(False, "angles 參數必須包含 6 個關節角度")
 
             try:
                 # 3.1 FK: 角度 → 位置
@@ -2802,7 +2903,7 @@ class MycobotServer(object):
 
         except Exception as e:
             self.logger.error(f"move_to_angles_with_stag 失敗: {e}")
-            return {"status": "error", "message": str(e)}
+            return self._cmd_response(False, str(e))
 
     def _cmd_diagnose_stag_offset(self, cmd: dict) -> dict:
         """診斷 STag 偏移是否合理
@@ -2833,14 +2934,15 @@ class MycobotServer(object):
         else:
             self.logger.info(f"✅ 偏移量合理: {magnitude:.2f}mm")
 
-        return {
-            "status": "success",
-            "offset": offset,
-            "magnitude": round(magnitude, 2),
-            "is_reasonable": is_reasonable,
-            "warning": warning,
-            "enabled": self.stag_enabled
-        }
+        return self._cmd_response(
+            True,
+            "STag 偏移診斷完成",
+            offset=offset,
+            magnitude=round(magnitude, 2),
+            is_reasonable=is_reasonable,
+            warning=warning,
+            enabled=self.stag_enabled,
+        )
 
     # ==================== Phase 1: 座標點擊控制命令 (v5.2.0) ====================
 
@@ -2867,7 +2969,7 @@ class MycobotServer(object):
         try:
             coords = cmd.get("coords")
             if not coords or len(coords) != 6:
-                return {"status": "error", "message": "coords 參數必須包含 6 個座標值 [x, y, z, rx, ry, rz]"}
+                return self._cmd_response(False, "coords 參數必須包含 6 個座標值 [x, y, z, rx, ry, rz]")
 
             speed = cmd.get("speed", DEFAULT_CLICK_SPEED)
             wrist_first = bool(cmd.get("wrist_first", False))
@@ -2886,7 +2988,7 @@ class MycobotServer(object):
 
             # 檢查 IK Solver
             if not self.ik_solver:
-                return {"status": "error", "message": "IK Solver 不可用"}
+                return self._cmd_response(False, "IK Solver 不可用")
 
             # IK 求解
             self.logger.info(f"🎯 移動到座標: {coords} (wrist_first={wrist_first})")
@@ -2903,7 +3005,7 @@ class MycobotServer(object):
             )
             
             if solved_angles is None:
-                return {"status": "error", "message": ik_error_msg}
+                return self._cmd_response(False, ik_error_msg)
             
             # IK 誤差過大但仍有解時記錄警告（已在 _solve_ik_validated 中記錄）
 
@@ -2936,14 +3038,15 @@ class MycobotServer(object):
 
             self.logger.info(f"✅ 移動完成，IK 誤差: {ik_error:.2f}mm")
 
-            result = {
-                "status": "success",
-                "target_coords": coords,
-                "solved_angles": [round(a, 2) for a in solved_angles],
-                "final_angles": final_angles,
-                "final_coords": final_coords,
-                "ik_error_mm": round(ik_error, 2)
-            }
+            result = self._cmd_response(
+                True,
+                "移動完成",
+                target_coords=coords,
+                solved_angles=[round(a, 2) for a in solved_angles],
+                final_angles=final_angles,
+                final_coords=final_coords,
+                ik_error_mm=round(ik_error, 2),
+            )
 
             # 如果有非預設 RPY，加入警告
             if rpy_warning:
@@ -2953,7 +3056,7 @@ class MycobotServer(object):
 
         except Exception as e:
             self.logger.error(f"move_to_coords 失敗: {e}")
-            return {"status": "error", "message": str(e)}
+            return self._cmd_response(False, str(e))
 
     def _cmd_click_target(self, cmd: dict) -> dict:
         """
@@ -2984,7 +3087,7 @@ class MycobotServer(object):
         try:
             coords = cmd.get("coords")
             if not coords or len(coords) != 6:
-                return {"status": "error", "message": "coords 參數必須包含 6 個座標值 [x, y, z, rx, ry, rz]"}
+                return self._cmd_response(False, "coords 參數必須包含 6 個座標值 [x, y, z, rx, ry, rz]")
 
             # 解析參數
             fallback_angles = cmd.get("fallback_angles")
@@ -2998,9 +3101,9 @@ class MycobotServer(object):
 
             # 參數驗證
             if approach_height <= 0:
-                return {"status": "error", "message": "參數驗證失敗: approach_height 必須 > 0"}
+                return self._cmd_response(False, "參數驗證失敗: approach_height 必須 > 0")
             if click_duration < 0:
-                return {"status": "error", "message": "參數驗證失敗: click_duration 必須 >= 0"}
+                return self._cmd_response(False, "參數驗證失敗: click_duration 必須 >= 0")
 
             self.logger.info(f"🎯 點擊目標: {coords[:3]} (wrist_first={wrist_first})")
 
@@ -3017,13 +3120,13 @@ class MycobotServer(object):
                 wrist_first=wrist_first
             )
 
-            return result
+            return self._cmd_response_from_result(result)
 
         except Exception as e:
             self.logger.error(f"click_target 失敗: {e}")
             import traceback
             self.logger.debug(traceback.format_exc())
-            return {"status": "error", "message": str(e)}
+            return self._cmd_response(False, str(e))
 
     def _cmd_click_relative_to_stag(self, cmd: dict) -> dict:
         """
@@ -3055,16 +3158,16 @@ class MycobotServer(object):
         try:
             stag_id = cmd.get("stag_id")
             if stag_id is None:
-                return {"status": "error", "message": "缺少 stag_id 參數"}
+                return self._cmd_response(False, "缺少 stag_id 參數")
 
             offset = cmd.get("offset")
             if not offset or len(offset) != 3:
-                return {"status": "error", "message": "offset 參數必須包含 3 個值 [dx, dy, dz]"}
+                return self._cmd_response(False, "offset 參數必須包含 3 個值 [dx, dy, dz]")
 
             # 載入 Zone 配置
             zone = self._load_zone_config(stag_id)
             if not zone:
-                return {"status": "error", "message": f"Zone 配置不存在: zone_{stag_id}.json"}
+                return self._cmd_response(False, f"Zone 配置不存在: zone_{stag_id}.json")
 
             # 解析參數
             target_rpy = cmd.get("target_rpy") or list(zone['rpy'])
@@ -3124,13 +3227,13 @@ class MycobotServer(object):
                     result["offset_warning"] = f"偏移量 {offset} 被忽略，實際點擊 Zone {stag_id} 中心位置"
                     self.logger.warning(f"⚠️ {result['offset_warning']}")
 
-            return result
+            return self._cmd_response_from_result(result)
 
         except Exception as e:
             self.logger.error(f"click_relative_to_stag 失敗: {e}")
             import traceback
             self.logger.debug(traceback.format_exc())
-            return {"status": "error", "message": str(e)}
+            return self._cmd_response(False, str(e))
 
     def _cmd_scan_and_detect(self, cmd: dict) -> dict:
         """
@@ -3139,318 +3242,317 @@ class MycobotServer(object):
         Args:
             cmd: {
                 "command": "scan_and_detect",
-                "angles": [j1, j2, j3, j4, j5, j6],  # 觀測角度
-                "speed": int,                        # 可選，預設 50
-                "timeout": float                     # 可選，等待移動超時
+                "angles": [j1, j2, j3, j4, j5, j6],
+                "speed": int,
+                "timeout": float
             }
 
         Returns:
             {
                 "status": "success",
-                "detections": [...],  # YOLO 偵測結果
-                "moved": bool         # 是否有執行移動
+                "detections": [...],
+                "moved": bool
             }
         """
         try:
-            angles = cmd.get("angles")
-            if not angles or len(angles) != 6:
-                return {"status": "error", "message": "angles 參數必須包含 6 個角度值"}
-
-            speed = cmd.get("speed", DEFAULT_SCAN_SPEED)
-            timeout = cmd.get("timeout", MOVEMENT_TIMEOUT_SEC)
-
-            self.logger.info(f"🔍 執行掃描與偵測，目標角度: {[round(a, 2) for a in angles]}")
-
-            # 1. 移動到觀測角度
-            # 建構移动命令
-            move_cmd = {
-                "command": "move_to_angles",
-                "angles": angles,
-                "speed": speed
-            }
-            
-            # 使用現有的移動邏輯
-            move_result = self._cmd_move_to_angles(move_cmd)
-            if move_result.get("status") != "success":
-                return {"status": "error", "message": f"移動失敗: {move_result.get('message')}"}
-
-            # 2. 等待移動穩定
-            # _cmd_move_to_angles 已經包含了 wait_for_arrival，但為了視覺穩定，這裡額外等待一小段時間
-            # 由於移除了相機預熱 (約0.7s)，需要增加此等待時間以避免手臂晃動導致影像模糊
-            # Update: Add explicit wait_for_arrival to ensure physical stop
-            if not self._wait_for_arrival(angles, threshold=ARRIVAL_WARNING_THRESHOLD_DEG):
-                 self.logger.warning("⚠️ 掃描移動未準確到達，但繼續執行")
-
-            time.sleep(1.0)
-
-            # 3. 確保相機可用
-            if not self.camera_capture:
-                return {"status": "error", "message": "相機未啟用"}
-            
-            if not self.yolo_detector:
-                return {"status": "error", "message": "YOLO 檢測器未啟用"}
-
-            # 4. 擷取影像 (使用多幀平均以減少噪點)
-            self.logger.info("📸 擷取影像中...")
-            # Use warmup_frames=5 to flush buffer explicitly
-            image = self.camera_capture.capture_multi_frame_average(num_frames=3, warmup_frames=5)
-            if image is None:
-                return {"status": "error", "message": "影像擷取失敗"}
-
-            # 5. 執行 YOLO 偵測
-            self.logger.info("🧠 執行 YOLO 偵測...")
-            detections = self.yolo_detector.detect(image)
-            rotated = False
-            
-            # Robust Check: If no detections, try rotating 180
-            if not detections:
-                 self.logger.info("⚠️ 初次檢測未發現物件，嘗試旋轉 180 度重試...")
-                 rotated_image = cv2.rotate(image, cv2.ROTATE_180)
-                 rotated_detections = self.yolo_detector.detect(rotated_image)
-                 
-                 if rotated_detections:
-                      self.logger.info(f"✅ 旋轉後檢測成功: 找到 {len(rotated_detections)} 個物件")
-                      detections = rotated_detections
-                      rotated = True
-            
-            # 格式化偵測結果
-            formatted_detections = []
-            for det in detections:
-                # 嘗試多種可能的 key 來獲取類別名稱
-                class_name = (
-                    det.get("class_name") or 
-                    det.get("label") or 
-                    det.get("name") or 
-                    det.get("class") or 
-                    det.get("text") or
-                    "unknown"
-                )
-                
-                formatted_detections.append({
-                    "class": class_name,
-                    "confidence": float(det.get("confidence", 0.0)),
-                    "box": det.get("box") or det.get("bbox")
-                })
-
-            # 解決檢測衝突：同一物件保留信心度最高者
-            formatted_detections = resolve_detection_conflicts(formatted_detections)
-
-            self.logger.info(f"✅ 偵測完成，發現 {len(formatted_detections)} 個物件")
-            if formatted_detections:
-                det_details = ", ".join([f"{d['class']}({d['confidence']:.2f})" for d in formatted_detections])
-                self.logger.info(f"📋 偵測詳細結果: [{det_details}]")
-            
-            # ========== 低信心度統計與訓練資料收集 (v5.6.2) ==========
-            low_confidence_detections = [
-                d for d in formatted_detections 
-                if d['confidence'] < LOW_CONFIDENCE_THRESHOLD
-            ]
-            low_confidence_saved_path = ""
-            
-            if low_confidence_detections:
-                # 統計並記錄低信心度物件
-                low_conf_details = ", ".join([
-                    f"{d['class']}({d['confidence']:.2f})" 
-                    for d in low_confidence_detections
-                ])
-                self.logger.warning(
-                    f"⚠️ 低信心度偵測統計: {len(low_confidence_detections)} 個物件 "
-                    f"(閾值: {LOW_CONFIDENCE_THRESHOLD}): [{low_conf_details}]"
-                )
-                
-                # 自動儲存 RAW 影像供訓練使用
-                try:
-                    # 依日期建立子資料夾
-                    date_str = time.strftime("%Y-%m-%d")
-                    low_conf_dir = os.path.join(
-                        os.getcwd(), "logs", LOW_CONFIDENCE_LOG_DIR, date_str
-                    )
-                    os.makedirs(low_conf_dir, exist_ok=True)
-                    
-                    # 檢查磁碟空間
-                    if self.disk_manager.check_disk_space(low_conf_dir, min_free_mb=500.0):
-                        timestamp = time.strftime("%Y%m%d_%H%M%S")
-                        
-                        # 檔名包含所有低信心度物件資訊（最多3個，避免檔名過長）
-                        # 依信心度排序，最低的在前
-                        sorted_low_dets = sorted(
-                            low_confidence_detections, 
-                            key=lambda x: x['confidence']
-                        )[:3]  # 最多取3個
-                        
-                        # 格式: TIMESTAMP_class1_0.69_class2_0.75.jpg（timestamp 在前方便排序）
-                        name_parts = []
-                        for det in sorted_low_dets:
-                            name_parts.append(f"{det['class']}_{det['confidence']:.2f}")
-                        
-                        filename = f"{timestamp}_{'_'.join(name_parts)}.jpg"
-                        low_confidence_saved_path = os.path.join(low_conf_dir, filename)
-                        
-                        # 儲存 RAW 影像 (使用 final_image，可能是旋轉後的)
-                        final_image_for_save = rotated_image if (rotated and 'rotated_image' in locals()) else image
-                        cv2.imwrite(low_confidence_saved_path, final_image_for_save)
-                        self.logger.info(
-                            f"🎯 低信心度訓練資料已收集: {low_confidence_saved_path}"
-                        )
-                        
-                        # 定期清理舊資料 (最多保留 500MB 或 2000 張)
-                        parent_dir = os.path.join(os.getcwd(), "logs", LOW_CONFIDENCE_LOG_DIR)
-                        self.disk_manager.cleanup_old_files(
-                            parent_dir, max_size_mb=500.0, max_files=2000
-                        )
-                    else:
-                        self.logger.warning("⚠️ 磁碟空間不足，跳過儲存低信心度訓練資料")
-                        
-                except Exception as e:
-                    self.logger.error(f"⚠️ 儲存低信心度訓練資料失敗: {e}")
-            # ========== 低信心度統計結束 ==========
-            
-            # Save debug image and handle return_image
-            filepath = ""
-            image_base64 = None
-            annotated_image_base64 = None
-            
-            # Determine which image to use (rotated or original)
-            final_image = rotated_image if (rotated and 'rotated_image' in locals()) else image
-            
-            # 1. Image Return (Base64)
-            if cmd.get("return_image", True):
-                try:
-                    import base64
-                    # 原始圖 Base64
-                    _, buffer = cv2.imencode('.jpg', final_image)
-                    image_base64 = base64.b64encode(buffer).decode('utf-8')
-                    
-                    # 標註圖 Base64
-                    annotated_img_mem = final_image.copy()
-                    for det in formatted_detections:
-                         box = det.get("box")
-                         if box:
-                            try:
-                                if isinstance(box, dict):
-                                    x, y, w, h = int(box.get('x', 0)), int(box.get('y', 0)), int(box.get('w', 0)), int(box.get('h', 0))
-                                else:
-                                    x, y, w, h = [int(float(v)) for v in box]
-                                cv2.rectangle(annotated_img_mem, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                            except Exception:
-                                pass
-                            
-                    _, buffer = cv2.imencode('.jpg', annotated_img_mem)
-                    annotated_image_base64 = base64.b64encode(buffer).decode('utf-8')
-                except Exception as e:
-                    self.logger.warning(f"Base64 encoding failed: {e}")
-
-            # 2. Save Debug Image (Local)
-            if cmd.get("save_image", True):
-                try:
-                    debug_dir = os.path.join(os.getcwd(), "logs", "yolo_debug")
-                    os.makedirs(debug_dir, exist_ok=True)
-                    
-                    # Check disk space before saving
-                    if not self.disk_manager.check_disk_space(debug_dir, min_free_mb=500.0):
-                        self.logger.warning("⚠️ 磁碟空間不足，跳過儲存除錯影像")
-                    else:
-                        timestamp = time.strftime("%Y%m%d_%H%M%S")
-                        
-                        # Custom filename logic if tags provided
-                        filename_tags = cmd.get("filename_tags")
-                        if filename_tags:
-                            exp = filename_tags.get("exp", "unknown")
-                            tag = filename_tags.get("tag", "")
-                            
-                            # Find actual status using tag (simple substring match)
-                            act = "none"
-                            if tag:
-                                # Search for tag in detection classes (e.g. "light1" in "light1_on")
-                                for d in formatted_detections:
-                                    if tag.lower() in d['class'].lower():
-                                        act = d['class']
-                                        break
-                            
-                            # Requested format: scan_TIMESTAMP_[tag]_exp-[status]_act-[status].jpg
-                            filename = f"scan_{timestamp}_{tag}_exp-{exp}_act-{act}.jpg"
-                        else:
-                            filename = f"scan_{timestamp}.jpg"
-                        
-                        filepath = os.path.join(debug_dir, filename)
-                        
-                        # Also save raw image
-                        filename_raw = filename.replace(".jpg", "_raw.jpg")
-                        filepath_raw = os.path.join(debug_dir, filename_raw)
-                        
-                        # Save raw image first
-                        cv2.imwrite(filepath_raw, final_image)
-                        self.logger.info(f"💾 儲存原始影像: {filepath_raw}")
-                        
-                        # Draw detections on image for annotated version
-                        debug_img = final_image.copy()
-                        for det in formatted_detections:
-                            box = det.get("box")
-                            label = f"{det['class']} {det['confidence']:.2f}"
-                            if box:
-                                try:
-                                    if isinstance(box, dict):
-                                        x = int(box.get('x', 0))
-                                        y = int(box.get('y', 0))
-                                        w = int(box.get('w', 0) or box.get('width', 0))
-                                        h = int(box.get('h', 0) or box.get('height', 0))
-                                    else:
-                                        x, y, w, h = [int(float(v)) for v in box] # Use float then int to be safe
-                                    
-                                    cv2.rectangle(debug_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                                    cv2.putText(debug_img, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                                except Exception as e:
-                                    self.logger.warning(f"⚠️ 無法繪製邊框: {e}, box data: {box}")
-                        
-                        cv2.imwrite(filepath, debug_img)
-                        
-                        # Log detection details (Requested by user)
-                        det_str = ", ".join([f"{d['class']}({d['confidence']:.2f})" for d in formatted_detections])
-                        self.logger.info(f"💾 儲存偵測除錯影像: {filepath} | 偵測結果: [{det_str}]")
-                        
-                        # Trigger disk cleanup after successful save
-                        # Max 1GB (1000MB) or 5000 files
-                        self.disk_manager.cleanup_old_files(debug_dir, max_size_mb=1000.0, max_files=5000)
-
-                except Exception as e:
-                    self.logger.error(f"⚠️ 儲存除錯影像失敗: {e}")
-                    filepath = ""
-
-            result = {
-                "status": "success",
-                "detections": formatted_detections,
-                "moved": True,
-                "image_path": filepath,
-                # v5.6.2: 低信心度統計
-                "low_confidence_count": len(low_confidence_detections),
-                "low_confidence_threshold": LOW_CONFIDENCE_THRESHOLD
-            }
-            # 如果有低信心度物件，加入詳細資訊
-            if low_confidence_detections:
-                result["low_confidence_detections"] = [
-                    {"class": d["class"], "confidence": d["confidence"]}
-                    for d in low_confidence_detections
-                ]
-                if low_confidence_saved_path:
-                    result["low_confidence_image_path"] = low_confidence_saved_path
-            if image_base64:
-                result["image_base64"] = image_base64
-            if annotated_image_base64:
-                result["annotated_image_base64"] = annotated_image_base64
-                
-            return result
-
+            angles, options = self._parse_scan_angles(cmd)
+            raw_results = self._execute_scan_sequence(angles, options)
+            return self._aggregate_scan_results(raw_results, options)
+        except ValueError as e:
+            return self._cmd_response(False, str(e))
         except Exception as e:
             self.logger.error(f"scan_and_detect 失敗: {e}")
-            return {"status": "error", "message": str(e)}
+            return self._cmd_response(False, str(e))
+
+    def _parse_scan_angles(self, cmd: dict) -> Tuple[List[float], Dict[str, Any]]:
+        """解析掃描命令參數"""
+        angles = cmd.get("angles")
+        if not angles or len(angles) != 6:
+            raise ValueError("angles 參數必須包含 6 個角度值")
+
+        options: Dict[str, Any] = {
+            "speed": cmd.get("speed", DEFAULT_SCAN_SPEED),
+            "timeout": cmd.get("timeout", MOVEMENT_TIMEOUT_SEC),
+            "return_image": cmd.get("return_image", True),
+            "save_image": cmd.get("save_image", True),
+            "filename_tags": cmd.get("filename_tags"),
+            "raw_cmd": cmd,
+        }
+        return angles, options
+
+    def _execute_scan_sequence(self, angles: List[float], options: Dict[str, Any]) -> Dict[str, Any]:
+        """執行掃描流程：移動、拍照、YOLO 偵測"""
+        speed = options.get("speed", DEFAULT_SCAN_SPEED)
+        self.logger.info(f"🔍 執行掃描與偵測，目標角度: {[round(a, 2) for a in angles]}")
+
+        move_cmd = {
+            "command": "move_to_angles",
+            "angles": angles,
+            "speed": speed
+        }
+        move_result = self._cmd_move_to_angles(move_cmd)
+        if move_result.get("status") != "success":
+            raise ValueError(f"移動失敗: {move_result.get('message')}")
+
+        if not self._wait_for_arrival(angles, threshold=ARRIVAL_WARNING_THRESHOLD_DEG):
+            self.logger.warning("⚠️ 掃描移動未準確到達，但繼續執行")
+
+        time.sleep(1.0)
+
+        if not self.camera_capture:
+            raise ValueError("相機未啟用")
+        if not self.yolo_detector:
+            raise ValueError("YOLO 檢測器未啟用")
+
+        self.logger.info("📸 擷取影像中...")
+        image = self.camera_capture.capture_multi_frame_average(num_frames=3, warmup_frames=5)
+        if image is None:
+            raise ValueError("影像擷取失敗")
+
+        self.logger.info("🧠 執行 YOLO 偵測...")
+        detections = self.yolo_detector.detect(image)
+        rotated = False
+        rotated_image = None
+
+        if not detections:
+            self.logger.info("⚠️ 初次檢測未發現物件，嘗試旋轉 180 度重試...")
+            rotated_image = cv2.rotate(image, cv2.ROTATE_180)
+            rotated_detections = self.yolo_detector.detect(rotated_image)
+
+            if rotated_detections:
+                self.logger.info(f"✅ 旋轉後檢測成功: 找到 {len(rotated_detections)} 個物件")
+                detections = rotated_detections
+                rotated = True
+
+        formatted_detections = []
+        for det in detections:
+            class_name = (
+                det.get("class_name") or
+                det.get("label") or
+                det.get("name") or
+                det.get("class") or
+                det.get("text") or
+                "unknown"
+            )
+
+            formatted_detections.append({
+                "class": class_name,
+                "confidence": float(det.get("confidence", 0.0)),
+                "box": det.get("box") or det.get("bbox")
+            })
+
+        formatted_detections = resolve_detection_conflicts(formatted_detections)
+
+        self.logger.info(f"✅ 偵測完成，發現 {len(formatted_detections)} 個物件")
+        if formatted_detections:
+            det_details = ", ".join([f"{d['class']}({d['confidence']:.2f})" for d in formatted_detections])
+            self.logger.info(f"📋 偵測詳細結果: [{det_details}]")
+
+        low_confidence_detections = [
+            d for d in formatted_detections
+            if d['confidence'] < LOW_CONFIDENCE_THRESHOLD
+        ]
+        low_confidence_saved_path = ""
+
+        if low_confidence_detections:
+            low_conf_details = ", ".join([
+                f"{d['class']}({d['confidence']:.2f})"
+                for d in low_confidence_detections
+            ])
+            self.logger.warning(
+                f"⚠️ 低信心度偵測統計: {len(low_confidence_detections)} 個物件 "
+                f"(閾值: {LOW_CONFIDENCE_THRESHOLD}): [{low_conf_details}]"
+            )
+
+            try:
+                date_str = time.strftime("%Y-%m-%d")
+                low_conf_dir = os.path.join(
+                    os.getcwd(), "logs", LOW_CONFIDENCE_LOG_DIR, date_str
+                )
+                os.makedirs(low_conf_dir, exist_ok=True)
+
+                if self.disk_manager.check_disk_space(low_conf_dir, min_free_mb=500.0):
+                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                    sorted_low_dets = sorted(
+                        low_confidence_detections,
+                        key=lambda x: x['confidence']
+                    )[:3]
+
+                    name_parts = [f"{det['class']}_{det['confidence']:.2f}" for det in sorted_low_dets]
+                    filename = f"{timestamp}_{'_'.join(name_parts)}.jpg"
+                    low_confidence_saved_path = os.path.join(low_conf_dir, filename)
+
+                    final_image_for_save = rotated_image if (rotated and rotated_image is not None) else image
+                    cv2.imwrite(low_confidence_saved_path, final_image_for_save)
+                    self.logger.info(
+                        f"🎯 低信心度訓練資料已收集: {low_confidence_saved_path}"
+                    )
+
+                    parent_dir = os.path.join(os.getcwd(), "logs", LOW_CONFIDENCE_LOG_DIR)
+                    self.disk_manager.cleanup_old_files(
+                        parent_dir, max_size_mb=500.0, max_files=2000
+                    )
+                else:
+                    self.logger.warning("⚠️ 磁碟空間不足，跳過儲存低信心度訓練資料")
+
+            except Exception as e:
+                self.logger.error(f"⚠️ 儲存低信心度訓練資料失敗: {e}")
+
+        filepath = ""
+        image_base64 = None
+        annotated_image_base64 = None
+        final_image = rotated_image if (rotated and rotated_image is not None) else image
+        cmd_payload = options.get("raw_cmd", {})
+
+        if cmd_payload.get("return_image", True):
+            try:
+                import base64
+
+                _, buffer = cv2.imencode('.jpg', final_image)
+                image_base64 = base64.b64encode(buffer).decode('utf-8')
+
+                annotated_img_mem = final_image.copy()
+                for det in formatted_detections:
+                    box = det.get("box")
+                    if box:
+                        try:
+                            if isinstance(box, dict):
+                                x, y, w, h = int(box.get('x', 0)), int(box.get('y', 0)), int(box.get('w', 0)), int(box.get('h', 0))
+                            else:
+                                x, y, w, h = [int(float(v)) for v in box]
+                            cv2.rectangle(annotated_img_mem, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                        except Exception:
+                            pass
+
+                _, buffer = cv2.imencode('.jpg', annotated_img_mem)
+                annotated_image_base64 = base64.b64encode(buffer).decode('utf-8')
+            except Exception as e:
+                self.logger.warning(f"Base64 encoding failed: {e}")
+
+        if cmd_payload.get("save_image", True):
+            try:
+                debug_dir = os.path.join(os.getcwd(), "logs", "yolo_debug")
+                os.makedirs(debug_dir, exist_ok=True)
+
+                if not self.disk_manager.check_disk_space(debug_dir, min_free_mb=500.0):
+                    self.logger.warning("⚠️ 磁碟空間不足，跳過儲存除錯影像")
+                else:
+                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                    filename_tags = cmd_payload.get("filename_tags")
+                    if filename_tags:
+                        exp = filename_tags.get("exp", "unknown")
+                        tag = filename_tags.get("tag", "")
+
+                        act = "none"
+                        if tag:
+                            for d in formatted_detections:
+                                if tag.lower() in d['class'].lower():
+                                    act = d['class']
+                                    break
+
+                        filename = f"scan_{timestamp}_{tag}_exp-{exp}_act-{act}.jpg"
+                    else:
+                        filename = f"scan_{timestamp}.jpg"
+
+                    filepath = os.path.join(debug_dir, filename)
+
+                    filename_raw = filename.replace(".jpg", "_raw.jpg")
+                    filepath_raw = os.path.join(debug_dir, filename_raw)
+
+                    cv2.imwrite(filepath_raw, final_image)
+                    self.logger.info(f"💾 儲存原始影像: {filepath_raw}")
+
+                    debug_img = final_image.copy()
+                    for det in formatted_detections:
+                        box = det.get("box")
+                        label = f"{det['class']} {det['confidence']:.2f}"
+                        if box:
+                            try:
+                                if isinstance(box, dict):
+                                    x = int(box.get('x', 0))
+                                    y = int(box.get('y', 0))
+                                    w = int(box.get('w', 0) or box.get('width', 0))
+                                    h = int(box.get('h', 0) or box.get('height', 0))
+                                else:
+                                    x, y, w, h = [int(float(v)) for v in box]
+
+                                cv2.rectangle(debug_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                                cv2.putText(debug_img, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                            except Exception as e:
+                                self.logger.warning(f"⚠️ 無法繪製邊框: {e}, box data: {box}")
+
+                    cv2.imwrite(filepath, debug_img)
+
+                    det_str = ", ".join([f"{d['class']}({d['confidence']:.2f})" for d in formatted_detections])
+                    self.logger.info(f"💾 儲存偵測除錯影像: {filepath} | 偵測結果: [{det_str}]")
+
+                    self.disk_manager.cleanup_old_files(debug_dir, max_size_mb=1000.0, max_files=5000)
+
+            except Exception as e:
+                self.logger.error(f"⚠️ 儲存除錯影像失敗: {e}")
+                filepath = ""
+
+        return {
+            "detections": formatted_detections,
+            "low_confidence_detections": low_confidence_detections,
+            "low_confidence_image_path": low_confidence_saved_path,
+            "image_path": filepath,
+            "image_base64": image_base64,
+            "annotated_image_base64": annotated_image_base64,
+            "moved": True,
+        }
+
+    def _aggregate_scan_results(self, raw_results: Dict[str, Any], options: Dict[str, Any]) -> Dict[str, Any]:
+        """整合掃描結果，統一回傳格式"""
+        _ = options  # 保留參數以支援未來擴充
+        detections = raw_results.get("detections", [])
+        low_confidence = raw_results.get("low_confidence_detections", [])
+
+        message = f"掃描完成，共偵測到 {len(detections)} 個物件"
+        result = self._cmd_response(
+            True,
+            message,
+            detections=detections,
+            moved=raw_results.get("moved", False),
+            image_path=raw_results.get("image_path", ""),
+            low_confidence_count=len(low_confidence),
+            low_confidence_threshold=LOW_CONFIDENCE_THRESHOLD,
+        )
+
+        if low_confidence:
+            result["low_confidence_detections"] = [
+                {"class": d["class"], "confidence": d["confidence"]}
+                for d in low_confidence
+            ]
+            if raw_results.get("low_confidence_image_path"):
+                result["low_confidence_image_path"] = raw_results["low_confidence_image_path"]
+
+        if raw_results.get("image_base64"):
+            result["image_base64"] = raw_results["image_base64"]
+        if raw_results.get("annotated_image_base64"):
+            result["annotated_image_base64"] = raw_results["annotated_image_base64"]
+
+        return result
 
     def connect(self):
         """主連接循環，處理客戶端請求"""
         while self.is_running:
             conn = None
             try:
+                # 讀取系統狀態 (CPU load average + RAM)
+                try:
+                    with open('/proc/loadavg') as f:
+                        load1, load5, load15 = f.read().split()[:3]
+                    with open('/proc/meminfo') as f:
+                        mem_lines = {line.split(':')[0]: int(line.split()[1]) for line in f if ':' in line}
+                    mem_total = mem_lines.get('MemTotal', 0)
+                    mem_avail = mem_lines.get('MemAvailable', 0)
+                    mem_used_pct = (mem_total - mem_avail) / mem_total * 100 if mem_total else 0
+                    sys_status = f"CPU load: {load1}/{load5}/{load15} (1/5/15m) | RAM: {mem_used_pct:.1f}% used ({(mem_total-mem_avail)//1024}/{mem_total//1024} MB)"
+                except Exception:
+                    sys_status = "sys info unavailable"
                 self.logger.info("等待客戶端連接...")
-                print("waiting connect!------------------")
+                print(f"waiting connect!------------------ [{sys_status}]")
                 self.s.settimeout(1.0)  # 設置 accept 超時，允許定期檢查 is_running
 
                 try:
@@ -3611,16 +3713,24 @@ class MycobotServer(object):
 
     def write(self, command):
         """寫入命令到串口"""
-        with self.serial_lock:
-            if not self.mc or not self.mc.is_open:
-                raise serial.SerialException("串口未開啟")
-            try:
+        def _attempt_write():
+            with self.serial_lock:
+                if not self.mc or not self.mc.is_open:
+                    raise serial.SerialException("串口未開啟")
                 self.mc.write(command)
                 self.mc.flush()
-                self.logger.debug(f"命令已寫入: {[hex(v) for v in command]}")
-            except serial.SerialException as e:
-                self.logger.error(f"寫入失敗: {e}")
-                raise
+            self.logger.debug(f"命令已寫入: {[hex(v) for v in command]}")
+            return True
+
+        result = self._with_retry(
+            _attempt_write,
+            max_retries=DEFAULT_MAX_RETRIES,
+            delay=0.2,
+            label="串口寫入",
+            raise_last=True,
+        )
+        if result is None:
+            raise serial.SerialException("串口寫入失敗")
 
     def read(self, command, max_retries=DEFAULT_MAX_RETRIES):
         """讀取串口回應，增加錯誤處理、重試和指令碼驗證機制"""
@@ -3800,8 +3910,8 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='MyCobot Robot Arm Server')
-    parser.add_argument('--host', type=str, default=None,
-                        help='Server host IP (default: auto-detect)')
+    parser.add_argument('--host', type=str, default='0.0.0.0',
+                        help='Server host IP (default: 0.0.0.0, listen on all interfaces)')
     parser.add_argument('--port', type=int, default=9000,
                         help='Server port (default: 9000)')
     parser.add_argument('--serial', type=str, default='/dev/ttyTHS1',
@@ -3827,6 +3937,8 @@ if __name__ == "__main__":
                         help='Enable HTTP API Server (v4.2.0, default: disabled)')
     parser.add_argument('--http-port', type=int, default=8000,
                         help='HTTP API Server port (default: 8000)')
+    parser.add_argument('--yolo-model-path', type=str, default='models/best.pt',
+                        help='YOLO model file path (default: models/best.pt)')
 
     args = parser.parse_args()
 
@@ -3855,6 +3967,7 @@ if __name__ == "__main__":
     print(f"Serial Port:      {args.serial}")
     print(f"Baud Rate:        {args.baud}")
     print(f"Vision Enabled:   {not args.disable_vision}")
+    print(f"YOLO Model:       {args.yolo_model_path}")
     print(f"HTTP API Enabled: {args.enable_http}")
     if args.enable_http:
         print(f"HTTP API Port:    {args.http_port}")
@@ -3874,7 +3987,8 @@ if __name__ == "__main__":
             log_level=log_level,
             enable_vision=not args.disable_vision,
             enable_http=args.enable_http,
-            http_port=args.http_port
+            http_port=args.http_port,
+            yolo_model_path=args.yolo_model_path
         )
     except KeyboardInterrupt:
         print("\nServer stopped by user")
