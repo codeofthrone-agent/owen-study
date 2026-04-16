@@ -83,8 +83,11 @@ class FP2Keywords:
         - sensor_id: 感測器 ID (若未指定，預設為第一台)
         """
         sensor = self._get_target_sensor(sensor_id)
-        result = asyncio.run(get_status_once(sensor["alias"], sensor["mode"], sensor.get("config", {})))
-        
+        result = asyncio.run(get_status_once(
+            sensor["alias"], sensor["mode"], sensor.get("config", {}),
+            pairing_file=sensor["config"].get("pairing_file", "pairing_data.json")
+        ))
+
         if "error" in result:
              raise RuntimeError(f"查詢 FP2 狀態失敗: {result['error']}")
              
@@ -116,7 +119,10 @@ class FP2Keywords:
             # 清空快取確保後續若有其他獨立 Then 時能重新查詢最新的狀態
             del sensor["cached_state"]
         else:
-            result = asyncio.run(get_status_once(sensor["alias"], sensor["mode"], sensor.get("config", {})))
+            result = asyncio.run(get_status_once(
+                sensor["alias"], sensor["mode"], sensor.get("config", {}),
+                pairing_file=sensor["config"].get("pairing_file", "pairing_data.json")
+            ))
             if "error" in result:
                  raise RuntimeError(f"查詢 FP2 狀態失敗: {result['error']}")
             actual_state = result["state_id"]

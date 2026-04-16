@@ -609,7 +609,6 @@ class MyCobotSocketController:
         }
         
         logger.info(f"發送原子按壓指令: press={press_duration}s")
-        logger.info(f"發送原子按壓指令: press={press_duration}s")
         
         # v5.5.5: 更新移動統計 (原子操作包含兩段移動)
         # 1. 當前 -> 下壓 (Down)

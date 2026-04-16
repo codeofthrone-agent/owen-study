@@ -3,21 +3,40 @@ fp2_homekit.py - Aqara FP2 HomeKit 整合工具 (All-in-One)
 
 提供三個主要功能：
 1. discover: 尋找區網內的 HomeKit 設備
-2. pair: 透過 .env 中的 fp2_setup_code 將 FP2 加入本地控制
+2. pair: 自動發現 FP2 並配對（使用 .env 的 fp2_setup_code）
 3. monitor: 監聽 FP2 的所有 OccupancySensor (區域佔用狀態)，並判定雨遮/空間是否被佔用
+
+設備發現：
+- macOS: 使用 dns-sd（系統內建）
+- Linux: 使用 avahi-browse（需安裝 avahi-utils）
+
+配對後再連線：
+- 優先使用 pairing_data.json 中儲存的 IP 直接連線
+- 只有連線失敗（FP2 重啟/換 IP）才重新發現
+
+多台 FP2 支援：透過 --pairing-file 指定不同配對檔案
+  例：uv run python fp2_homekit.py pair --pairing-file tpe_pairing_data.json
+      uv run python fp2_homekit.py monitor --pairing-file us_pairing_data.json
 """
 
 import argparse
 import asyncio
 import logging
 import os
+import platform
+import re
 from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from aiohomekit import Controller
+from aiohomekit.controller.ip import IpDiscovery
 from aiohomekit.exceptions import AlreadyPairedError
-from aiohomekit.zeroconf import async_discover_homekit_devices
+from aiohomekit.model import Categories
+from aiohomekit.model.feature_flags import FeatureFlags
+from aiohomekit.model.status_flags import StatusFlags
+from aiohomekit.zeroconf import HAP_TYPE_TCP, HAP_TYPE_UDP, HomeKitService, ZeroconfServiceListener
 from dotenv import load_dotenv
+from zeroconf.asyncio import AsyncServiceBrowser, AsyncZeroconf
 
 logging.basicConfig(level=logging.WARNING)
 load_dotenv()
@@ -87,31 +106,193 @@ def format_time() -> str:
     return datetime.now().strftime("%H:%M:%S")
 
 
+async def _lookup_fp2_macos(instance_name: str) -> Optional[Tuple[str, int, str, int]]:
+    """dns-sd -L 查詢單一設備，回傳 (host, port, device_id, sf) 或 None"""
+    lookup = await asyncio.create_subprocess_exec(
+        "dns-sd", "-L", instance_name, "_hap._tcp", "local",
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+    )
+    host, port, device_id, sf = None, None, None, None
+    try:
+        async with asyncio.timeout(10):
+            while True:
+                line = (await lookup.stdout.readline()).decode()
+                m = re.search(r'can be reached at (\S+?):(\d+)', line)
+                if m:
+                    host = m.group(1).rstrip('.')
+                    port = int(m.group(2))
+                m2 = re.search(r'\bid=([0-9A-Fa-f:]{17})', line)
+                if m2:
+                    device_id = m2.group(1)
+                m3 = re.search(r'\bsf=(\d+)', line)
+                if m3:
+                    sf = int(m3.group(1))
+                if host and port and device_id and sf is not None:
+                    break
+    except asyncio.TimeoutError:
+        pass
+    finally:
+        lookup.terminate()
+        await lookup.wait()
+
+    if not (host and port and device_id):
+        return None
+    return host, port, device_id, sf if sf is not None else 1
+
+
+async def _discover_fp2_macos(timeout: int = 90, unpaired_only: bool = False) -> Optional[Tuple[str, int, str]]:
+    """macOS: 用 dns-sd 發現 FP2，回傳 (ip, port, device_id)。
+    unpaired_only=True: 只找 sf=1（用於 pair）；False: 接受任何 sf（用於 monitor 重新發現）
+    """
+    print(f"  使用 dns-sd 掃描（最多 {timeout} 秒）...")
+
+    browse = await asyncio.create_subprocess_exec(
+        "dns-sd", "-B", "_hap._tcp", "local",
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+    )
+    host, port, device_id = None, None, None
+    try:
+        async with asyncio.timeout(timeout):
+            while True:
+                line = (await browse.stdout.readline()).decode()
+                if not (("FP2" in line or "Presence" in line) and "Add" in line):
+                    continue
+                parts = line.strip().split()
+                if len(parts) < 7:
+                    continue
+                instance_name = " ".join(parts[6:])
+                print(f"  發現設備: {instance_name}，查詢狀態...")
+                result = await _lookup_fp2_macos(instance_name)
+                if not result:
+                    continue
+                h, p, did, sf = result
+                if unpaired_only and sf != 1:
+                    print(f"  跳過 {instance_name}（sf={sf}，已配對）")
+                    continue
+                host, port, device_id = h, p, did
+                break
+    except asyncio.TimeoutError:
+        pass
+    finally:
+        browse.terminate()
+        await browse.wait()
+
+    if not (host and port and device_id):
+        return None
+
+    resolve = await asyncio.create_subprocess_exec(
+        "dns-sd", "-G", "v4", host,
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+    )
+    ip = None
+    try:
+        async with asyncio.timeout(10):
+            while True:
+                line = (await resolve.stdout.readline()).decode()
+                m = re.search(r'Add\s+\S+\s+\S+\s+\S+\s+(\d+\.\d+\.\d+\.\d+)', line)
+                if m:
+                    ip = m.group(1)
+                    break
+    except asyncio.TimeoutError:
+        pass
+    finally:
+        resolve.terminate()
+        await resolve.wait()
+
+    if not ip:
+        return None
+    print(f"  解析完成: {ip}:{port}  Device ID: {device_id}")
+    return ip, port, device_id
+
+
+async def _discover_fp2_linux(timeout: int = 90, unpaired_only: bool = False) -> Optional[Tuple[str, int, str]]:
+    """Linux: 用 avahi-browse -r 發現 FP2，回傳 (ip, port, device_id)"""
+    print(f"  使用 avahi-browse 掃描（最多 {timeout} 秒）...")
+
+    proc = await asyncio.create_subprocess_exec(
+        "avahi-browse", "-r", "_hap._tcp",
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+    )
+    ip, port, device_id, sf = None, None, None, None
+    in_block = False
+    try:
+        async with asyncio.timeout(timeout):
+            while True:
+                line = (await proc.stdout.readline()).decode()
+                if not line:
+                    break
+                if ("FP2" in line or "Presence" in line) and line.startswith("="):
+                    in_block = True
+                    ip, port, device_id, sf = None, None, None, None  # 重置，準備讀新設備
+                if in_block:
+                    m = re.search(r'address = \[(\d+\.\d+\.\d+\.\d+)\]', line)
+                    if m:
+                        ip = m.group(1)
+                    m = re.search(r'port = \[(\d+)\]', line)
+                    if m:
+                        port = int(m.group(1))
+                    m = re.search(r'"id=([0-9A-Fa-f:]{17})"', line)
+                    if m:
+                        device_id = m.group(1)
+                    m = re.search(r'"sf=(\d+)"', line)
+                    if m:
+                        sf = int(m.group(1))
+                    if ip and port and device_id and sf is not None:
+                        if unpaired_only and sf != 1:
+                            print(f"  跳過已配對設備（sf={sf}），繼續尋找...")
+                            in_block = False
+                            ip, port, device_id, sf = None, None, None, None
+                        else:
+                            break
+    except asyncio.TimeoutError:
+        pass
+    finally:
+        proc.terminate()
+        await proc.wait()
+
+    if not (ip and port and device_id):
+        return None
+    print(f"  解析完成: {ip}:{port}  Device ID: {device_id}")
+    return ip, port, device_id
+
+
+async def _discover_fp2(timeout: int = 90, unpaired_only: bool = False) -> Optional[Tuple[str, int, str]]:
+    """自動選擇平台工具發現 FP2：macOS 用 dns-sd，Linux 用 avahi-browse"""
+    if platform.system() == "Darwin":
+        return await _discover_fp2_macos(timeout, unpaired_only=unpaired_only)
+    else:
+        return await _discover_fp2_linux(timeout, unpaired_only=unpaired_only)
+
+
 # ==========================================
 # 1. 設備探索 (Discover)
 # ==========================================
 async def do_discover():
     print("=== 尋找區網內的 HomeKit 設備 (掃描 20 秒) ===")
-    controller = Controller()
-    devices = await controller.discover_ip(max_seconds=20)
+    azc = AsyncZeroconf()
+    AsyncServiceBrowser(azc.zeroconf, [HAP_TYPE_TCP, HAP_TYPE_UDP], listener=ZeroconfServiceListener())
+    controller = Controller(async_zeroconf_instance=azc)
+    await controller.async_start()
     
-    if not devices:
-        print("找不到任何 HomeKit 設備。")
-        return
-
+    found_any = False
     fp2_unpaired = []
-    print(f"\n找到 {len(devices)} 個設備：")
+    print(f"\nScanning...")
     print("-" * 50)
-    for dev in devices:
-        info = dev.info
-        name = info.get("name", "Unknown")
-        model = info.get("md", "Unknown")
-        ip = info.get("address", "Unknown IP")
-        sf = info.get("sf", "Unknown")
+    
+    await asyncio.sleep(20)
+    
+    for device_id in controller.discoveries:
+        dev = controller.discoveries[device_id]
+        found_any = True
+        desc = dev.description
+        name = desc.name
+        model = desc.model
+        ip = desc.address
+        sf = int(desc.status_flags)
         status = "🟢 可配對 (sf=1)" if sf == 1 else "🔴 已配對 (sf=0)"
         
         print(f"名稱: {name}")
-        print(f"型號: {model} | IP: {ip}")
+        print(f"型號: {model} | IP: {ip} | ID: {device_id}")
         print(f"狀態: {status}")
         print("-" * 50)
         
@@ -119,10 +300,14 @@ async def do_discover():
         if sf == 1 and ("FP2" in name or "PS-S02D" in model or "Presence" in name):
             fp2_unpaired.append(dev)
 
-    # 若有找到未配對的 FP2，直接觸發配對
+    if not found_any:
+        print("找不到任何 HomeKit 設備。")
+    
     if fp2_unpaired:
         print("\n💡 發現尚未配對的 FP2，但由於 discover 指令不帶配對碼，請使用 pair 指令進行配對。")
-
+        
+    await controller.async_stop()
+    await azc.async_close()
 
 # ==========================================
 # 2. 設備配對 (Pair)
@@ -140,11 +325,11 @@ async def _perform_pairing(target_device, controller: Controller, alias: str, se
         setup_code = f"{setup_code[:3]}-{setup_code[3:5]}-{setup_code[5:]}"
     
     print(f"=== 開始配對 FP2 ===")
-    print(f"目標設備: {target_device.info.get('name')} | 使用 Setup Code: {setup_code} | Alias: {alias}")
+    print(f"目標設備: {target_device.description.name} | 使用 Setup Code: {setup_code} | Alias: {alias}")
     
     try:
         print("配對中...")
-        finish_pairing = await target_device.start_pairing(alias)
+        finish_pairing = await target_device.async_start_pairing(alias)
         await finish_pairing(setup_code)
         
         controller.save_data(PAIRING_FILE)
@@ -154,24 +339,15 @@ async def _perform_pairing(target_device, controller: Controller, alias: str, se
     except Exception as e:
         print(f"❌ 配對失敗: {e}")
 
-async def do_pair(alias: str, setup_code: str):
-    print("=== 尋找可配對的 FP2 (掃描 20 秒) ===")
-    controller = Controller()
-    devices = await controller.discover_ip(max_seconds=20)
-    
-    fp2_device = None
-    for dev in devices:
-        name = dev.info.get("name", "")
-        model = dev.info.get("md", "")
-        if "FP2" in name or "PS-S02D" in model or "Presence" in name:
-            fp2_device = dev
-            break
-            
-    if not fp2_device:
-        print("❌ 找不到可用的 FP2，請確認設備已開機並處於配對模式（黃燈閃爍）")
+async def do_pair(alias: str, setup_code: str, pairing_file: str = PAIRING_FILE):
+    """自動發現 FP2 並配對（macOS: dns-sd / Linux: avahi-browse）"""
+    print("=== 尋找可配對的 FP2 ===")
+    result = await _discover_fp2(timeout=90, unpaired_only=True)
+    if not result:
+        print("❌ 找不到 FP2，請確認設備已開機並處於配對模式（黃燈閃爍）")
         return
-
-    await _perform_pairing(fp2_device, controller, alias, setup_code)
+    ip, port, device_id = result
+    await do_pair_ip(ip, port, device_id, alias, setup_code, pairing_file)
 
 
 # ==========================================
@@ -180,49 +356,84 @@ async def do_pair(alias: str, setup_code: str):
 # (check_state 和 on_event 已移至 FP2StateManager)
 
 
-async def refresh_ip(controller: Controller, alias: str) -> bool:
-    pairing = controller.pairings.get(alias)
+async def _ensure_connected(controller: Controller, alias: str, pairing_file: str):
+    """確保 FP2 連線，回傳 (services, error_msg)。
+
+    策略：
+    1. 先用 pairing_data.json 中儲存的 IP 直接連線（最快，FP2 未重啟時不需 mDNS）
+    2. 若連線失敗（FP2 重啟後 IP/Port 改變），再用 dns-sd/avahi 重新發現並重試
+    """
+    pairing = controller.aliases.get(alias)
     if not pairing:
-        return False
-    target_id = pairing.pairing_data.get("AccessoryPairingID", "").upper()
-    devices = await async_discover_homekit_devices(max_seconds=10)
-    for dev in devices:
-        if dev.get("id", "").upper() == target_id:
-            ip, port = dev["address"], dev["port"]
-            pairing.pairing_data["AccessoryIP"] = ip
-            pairing.pairing_data["AccessoryPort"] = port
-            pairing.connection.host = ip
-            pairing.connection.port = port
-            print(f"更新 IP 成功: {ip}:{port}")
-            return True
-    return True
+        return None, f"配對資料中找不到 FP2 (Alias: {alias})"
+
+    stored_ip = pairing.pairing_data.get("AccessoryIP", "")
+    stored_port = pairing.pairing_data.get("AccessoryPort", 0)
+
+    if stored_ip:
+        print(f"連線中 {stored_ip}:{stored_port}...")
+        try:
+            services = await asyncio.wait_for(
+                pairing.list_accessories_and_characteristics(), timeout=15
+            )
+            return services, None
+        except Exception:
+            print("直接連線失敗，重新發現 FP2...")
+
+    result = await _discover_fp2(timeout=90)
+    if not result:
+        return None, "找不到 FP2，請確認設備已連上 Wi-Fi"
+
+    ip, port, _ = result
+    pairing.pairing_data["AccessoryIP"] = ip
+    pairing.pairing_data["AccessoryPort"] = port
+    # 同步更新 connection 物件，否則實際 TCP 連線仍用舊 IP/Port
+    if hasattr(pairing, "connection") and pairing.connection is not None:
+        pairing.connection.hosts = [ip]
+        pairing.connection.port = port
+        pairing.connection.reconnect_soon()  # 中斷 backoff sleep，立即用新 IP 重連
+    controller.save_data(pairing_file)  # 儲存新 IP 供下次直連
+
+    try:
+        services = await asyncio.wait_for(
+            pairing.list_accessories_and_characteristics(), timeout=15
+        )
+        return services, None
+    except Exception as e:
+        return None, f"連線失敗: {e}"
 
 
-async def do_monitor(alias: str, mode: str):
+async def do_monitor(alias: str, mode: str, pairing_file: str = PAIRING_FILE):
     state_mgr = FP2StateManager(mode=mode)
 
     print(f"=== FP2 HomeKit 區域佔用監控 ({alias} - {'旅行車側推艙模式' if mode == 'slide' else '雨遮模式'}) ===")
-    controller = Controller()
+    azc = AsyncZeroconf()
+    AsyncServiceBrowser(azc.zeroconf, [HAP_TYPE_TCP, HAP_TYPE_UDP], listener=ZeroconfServiceListener())
+    controller = Controller(async_zeroconf_instance=azc)
+    await controller.async_start()
+
     try:
-        controller.load_data(PAIRING_FILE)
+        controller.load_data(pairing_file)
     except FileNotFoundError:
-        print(f"❌ 找不到 {PAIRING_FILE}，請先執行 'uv run python fp2_homekit.py pair'")
+        print(f"❌ 找不到 {pairing_file}，請先執行 'uv run python fp2_homekit.py pair --pairing-file {pairing_file}'")
+        await controller.async_stop()
+        await azc.async_close()
         return
 
-    if alias not in controller.pairings:
+    if alias not in controller.aliases:
         print(f"❌ 配對資料中找不到 FP2 (Alias: {alias})")
+        await controller.async_stop()
+        await azc.async_close()
         return
 
-    print("尋找設備並連線中...")
-    await refresh_ip(controller, alias)
-    pairing = controller.pairings[alias]
-
-    try:
-        services = await pairing.list_accessories_and_characteristics()
-    except Exception as e:
-        print(f"❌ 連線失敗: {e}\n請確認 FP2 已連上 Wi-Fi")
+    services, err = await _ensure_connected(controller, alias, pairing_file)
+    if err:
+        print(f"❌ {err}")
+        await controller.async_stop()
+        await azc.async_close()
         return
 
+    pairing = controller.aliases[alias]
     accs = services if isinstance(services, list) else services.get("accessories", [])
     subscribe_targets: List[Tuple] = []
     zone_index = 1
@@ -256,7 +467,7 @@ async def do_monitor(alias: str, mode: str):
 
     if not subscribe_targets:
         print("❌ 找不到任何區域。請確保在 Aqara App 開啟了『名稱同步』")
-        await pairing.close()
+        await controller.async_stop()
         return
 
     state_mgr.current_state = state_mgr.check_state()
@@ -276,37 +487,47 @@ async def do_monitor(alias: str, mode: str):
         pass
     finally:
         print("\n關閉連線...")
-        await pairing.close()
+        await controller.async_stop()
+        await azc.async_close()
 
 
 # ==========================================
 # 4. 單次查詢 (Single-shot query for Robot Framework)
 # ==========================================
-async def get_status_once(alias: str, mode: str, options: dict = None) -> dict:
+async def get_status_once(alias: str, mode: str, options: dict = None,
+                         pairing_file: str = PAIRING_FILE) -> dict:
     """提供給 Robot Framework 單次讀取狀態的 API"""
     safe_options = options or {}
 
-    controller = Controller()
-    try:
-        # 當從 Robot 呼叫時，需使用絕對路徑尋找 pairing_data.json
-        # 假設執行目錄在專案根目錄，但 pairing_data.json 存在 libraries/fp2_detect/
-        file_path = os.path.join(os.path.dirname(__file__), PAIRING_FILE)
-        if not os.path.exists(file_path):
-             file_path = PAIRING_FILE # 退回相對路徑
-        controller.load_data(file_path)
-    except FileNotFoundError:
-        return {"error": f"找不到配對設定檔，請確保 FP2 已配對。"}
+    azc = AsyncZeroconf()
+    AsyncServiceBrowser(azc.zeroconf, [HAP_TYPE_TCP, HAP_TYPE_UDP], listener=ZeroconfServiceListener())
+    controller = Controller(async_zeroconf_instance=azc)
+    await controller.async_start()
 
-    if alias not in controller.pairings:
+    # 支援相對路徑與絕對路徑（Robot Framework 從專案根執行時需要絕對路徑）
+    resolved_file = pairing_file
+    if not os.path.isabs(pairing_file):
+        abs_path = os.path.join(os.path.dirname(__file__), pairing_file)
+        if os.path.exists(abs_path):
+            resolved_file = abs_path
+
+    try:
+        controller.load_data(resolved_file)
+    except FileNotFoundError:
+        await controller.async_stop()
+        await azc.async_close()
+        return {"error": f"找不到配對設定檔 {resolved_file}，請先執行 pair。"}
+
+    if alias not in controller.aliases:
+        await controller.async_stop()
+        await azc.async_close()
         return {"error": f"配對資料中找不到 FP2 (Alias: {alias})"}
 
-    await refresh_ip(controller, alias)
-    pairing = controller.pairings[alias]
-
-    try:
-        services = await pairing.list_accessories_and_characteristics()
-    except Exception as e:
-        return {"error": f"連線失敗: {e}"}
+    services, err = await _ensure_connected(controller, alias, resolved_file)
+    if err:
+        await controller.async_stop()
+        await azc.async_close()
+        return {"error": err}
 
     accs = services if isinstance(services, list) else services.get("accessories", [])
     
@@ -325,7 +546,8 @@ async def get_status_once(alias: str, mode: str, options: dict = None) -> dict:
                 elif LIGHT_LEVEL_UUID.upper() in ctype.upper() or ctype.upper() == "6B":
                     local_light_levels[key] = float(char.get("value", 0))
 
-    await pairing.close()
+    await controller.async_stop()
+    await azc.async_close()
 
     occupied = sum(1 for v in local_zone_states.values() if v == 1)
     slide_threshold = int(safe_options.get("slide_threshold", 1))
@@ -350,25 +572,103 @@ async def get_status_once(alias: str, mode: str, options: dict = None) -> dict:
     }
 
 # ==========================================
+# 4. 直接 IP 配對 (Pair with IP)
+# ==========================================
+async def do_pair_ip(ip: str, port: int, device_id: str, alias: str, setup_code: str,
+                    pairing_file: str = PAIRING_FILE):
+    """繞過 mDNS，直接透過 IP/Port 配對（手動指定或由 do_pair 自動呼叫）"""
+    if not setup_code:
+        setup_code = os.getenv("FP2_SETUP_CODE") or os.getenv("fp2_setup_code")
+    if not setup_code:
+        print("❌ 錯誤：未提供 setup_code 且 .env 找不到 'fp2_setup_code'")
+        return
+
+    if len(setup_code) == 8 and "-" not in setup_code:
+        setup_code = f"{setup_code[:3]}-{setup_code[3:5]}-{setup_code[5:]}"
+
+    print(f"=== 直接 IP 配對 FP2 ===")
+    print(f"IP: {ip}  Port: {port}  Device ID: {device_id}  Setup Code: {setup_code}")
+    print(f"配對檔案: {pairing_file}")
+
+    azc = AsyncZeroconf()
+    AsyncServiceBrowser(azc.zeroconf, [HAP_TYPE_TCP, HAP_TYPE_UDP], listener=ZeroconfServiceListener())
+    controller = Controller(async_zeroconf_instance=azc)
+    await controller.async_start()
+
+    desc = HomeKitService(
+        name=alias,
+        id=device_id.lower(),
+        model="PS-S02D",
+        feature_flags=FeatureFlags(2),
+        status_flags=StatusFlags(1),
+        config_num=1,
+        state_num=1,
+        category=Categories(10),
+        protocol_version="1.1",
+        type=HAP_TYPE_TCP,
+        address=ip,
+        addresses=[ip],
+        port=port,
+    )
+    device = IpDiscovery(controller, desc)
+
+    try:
+        print("配對中...")
+        finish_pairing = await device.async_start_pairing(alias)
+        pairing_obj = await finish_pairing(setup_code)
+        controller.aliases[alias] = pairing_obj  # save_data 依賴 aliases，必須手動註冊
+        controller.save_data(pairing_file)
+        print(f"✅ 配對成功！設定已儲存至 {pairing_file}")
+    except AlreadyPairedError:
+        print(f"⚠️ 設備已配對過，若需重新配對請先重置 FP2 並刪除 {pairing_file}")
+    except Exception as e:
+        print(f"❌ 配對失敗: {e}")
+    finally:
+        await controller.async_stop()
+        await azc.async_close()
+
+
+# ==========================================
 # CLI 進入點
 # ==========================================
 def main():
-    parser = argparse.ArgumentParser(description="Aqara FP2 HomeKit 整合工具")
-    parser.add_argument("action", choices=["discover", "pair", "monitor"], 
-                        help="執行的動作：discover(尋找設備), pair(配對), monitor(監聽狀態)")
+    parser = argparse.ArgumentParser(
+        description="Aqara FP2 HomeKit 整合工具",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+多台 FP2 範例：
+  uv run python fp2_homekit.py pair    --alias tpe_fp2 --pairing-file tpe_pairing_data.json
+  uv run python fp2_homekit.py monitor --alias tpe_fp2 --pairing-file tpe_pairing_data.json
+  uv run python fp2_homekit.py pair    --alias us_fp2  --pairing-file us_pairing_data.json
+  uv run python fp2_homekit.py monitor --alias us_fp2  --pairing-file us_pairing_data.json
+        """,
+    )
+    parser.add_argument("action", choices=["discover", "pair", "pair-ip", "monitor"],
+                        help="執行的動作：discover / pair / pair-ip / monitor")
     parser.add_argument("--mode", choices=["awning", "slide"], default="awning",
                         help="監聽模式：awning(雨遮, 預設), slide(旅行車側推艙)")
-    parser.add_argument("--alias", default="my_fp2_sensor", help="設備配對名稱 (預設: my_fp2_sensor)")
-    parser.add_argument("--setup-code", default="", help="設備配對碼 (pair 時使用)")
+    parser.add_argument("--alias", default="my_fp2_sensor",
+                        help="設備配對名稱，多台 FP2 時用來區分 (預設: my_fp2_sensor)")
+    parser.add_argument("--pairing-file", default=PAIRING_FILE,
+                        help=f"配對資料檔案路徑 (預設: {PAIRING_FILE})，多台 FP2 時指定不同檔案")
+    parser.add_argument("--setup-code", default="", help="設備配對碼 (pair 時使用，也可設 FP2_SETUP_CODE 環境變數)")
+    parser.add_argument("--ip", default="", help="FP2 IP 位址 (pair-ip 時使用)")
+    parser.add_argument("--port", type=int, default=0, help="FP2 Port (pair-ip 時使用)")
+    parser.add_argument("--device-id", default="", help="FP2 Device ID (pair-ip 時使用，格式 XX:XX:XX:XX:XX:XX)")
     args = parser.parse_args()
 
     try:
         if args.action == "discover":
             asyncio.run(do_discover())
         elif args.action == "pair":
-            asyncio.run(do_pair(args.alias, args.setup_code))
+            asyncio.run(do_pair(args.alias, args.setup_code, args.pairing_file))
+        elif args.action == "pair-ip":
+            if not args.ip or not args.port or not args.device_id:
+                parser.error("pair-ip 需要 --ip, --port, --device-id")
+            asyncio.run(do_pair_ip(args.ip, args.port, args.device_id,
+                                   args.alias, args.setup_code, args.pairing_file))
         elif args.action == "monitor":
-            asyncio.run(do_monitor(args.alias, args.mode))
+            asyncio.run(do_monitor(args.alias, args.mode, args.pairing_file))
     except KeyboardInterrupt:
         print("\n已終止。")
 

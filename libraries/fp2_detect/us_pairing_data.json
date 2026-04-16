@@ -1,0 +1,15 @@
+{
+  "us_fp2": {
+    "AccessoryPairingID": "19:28:28:CE:CD:F0",
+    "AccessoryLTPK": "990618202597212035614495ff84e01b24eff2810ea3526ce3e6b1e36c92dee2",
+    "iOSPairingId": "553e42d7-5e74-418f-9acf-8052e0ebbf10",
+    "iOSDeviceLTSK": "079bf635f4799c6c032e655b9592942bf656514ff2301476e154b25e9571fc48",
+    "iOSDeviceLTPK": "b654740e6ffcd016b842e35122031a027b30932dafaaf44735bd466508b9beb1",
+    "AccessoryIP": "10.42.0.96",
+    "AccessoryIPs": [
+      "10.42.0.24"
+    ],
+    "AccessoryPort": 51806,
+    "Connection": "IP"
+  }
+}

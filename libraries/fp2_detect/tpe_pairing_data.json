@@ -1,0 +1,15 @@
+{
+  "tpe_fp2": {
+    "AccessoryPairingID": "AB:11:CA:9A:77:13",
+    "AccessoryLTPK": "54167a8b9ffdf8bf8caa937ab147bf38bc5394cfe9c1d6b12098237ba2da031d",
+    "iOSPairingId": "b3692ca5-bbbe-40da-bd2e-c1bac59efe6a",
+    "iOSDeviceLTSK": "9ea3357f03fe67f41dff4af723380f4ee9c32de6242a29ff1e9694792e9dff23",
+    "iOSDeviceLTPK": "dc56b8d41ff824d1778e3d2ed59d12953f90ac46b523afc3e6989d31249e0855",
+    "AccessoryIP": "10.42.0.96",
+    "AccessoryIPs": [
+      "10.42.0.96"
+    ],
+    "AccessoryPort": 57604,
+    "Connection": "IP"
+  }
+}
