@@ -528,7 +528,20 @@ async def do_monitor(alias: str, mode: str, pairing_file: str = PAIRING_FILE):
                                             state_mgr.light_levels[key] = new_lx
                                             print(f"[{format_time()}] 🔄 輪詢更新 💡 光照度: {new_lx} lux (舊={old_lx})")
                 except Exception as poll_err:
-                    print(f"[{format_time()}] ⚠️ 輪詢失敗: {type(poll_err).__name__}: {poll_err}")
+                    err_name = type(poll_err).__name__
+                    print(f"[{format_time()}] ⚠️ 輪詢失敗: {err_name}: {poll_err}")
+                    # 連線斷開時自動重新發現並重連
+                    if any(k in err_name for k in ("Disconnected", "Connection", "Timeout")):
+                        print(f"[{format_time()}] 🔄 偵測到斷線，重新連線中...")
+                        await asyncio.sleep(5)  # 等設備穩定
+                        services, err = await _ensure_connected(controller, alias, pairing_file)
+                        if err:
+                            print(f"[{format_time()}] ❌ 重新連線失敗: {err}")
+                        else:
+                            pairing = controller.aliases[alias]
+                            await pairing.subscribe(subscribe_targets)
+                            pairing.dispatcher_connect(state_mgr.on_event)
+                            print(f"[{format_time()}] ✅ 重新連線成功，繼續監聽")
             if tick % 30 == 0:
                 occupied_count = sum(1 for v in state_mgr.zone_states.values() if v == 1)
                 print(f"[{format_time()}] ♥ 心跳確認 — 目前狀態: {state_mgr.current_state}（{occupied_count}/{len(state_mgr.zone_states)} 個區域有訊號）")
