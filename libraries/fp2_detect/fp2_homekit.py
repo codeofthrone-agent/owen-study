@@ -25,6 +25,7 @@ import logging
 import os
 import platform
 import re
+import time
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
@@ -55,6 +56,7 @@ class FP2StateManager:
         self.current_state: str = "未知"
         self.current_mode: str = mode
         self.current_options: dict = options or {}
+        self.last_event_time: float = time.time()
 
     def check_state(self) -> str:
         occupied = sum(1 for v in self.zone_states.values() if v == 1)
@@ -73,6 +75,7 @@ class FP2StateManager:
             return "🌧️  雨遮已展開 (被佔用)" if occupied >= awning_threshold else "☀️  雨遮已縮回 (淨空)"
 
     def on_event(self, events: dict):
+        self.last_event_time = time.time()
         ts = format_time()
         for (aid, iid), data in events.items():
             key = (aid, iid)
@@ -490,9 +493,9 @@ async def do_monitor(alias: str, mode: str, pairing_file: str = PAIRING_FILE):
         while True:
             await asyncio.sleep(1)
             tick += 1
-            # 每 5 秒主動輪詢一次，作為 push 事件失效時的備援
-            # 使用 list_accessories_and_characteristics（與初始連線同一路徑，已驗證可用）
-            if tick % 5 == 0:
+            # 只有超過 60 秒未收到 push 事件時才輪詢（避免與訂閱連線衝突導致 Errno 61）
+            push_silent_secs = time.time() - state_mgr.last_event_time
+            if tick % 5 == 0 and push_silent_secs > 60:
                 try:
                     fresh = await asyncio.wait_for(
                         pairing.list_accessories_and_characteristics(), timeout=12
@@ -529,9 +532,12 @@ async def do_monitor(alias: str, mode: str, pairing_file: str = PAIRING_FILE):
                                             print(f"[{format_time()}] 🔄 輪詢更新 💡 光照度: {new_lx} lux (舊={old_lx})")
                 except Exception as poll_err:
                     err_name = type(poll_err).__name__
-                    print(f"[{format_time()}] ⚠️ 輪詢失敗: {err_name}: {poll_err}")
-                    # 連線斷開時自動重新發現並重連
-                    if any(k in err_name for k in ("Disconnected", "Connection", "Timeout")):
+                    err_str = str(poll_err)
+                    # Errno 61 = Connection refused：FP2 拒絕新連線（訂閱仍存活），直接跳過不重連
+                    if "Errno 61" in err_str or "Connection refused" in err_str:
+                        print(f"[{format_time()}] ⚠️ 輪詢被拒（FP2 連線數已滿，訂閱仍正常）")
+                        state_mgr.last_event_time = time.time()  # 重設計時，避免立即再次輪詢
+                    elif any(k in err_name for k in ("Disconnected", "Connection", "Timeout")):
                         print(f"[{format_time()}] 🔄 偵測到斷線，重新連線中...")
                         await asyncio.sleep(5)  # 等設備穩定
                         services, err = await _ensure_connected(controller, alias, pairing_file)
