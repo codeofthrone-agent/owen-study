@@ -360,6 +360,123 @@ buttons:
       observe_angles: [1.49, 8.17, -135.43, 39.11, 2.72, -44.56]
       roi: {x: 232, y: 80, width: 74, height: 68}
 
+  lcd_a:
+    name: A 按鈕
+    description: 快捷按鈕 A
+    type: lcd_light
+    panel_section: 3611c
+    # down_angles: [37.2, -52.0, -108, 54.0, 0.5, -4.5]
+    down_angles: [38, -62, -120, 92.5, 0.5, -4.5]
+    up_angles: [38, -30, -120, 95, 0.5, -4.5]
+    speed: 50
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.15, 6.32, -64.77, -28.03, -4.65, -4.48]
+      roi: {x: 834, y: 336, width: 53, height: 51}
+  lcd_b:
+    name: B 按鈕
+    description: 快捷按鈕 B
+    type: lcd_light
+    panel_section: 3611c
+    # 根據 lcd_a 和 lcd_left 之間的位置關係計算 (以 vision.roi x 座標為基準線性內插)
+    down_angles: [42.5, -62, -114, 85.5, 0.5, -4.5]
+    up_angles: [42.5, -30, -114, 85.2, 0.5, -4.5]
+    speed: 50
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.15, 6.32, -64.77, -28.03, -4.65, -4.48]
+      roi: {x: 757, y: 336, width: 55, height: 51}
+  lcd_left:
+    name: 左按鈕
+    description: 快捷按鈕 左
+    type: lcd_light
+    panel_section: 3611c
+    # 根據 lcd_a, lcd_b, lcd_right 的實際測試穩定數值，透過二次曲線回歸(Quadratic Fit)優化
+    down_angles: [46.5, -62, -110, 81.7, 0.3, -4.5]
+    up_angles: [46.5, -30, -110, 81.7, 0.3, -4.5]
+    speed: 30
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.15, 6.24, -65.12, -27.77, -4.65, -4.48]
+      roi: {x: 677, y: 337, width: 58, height: 50}
+  lcd_right:
+    name: 右按鈕
+    description: 快捷按鈕 右
+    type: lcd_light
+    panel_section: 3611c
+    # 根據 lcd_a -> lcd_b -> lcd_left 推估 (以 vision.roi x 座標距離為基準外插)
+    down_angles: [51.5, -64, -107, 81.3, 0, -4.5]
+    up_angles: [51.5, -30, -107, 81.5, 0, -4.5]
+    speed: 30
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.15, 6.24, -65.12, -27.77, -4.65, -4.48]
+      roi: {x: 603, y: 334, width: 53, height: 50}
+  lcd_up:
+    name: 上按鈕
+    description: 快捷按鈕 上
+    type: lcd_light
+    panel_section: 3611c
+    down_angles: [66, -58, -98, 52.3, 0, 14.0]
+    up_angles: [66, -25, -98, 52.3, 0, 14.0]
+    speed: 30
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.15, 6.24, -65.12, -27.77, -4.65, -4.48]
+      roi: {x: 470, y: 493, width: 54, height: 50}
+  lcd_down:
+    name: 下按鈕
+    description: 快捷按鈕 下
+    type: lcd_light
+    panel_section: 3611c
+    down_angles: [62, -66, -71, 21.8, 0, -4.5]
+    up_angles: [62, -30, -71, 21.8, 0, -4.5]
+    speed: 30
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.15, 6.24, -65.12, -27.77, -4.65, -4.48]
+      roi: {x: 470, y: 420, width: 54, height: 54}
+  lcd_select:
+    name: 選擇按鈕
+    description: 快捷按鈕 選擇
+    type: lcd_light
+    panel_section: 3611c
+    down_angles: [56, -65, -87, 58.5, 0, -4.5]
+    up_angles: [56, -30, -87, 58.5, 0, -4.5]
+    speed: 30
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.15, 6.24, -65.12, -27.77, -4.65, -4.48]
+      roi: {x: 470, y: 333, width: 54, height: 53}
+  lcd_back:
+    name: 返回按鈕
+    description: 快捷按鈕 返回
+    type: lcd_light
+    panel_section: 3611c
+    down_angles: [71, -55.2, -104, 53.6, -0.6, 51.6]
+    up_angles: [71, -30, -104, 53.6, -0.6, 51.6]
+    speed: 30
+    count: 1
+    lift_duration: 0.01
+    press_duration: 0.01
+    vision:
+      observe_angles: [43.15, 6.24, -65.12, -27.77, -4.65, -4.48]
+      roi: {x: 470, y: 559, width: 54, height: 57}
+
 environment_lights:
   area1_light_1:
     name: 區域一 燈光 1
