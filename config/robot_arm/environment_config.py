@@ -89,6 +89,11 @@ class EnvironmentConfig:
             "ipcam_env": "rv_car",
             "display_name": "RV Car 測試環境",
             "location": "RV Vehicle"
+        },
+        "us_rv": {
+            "ipcam_env": "us_rv",
+            "display_name": "US RV 測試環境",
+            "location": "US RV Vehicle"
         }
     }
 
@@ -141,7 +146,7 @@ class EnvironmentConfig:
             "default_camera": None,
 
             "image_source": "http",  # ✨ 修改：使用 HTTP 影像源 (v4.2.0)
-            "robot_arm_host": "192.168.166.189",
+            "robot_arm_host": "192.168.166.163",
             "robot_arm_port": 9000,
             "robot_arm_http_port": 8000,
             "robot_arm_image_source": "http",
@@ -149,6 +154,22 @@ class EnvironmentConfig:
             "button_config_path": "config/robot_arm/rv_car_buttons.yaml",
             "hsv_adjustments": {},
             "description": "RV Car 車載測試環境，使用 Socket 影像源"
+        },
+        "us_rv": {
+            "name": "US RV 測試環境",
+            "ipcam_environment": "rv_car",
+            "cameras": [],
+            "default_camera": None,
+
+            "image_source": "http",
+            "robot_arm_host": "192.168.166.163",
+            "robot_arm_port": 9000,
+            "robot_arm_http_port": 8000,
+            "robot_arm_image_source": "http",
+
+            "button_config_path": "config/robot_arm/us_rv_buttons.yaml",
+            "hsv_adjustments": {},
+            "description": "US RV 車載測試環境，包含 LCD 快捷按鍵"
         }
     }
 

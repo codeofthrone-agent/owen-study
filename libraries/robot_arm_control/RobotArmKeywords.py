@@ -177,7 +177,7 @@ class RobotArmKeywords:
                         self.image_source_manager.socket_source.port = int(port)
                     logger.info("已將控制器 Socket 分享給視覺模組 (ImageSourceManager)")
             except Exception as e:
-                logger.warning(f"無法更新視覺模組 Socket: {e}")
+                logger.warn(f"無法更新視覺模組 Socket: {e}")
 
     @keyword("斷開機器手臂連接")
     def disconnect_robot_arm(self):
@@ -406,7 +406,7 @@ class RobotArmKeywords:
                 shared_socket = self.controller.socket
                 logger.info("檢測到已存在的控制器連接，視覺模組將使用共享 Socket。")
             except Exception as e:
-                logger.warning(f"無法從控制器取得共享 Socket: {e}。視覺模組將使用獨立連接。")
+                logger.warn(f"無法從控制器取得共享 Socket: {e}。視覺模組將使用獨立連接。")
 
         # 初始化影像源管理器 (可能帶有共享 socket)
         self.image_source_manager = ImageSourceManager(shared_socket=shared_socket)
@@ -439,7 +439,7 @@ class RobotArmKeywords:
                 self.config_loader = ButtonConfigLoader(config_path)
                 logger.info(f"   Config Loader 已更新為: {config_path}")
             except Exception as e:
-                logger.warning(f"更新 Config Loader 失敗: {e}，將使用預設配置或 EnvironmentConfig")
+                logger.warn(f"更新 Config Loader 失敗: {e}，將使用預設配置或 EnvironmentConfig")
 
         # 載入按鈕配置（所有面板的按鈕統一載入）
         if "button_config_path" in self.env_config:
@@ -450,7 +450,7 @@ class RobotArmKeywords:
                 button_count = len(self.panel_button_config.get("buttons", {}))
                 logger.info(f"   按鈕配置已載入: {button_count} 個按鈕")
             except Exception as e:
-                logger.warning(f"載入按鈕配置失敗: {e}")
+                logger.warn(f"載入按鈕配置失敗: {e}")
 
     @keyword('Given 面板類型設定為 "${panel_type}"')
     def given_panel_type_is(self, panel_type: str):
@@ -718,7 +718,7 @@ class RobotArmKeywords:
                 self.controller.send_angles(observe_angles, 30)
                 time.sleep(2)  # 等待穩定
             except Exception as e:
-                logger.warning(f"移動到觀測角度失敗: {e}，繼續使用當前角度檢測")
+                logger.warn(f"移動到觀測角度失敗: {e}，繼續使用當前角度檢測")
 
         # 準備 ROI 配置（單一按鈕）
         # 🔧 BUGFIX v4.2.0: 傳入完整vision配置,而不只是roi字典
@@ -913,7 +913,7 @@ class RobotArmKeywords:
                     self.controller.send_angles(observe_angles, 30)
                     time.sleep(2)  # 等待穩定
             except Exception as e:
-                logger.warning(f"移動到觀測角度失敗: {e}，繼續使用當前角度檢測")
+                logger.warn(f"移動到觀測角度失敗: {e}，繼續使用當前角度檢測")
 
         # 本機執行亮度檢測
         try:
@@ -1478,7 +1478,7 @@ class RobotArmKeywords:
 
                             # 檢測二進制協議殘留回應（MyCobot 協議以 0xfe 開頭）
                             if len(response) == 0 and len(chunk) >= 1 and chunk[0] == 0xfe:
-                                logger.warning(
+                                logger.warn(
                                     f"收到二進制協議殘留回應 (attempt {attempt + 1}/{max_retries}): "
                                     f"{len(chunk)} bytes, 首字節: 0x{chunk[0]:02x}"
                                 )
@@ -1521,7 +1521,7 @@ class RobotArmKeywords:
 
             except RuntimeError as e:
                 if "二進制協議殘留" in str(e) and attempt < max_retries - 1:
-                    logger.warning(f"視覺命令重試 (attempt {attempt + 1}/{max_retries})")
+                    logger.warn(f"視覺命令重試 (attempt {attempt + 1}/{max_retries})")
                     time.sleep(0.1)
                     self.controller._flush_socket_buffer()
                     continue
@@ -1608,7 +1608,7 @@ class RobotArmKeywords:
                     # dwell_time 已在前面處理，但移動後仍需等待穩定
                     time.sleep(2)  
                 except Exception as e:
-                    logger.warning(f"移動到觀測角度失敗: {e}，繼續使用當前角度檢測")
+                    logger.warn(f"移動到觀測角度失敗: {e}，繼續使用當前角度檢測")
 
             # 🔧 BUGFIX v4.2.0: 傳入完整的vision配置,而不只是roi字典
             # 完整vision配置包含: roi, aruco_markers, observe_angles等
@@ -1896,7 +1896,7 @@ class RobotArmKeywords:
             if actual_color == check_color:
                 # 針對 x 和 on 的亮度區分 (假設)
                 if expected_state == 'on' and actual_brightness < 10:
-                     logger.warning(f"⚠️ [ROI] 顏色正確但亮度過低 ({actual_brightness}%)，可能不是 ON")
+                     logger.warn(f"⚠️ [ROI] 顏色正確但亮度過低 ({actual_brightness}%)，可能不是 ON")
                      # 視情況是否讓它失敗
                 
                 roi_pass = True
@@ -1963,7 +1963,7 @@ class RobotArmKeywords:
                     logger.info(f"📷 YOLO 截圖已儲存到本機: {abs_path}")
                     return abs_path
         except Exception as e:
-            logger.warning(f"儲存 YOLO 回傳圖片失敗: {e}")
+            logger.warn(f"儲存 YOLO 回傳圖片失敗: {e}")
         
         return None
     @keyword('YOLO 僅檢測並儲存按鈕影像 "${button_id}" 預期狀態 "${expected_state}"')
@@ -2002,7 +2002,7 @@ class RobotArmKeywords:
         result = self._send_vision_command(cmd, timeout=30.0)
         
         if result.get("status") != "success":
-            logger.warning(f"YOLO 偵測指令回傳失敗: {result.get('message')}")
+            logger.warn(f"YOLO 偵測指令回傳失敗: {result.get('message')}")
             return
 
         # 儲存回傳的圖片到本機
@@ -2518,7 +2518,7 @@ class RobotArmKeywords:
         try:
             result = self._send_vision_command(cmd, timeout=30.0)
             if result.get("status") != "success":
-                logger.warning(f"YOLO 偵測指令失敗: {result.get('message')}")
+                logger.warn(f"YOLO 偵測指令失敗: {result.get('message')}")
                 return "error"
 
             detections = result.get("detections", [])
@@ -2535,7 +2535,7 @@ class RobotArmKeywords:
                     button_detections.append(det)
             
             if not button_detections:
-                logger.warning(f"未檢測到任何屬於 '{button_id}' 的物件。所有檢測: {[d.get('class') for d in detections]}")
+                logger.warn(f"未檢測到任何屬於 '{button_id}' 的物件。所有檢測: {[d.get('class') for d in detections]}")
                 return "none"
 
             # 從屬於該按鈕的檢測中取信心度最高的
@@ -2591,7 +2591,7 @@ class RobotArmKeywords:
         try:
             result = self._send_vision_command(cmd, timeout=30.0)
             if result.get("status") != "success":
-                logger.warning(f"YOLO 偵測指令失敗: {result.get('message')}")
+                logger.warn(f"YOLO 偵測指令失敗: {result.get('message')}")
                 return
 
             detections = result.get("detections", [])
