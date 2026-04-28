@@ -247,13 +247,33 @@ class RobotArmKeywords:
         duration = custom_duration if custom_duration is not None else config['press_duration']
         logger.debug(f"執行原子按壓: press={duration}s, lift={config['lift_duration']}s")
         
-        self.controller.press_button_atomic(
-            down_angles=config['down_angles'],
-            up_angles=config['up_angles'],
-            press_duration=duration,
-            lift_duration=config['lift_duration'],
-            speed=config['speed']
-        )
+        try:
+            self.controller.press_button_atomic(
+                down_angles=config['down_angles'],
+                up_angles=config['up_angles'],
+                press_duration=duration,
+                lift_duration=config['lift_duration'],
+                speed=config['speed']
+            )
+        except RuntimeError as e:
+            if "未知的命令類型: press_button_angles" in str(e):
+                logger.warn(f"伺服器不支援原子按壓，改用本機逐步指令回退機制... ({e})")
+                # Fallback to local execution
+                # Down
+                self.controller.send_angles(config['down_angles'], config['speed'])
+                self.controller.wait_for_movement(check_interval=0.02)
+                # Press duration
+                if duration > 0:
+                    import time
+                    time.sleep(duration)
+                # Up
+                self.controller.send_angles(config['up_angles'], config['speed'])
+                self.controller.wait_for_movement(check_interval=0.02)
+                if config['lift_duration'] > 0:
+                    import time
+                    time.sleep(config['lift_duration'])
+            else:
+                raise e
         
         logger.info(f"✅ 完成按壓按鈕: {button_name}")
         
