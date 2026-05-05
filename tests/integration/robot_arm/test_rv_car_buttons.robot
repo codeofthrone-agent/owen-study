@@ -147,3 +147,51 @@ Teardown Test Environment
     [Tags]    rv_car    fridge    button
     When 用戶按壓第 "fridge" 按鈕
     Then 機器手臂操作應該成功完成
+
+測試 A 按鈕
+    [Documentation]    測試按壓 A 按鈕
+    [Tags]    rv_car    lcd_a    button
+    When 用戶按壓第 "lcd_a" 按鈕
+    Then 機器手臂操作應該成功完成
+
+測試 B 按鈕
+    [Documentation]    測試按壓 B 按鈕
+    [Tags]    rv_car    lcd_b    button
+    When 用戶按壓第 "lcd_b" 按鈕
+    Then 機器手臂操作應該成功完成
+
+測試 左按鈕 按鈕
+    [Documentation]    測試按壓 左按鈕 按鈕
+    [Tags]    rv_car    lcd_left    button
+    When 用戶按壓第 "lcd_left" 按鈕
+    Then 機器手臂操作應該成功完成
+
+測試 右按鈕 按鈕
+    [Documentation]    測試按壓 右按鈕 按鈕
+    [Tags]    rv_car    lcd_right    button
+    When 用戶按壓第 "lcd_right" 按鈕
+    Then 機器手臂操作應該成功完成
+
+測試 上按鈕 按鈕
+    [Documentation]    測試按壓 上按鈕 按鈕
+    [Tags]    rv_car    lcd_up    button
+    When 用戶按壓第 "lcd_up" 按鈕
+    Then 機器手臂操作應該成功完成
+
+測試 下按鈕 按鈕
+    [Documentation]    測試按壓 下按鈕 按鈕
+    [Tags]    rv_car    lcd_down    button
+    When 用戶按壓第 "lcd_down" 按鈕
+    Then 機器手臂操作應該成功完成
+
+測試 選擇按鈕 按鈕
+    [Documentation]    測試按壓 選擇按鈕 按鈕
+    [Tags]    rv_car    lcd_select    button
+    When 用戶按壓第 "lcd_select" 按鈕
+    Then 機器手臂操作應該成功完成
+
+測試 返回按鈕 按鈕
+    [Documentation]    測試按壓 返回按鈕 按鈕
+    [Tags]    rv_car    lcd_back    button
+    When 用戶按壓第 "lcd_back" 按鈕
+    Then 機器手臂操作應該成功完成
