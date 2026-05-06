@@ -612,10 +612,10 @@ class SwitchBotSmartPlugLibrary:
             return is_on
             
         except Exception as e:
-            error_msg = f"驗證智慧插座開啟狀態失敗: {e}"
-            self.logger.error(error_msg)
+            error_msg = f"驗證智慧插座開啟狀態暫時不符合預期: {e}"
+            self.logger.info(error_msg)
             if ROBOT_AVAILABLE:
-                robot_logger.error(error_msg)
+                robot_logger.info(error_msg)
             raise AssertionError(error_msg)
     
     @keyword("那麼智慧插座狀態應該是關閉")
@@ -649,10 +649,10 @@ class SwitchBotSmartPlugLibrary:
             return is_off
             
         except Exception as e:
-            error_msg = f"驗證智慧插座關閉狀態失敗: {e}"
-            self.logger.error(error_msg)
+            error_msg = f"驗證智慧插座關閉狀態暫時不符合預期: {e}"
+            self.logger.info(error_msg)
             if ROBOT_AVAILABLE:
-                robot_logger.error(error_msg)
+                robot_logger.info(error_msg)
             raise AssertionError(error_msg)
     
     @keyword("等待設備狀態變更")

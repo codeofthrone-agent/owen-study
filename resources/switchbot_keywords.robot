@@ -32,7 +32,7 @@ ${SWITCHBOT_TOKEN}          ${EMPTY}
 ${SWITCHBOT_SECRET}         ${EMPTY}
 ${DEFAULT_DEVICE_ID}        ${EMPTY}
 ${STATUS_CHECK_TIMEOUT}     30
-${DEVICE_RESPONSE_DELAY}    2
+${DEVICE_RESPONSE_DELAY}    5
 
 # 狀態常數
 ${STATUS_ON}                on
