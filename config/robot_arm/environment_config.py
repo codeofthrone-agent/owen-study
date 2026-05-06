@@ -94,6 +94,11 @@ class EnvironmentConfig:
             "ipcam_env": "us_rv",
             "display_name": "US RV 測試環境",
             "location": "US RV Vehicle"
+        },
+        "taoyuan_4f": {
+            "ipcam_env": "rv_car",
+            "display_name": "桃園 4F 實驗測試",
+            "location": "Taoyuan 4F"
         }
     }
 
@@ -170,6 +175,22 @@ class EnvironmentConfig:
             "button_config_path": "config/robot_arm/us_rv_buttons.yaml",
             "hsv_adjustments": {},
             "description": "US RV 車載測試環境，包含 LCD 快捷按鍵"
+        },
+        "taoyuan_4f": {
+            "name": "桃園 4F 實驗測試",
+            "ipcam_environment": "rv_car",
+            "cameras": [],
+            "default_camera": None,
+
+            "image_source": "http",
+            "robot_arm_host": "192.168.166.181",
+            "robot_arm_port": 9000,
+            "robot_arm_http_port": 8000,
+            "robot_arm_image_source": "http",
+
+            "button_config_path": "config/robot_arm/taoyuan_4f_buttons.yaml",
+            "hsv_adjustments": {},
+            "description": "桃園 4 樓測試環境設定"
         }
     }
 
