@@ -92,16 +92,6 @@ The system consists of the following subsystems:
 
 > Best practice: maintain separate credentials for production and lab usage to reduce leakage risk.
 
-#### B. Recommended IP Plan
-- Router/Gateway: static IP (e.g., 192.168.50.1)
-- Main controller: static IP (or DHCP reservation)
-- IPCAM: static IP / DHCP reservation
-- Robotic arm control node: static IP
-
-#### C. Credential Handling Rules
-- Do not store plaintext passwords in public documents
-- Mask credentials as `***` in formal docs; store secrets in a secure vault
-- Update validation scripts when credentials are rotated
 
 ---
 
@@ -137,9 +127,9 @@ The system consists of the following subsystems:
 Recommended hierarchy: **Main Hub -> Sub Hub -> End Devices**
 
 - Main hub: connects main controller and primary I/O
-- Sub Hub A: microSD group x2
-- Sub Hub B: microSD group x6
-- Sub Hub C: imaging/peripheral expansion (as needed)
+- Sub Hub A: control-board and serial-adapter peripherals (as needed)
+- Sub Hub B: IPCAM / speaker / RobotArm-related peripherals (as needed)
+- Sub Hub C: imaging and other expansion peripherals (as needed)
 
 > Assign a unique label to every port: `H1-P01`, `H1-P02`, `H2-P01`, etc.
 
