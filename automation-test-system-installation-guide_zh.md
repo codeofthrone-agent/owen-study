@@ -37,7 +37,11 @@
 ### SOP 區塊（Chapter 1）
 - **Objective（目的）**：定義系統邊界、網路拓樸與部署前提。
 - **Preconditions（前置條件）**：設備清單、線材與工具齊備，且尚未上電。
-- **Output（產出）**：完成架構確認、命名規範與安全上電規則。
+- **Procedure（程序重點）**：完成範圍確認 → 拓樸核對 → 物料與網路前提確認。
+- **Verification（驗證方式）**：以章末規則核對命名、線序與上電前安全條件。
+- **Pass Criteria（通過標準）**：架構與前提確認完成，且無高風險未決項。
+- **Exceptions（例外處理）**：若現場拓樸或設備與文件不符，立即停作業並更新變更紀錄。
+
 ### 1.1 Project Scope and Objectives
 本文件用於指導建立一套可重複、可維護的自動化測試系統，目標如下：
 
@@ -116,6 +120,14 @@
 ![Wiring Detail](https://drive.google.com/uc?export=view&id=1XE3O7h17guDEkzzsTE8ZMLZFj0ecc8tY)
 
 > 本章聚焦控制板與 Hub 的接線方向、埠位規劃與標籤規範，避免 RX/TX 與埠位錯接。
+
+### SOP 區塊（Chapter 2）
+- **Objective（目的）**：完成板件與 Hub 接線設計，確保通訊與供電穩定。
+- **Preconditions（前置條件）**：板件型號、埠位命名規則與線材規格已確認。
+- **Procedure（程序重點）**：先定義 Hub 分層與埠位，再執行方向規則與接線標籤。
+- **Verification（驗證方式）**：依 2.6 checklist 逐項核對供電、辨識、UART 線序與標籤。
+- **Pass Criteria（通過標準）**：所有節點可辨識、無反插/錯接、線材固定完成。
+- **Exceptions（例外處理）**：若埠位不足或衝突，先更新配線表後再繼續施工。
 
 ### 2.1 Control Board Roles and Interface Map
 - **3611A / 3611C**：分區控制/介面板
@@ -198,6 +210,14 @@
 
 > 本章以機械手臂組裝為主，強調固定、翻面、線材餘量與上電前檢查。
 
+### SOP 區塊（Chapter 3）
+- **Objective（目的）**：完成機械手臂與底板安裝，並確保機構與線束安全。
+- **Preconditions（前置條件）**：底板、固定件、螺絲、板件與線材已到位。
+- **Procedure（程序重點）**：依 3.2 步驟完成固定、接線、翻面與最終檢查。
+- **Verification（驗證方式）**：確認固定力矩、活動範圍、線材餘量與干涉狀態。
+- **Pass Criteria（通過標準）**：手臂可安全動作且無鬆脫、拉扯、異音風險。
+- **Exceptions（例外處理）**：若翻面或試動出現干涉，立即斷電回退至上一步修正。
+
 ### 3.1 Assembly Preparation
 - 確認底板、固定座、雙面膠、螺絲齊全
 - 準備 3611A / 3611C / WF-3534 與線材
@@ -244,6 +264,14 @@
 
 > 本章說明現場分區（Zone）與裝置擺位原則，確保覆蓋率、維護性與走線安全。
 
+### SOP 區塊（Chapter 4）
+- **Objective（目的）**：建立可維護且安全的空間部署與裝置擺位。
+- **Preconditions（前置條件）**：場域分區、設備數量與線路限制條件已確認。
+- **Procedure（程序重點）**：先定義分區，再依設備特性完成擺位與走線約束。
+- **Verification（驗證方式）**：核對覆蓋率、可維護性、走線安全與檢修可達性。
+- **Pass Criteria（通過標準）**：各 Zone 擺位合理、線路安全、維護窗口可用。
+- **Exceptions（例外處理）**：若現場結構限制導致偏差，需註記替代路徑與風險。
+
 ### 4.1 Zoning Strategy
 依場域分區部署（Zone 1~4）：
 - Zone 1：客廳/主動線
@@ -283,6 +311,14 @@
 ---
 
 ## 5. Commissioning, Validation, and Troubleshooting
+
+### SOP 區塊（Chapter 5）
+- **Objective（目的）**：完成上電、功能驗證與異常排除，確認可交付狀態。
+- **Preconditions（前置條件）**：前四章施工與檢查項目已完成。
+- **Procedure（程序重點）**：依序執行上電前檢查 → 上電流程 → 功能驗證 → 異常處置。
+- **Verification（驗證方式）**：依 5.3 功能驗證與 5.5 驗收清單逐項確認。
+- **Pass Criteria（通過標準）**：關鍵設備在線、連續運作測試通過、交接文件齊全。
+- **Exceptions（例外處理）**：若出現高風險異常（過熱/異音/連續掉線），立即停機並回報。
 
 ### 5.1 Pre-Power Checklist
 - [ ] 所有螺絲已固定

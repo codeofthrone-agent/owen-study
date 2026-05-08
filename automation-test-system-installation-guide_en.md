@@ -36,7 +36,11 @@
 ### SOP Block (Chapter 1)
 - **Objective**: Define system boundary, topology, and deployment prerequisites.
 - **Preconditions**: Hardware, cables, and tools are ready; power remains OFF.
-- **Output**: Architecture baseline, naming conventions, and safe power-on rules are confirmed.
+- **Procedure**: Confirm scope -> validate topology -> confirm material and network prerequisites.
+- **Verification**: Check naming, wiring order, and pre-power safety conditions against chapter rules.
+- **Pass Criteria**: Architecture baseline and prerequisites are confirmed with no unresolved high-risk items.
+- **Exceptions**: If site topology or device inventory differs from this SOP, stop work and log a controlled change.
+
 ### 1.1 Project Scope and Objectives
 This document provides a repeatable and maintainable installation procedure for an automated test system. Objectives:
 
@@ -115,6 +119,14 @@ The system consists of the following subsystems:
 ![Wiring Detail](https://drive.google.com/uc?export=view&id=1XE3O7h17guDEkzzsTE8ZMLZFj0ecc8tY)
 
 > This chapter focuses on board-to-hub wiring direction, port planning, and labeling rules to prevent RX/TX or port mapping errors.
+
+### SOP Block (Chapter 2)
+- **Objective**: Complete board and hub wiring design with stable communication and power distribution.
+- **Preconditions**: Board models, port naming convention, and cable specs are confirmed.
+- **Procedure**: Define hub hierarchy and port map first, then execute orientation rules and labeling.
+- **Verification**: Run checklist 2.6 to verify power, detection, UART mapping, and labels.
+- **Pass Criteria**: All nodes are detectable, no reverse/wrong insertion, and cable fixation is complete.
+- **Exceptions**: If ports are insufficient or conflicting, update the routing table before continuing work.
 
 ### 2.1 Control Board Roles and Interface Map
 - **3611A / 3611C**: zone control/interface boards
@@ -197,6 +209,14 @@ Do not force insertion when uncertain.
 
 > This chapter centers on robotic arm assembly, emphasizing fastening order, flip-over handling, cable slack, and pre-power validation.
 
+### SOP Block (Chapter 3)
+- **Objective**: Complete robotic arm and base assembly with mechanical and cable safety.
+- **Preconditions**: Base plate, mounts, screws, boards, and cables are prepared.
+- **Procedure**: Follow section 3.2 for fastening, wiring, flip-over handling, and final checks.
+- **Verification**: Verify fastening quality, movement range, cable slack, and interference status.
+- **Pass Criteria**: Arm can operate safely without looseness, cable tension, or abnormal noise risk.
+- **Exceptions**: If interference appears during flip-over or trial motion, power off and roll back one step for correction.
+
 ### 3.1 Assembly Preparation
 - Confirm base plate, mounts, tape, and screws are complete
 - Prepare 3611A / 3611C / WF-3534 and all cables
@@ -243,6 +263,14 @@ Do not force insertion when uncertain.
 
 > This chapter defines zone-based placement and spatial constraints to ensure coverage quality, maintainability, and safe cable routing.
 
+### SOP Block (Chapter 4)
+- **Objective**: Build a maintainable and safe spatial deployment and device placement plan.
+- **Preconditions**: Site zoning, device counts, and cable routing constraints are confirmed.
+- **Procedure**: Define zones first, then place devices by function and routing constraints.
+- **Verification**: Validate coverage quality, maintainability, routing safety, and service accessibility.
+- **Pass Criteria**: Each zone has valid placement, safe routing, and accessible maintenance windows.
+- **Exceptions**: If structural constraints require deviations, document alternate routes and risk notes.
+
 ### 4.1 Zoning Strategy
 Deploy by area zones (Zone 1~4):
 - Zone 1: living/main traffic path
@@ -282,6 +310,14 @@ Deploy by area zones (Zone 1~4):
 ---
 
 ## 5. Commissioning, Validation, and Troubleshooting
+
+### SOP Block (Chapter 5)
+- **Objective**: Complete power-on, functional validation, and troubleshooting to reach handover-ready status.
+- **Preconditions**: Installation and checks from Chapters 1-4 are complete.
+- **Procedure**: Execute pre-power checks -> power-on sequence -> functional validation -> failure handling.
+- **Verification**: Verify results against section 5.3 and acceptance checklist 5.5.
+- **Pass Criteria**: Critical devices are online, continuous run test passes, and handover records are complete.
+- **Exceptions**: If high-risk anomalies occur (overheat/abnormal noise/repeated disconnects), stop operation immediately and escalate.
 
 ### 5.1 Pre-Power Checklist
 - [ ] All screws are tightened
