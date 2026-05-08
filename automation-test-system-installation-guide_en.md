@@ -51,7 +51,7 @@ This document provides a repeatable and maintainable installation procedure for 
 The system consists of the following subsystems:
 
 - **Control/Compute Subsystem**: main controller, control boards (WF-3534 / 3611A / 3611C)
-- **I/O and Data Subsystem**: USB hubs, extension cables, microSD device groups
+- **I/O and Data Subsystem**: USB hubs, extension cables, imaging and other expansion peripherals
 - **Sensing and Actuation Subsystem**: IPCAM, speakers, RobotArm board, robotic arm
 - **Network Subsystem**: Wi‑Fi router, test SSID, and device network grouping
 - **Spatial Deployment Subsystem**: zone-based physical layout and cable routing paths
