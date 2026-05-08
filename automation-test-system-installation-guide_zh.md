@@ -9,6 +9,11 @@
 
 ## 1. System Overview and Network Architecture
 
+### 章節總覽圖
+![Network and Device Topology](https://drive.google.com/uc?export=view&id=1roD82kDBS9iYUXlkyvy0cbKczhOMT1Ts)
+
+> 本章先建立系統整體觀：控制/運算、I/O、感測執行與網路分層關係，作為後續接線與部署基準。
+
 ### 1.1 Project Scope and Objectives
 本文件用於指導建立一套可重複、可維護的自動化測試系統，目標如下：
 
@@ -27,9 +32,6 @@
 - **感測與執行子系統**：IPCAM、Speaker、RobotArm board、機械手臂
 - **網路子系統**：Wi‑Fi Router、測試 SSID 與設備網路分群
 - **空間部署子系統**：車體（或場域）分區部署與配線路徑
-
-#### 系統空間與配線總覽圖
-![System Layout](https://drive.google.com/uc?export=view&id=1ZMmWd5I4OJ7QmjIPW4ioC2KNTBS-2iXt)
 
 ---
 
@@ -78,9 +80,6 @@
 - 正式文件以 `***` 遮蔽，憑證放安全保管庫
 - 變更網路憑證時需同步更新驗收腳本
 
-#### 系統連接拓樸圖
-![Network and Device Topology](https://drive.google.com/uc?export=view&id=1roD82kDBS9iYUXlkyvy0cbKczhOMT1Ts)
-
 ---
 
 ### 1.5 Safety, Power Isolation, and Power-On Rules
@@ -98,6 +97,11 @@
 ---
 
 ## 2. Control Boards and Hubs Wiring Guide
+
+### 章節總覽圖
+![Wiring Detail](https://drive.google.com/uc?export=view&id=1XE3O7h17guDEkzzsTE8ZMLZFj0ecc8tY)
+
+> 本章聚焦控制板與 Hub 的接線方向、埠位規劃與標籤規範，避免 RX/TX 與埠位錯接。
 
 ### 2.1 Control Board Roles and Interface Map
 - **3611A / 3611C**：分區控制/介面板
@@ -135,9 +139,6 @@
 
 方向規則必須和實際板件型號一致；不同板可能有不同第一腳位方向。  
 如未確認，禁止強插。
-
-#### 接線特寫與方向參考
-![Wiring Detail](https://drive.google.com/uc?export=view&id=1XE3O7h17guDEkzzsTE8ZMLZFj0ecc8tY)
 
 ---
 
@@ -178,6 +179,11 @@
 
 ## 3. Robotic Arm and Base Hardware Assembly
 
+### 章節總覽圖
+![Robot Arm Assembly](https://drive.google.com/uc?export=view&id=1z1aUfe4O4kPEcjyr5Lg8QLkneW-JKC36)
+
+> 本章以機械手臂組裝為主，強調固定、翻面、線材餘量與上電前檢查。
+
 ### 3.1 Assembly Preparation
 - 確認底板、固定座、雙面膠、螺絲齊全
 - 準備 3611A / 3611C / WF-3534 與線材
@@ -208,9 +214,6 @@
 - 檢查手臂活動範圍、線材餘量、固定點
 - 完成後才允許接入電源
 
-#### 機械手臂組裝流程圖
-![Robot Arm Assembly](https://drive.google.com/uc?export=view&id=1z1aUfe4O4kPEcjyr5Lg8QLkneW-JKC36)
-
 ---
 
 ### 3.3 Mechanical and Cable Safety Notes
@@ -221,6 +224,11 @@
 ---
 
 ## 4. Device Spatial Deployment and Positioning
+
+### 章節總覽圖
+![System Layout](https://drive.google.com/uc?export=view&id=1ZMmWd5I4OJ7QmjIPW4ioC2KNTBS-2iXt)
+
+> 本章說明現場分區（Zone）與裝置擺位原則，確保覆蓋率、維護性與走線安全。
 
 ### 4.1 Zoning Strategy
 依場域分區部署（Zone 1~4）：

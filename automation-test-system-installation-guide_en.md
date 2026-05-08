@@ -8,6 +8,11 @@
 
 ## 1. System Overview and Network Architecture
 
+### Chapter Overview Diagram
+![Network and Device Topology](https://drive.google.com/uc?export=view&id=1roD82kDBS9iYUXlkyvy0cbKczhOMT1Ts)
+
+> This chapter establishes the end-to-end system view: control/compute, I/O, sensing/actuation, and network layers as the baseline for later wiring and deployment.
+
 ### 1.1 Project Scope and Objectives
 This document provides a repeatable and maintainable installation procedure for an automated test system. Objectives:
 
@@ -26,9 +31,6 @@ The system consists of the following subsystems:
 - **Sensing and Actuation Subsystem**: IPCAM, speakers, RobotArm board, robotic arm
 - **Network Subsystem**: Wi‑Fi router, test SSID, and device network grouping
 - **Spatial Deployment Subsystem**: zone-based physical layout and cable routing paths
-
-#### System Layout and Wiring Overview
-![System Layout](https://drive.google.com/uc?export=view&id=1ZMmWd5I4OJ7QmjIPW4ioC2KNTBS-2iXt)
 
 ---
 
@@ -77,9 +79,6 @@ The system consists of the following subsystems:
 - Mask credentials as `***` in formal docs; store secrets in a secure vault
 - Update validation scripts when credentials are rotated
 
-#### Network and Device Topology
-![Network and Device Topology](https://drive.google.com/uc?export=view&id=1roD82kDBS9iYUXlkyvy0cbKczhOMT1Ts)
-
 ---
 
 ### 1.5 Safety, Power Isolation, and Power-On Rules
@@ -97,6 +96,11 @@ The system consists of the following subsystems:
 ---
 
 ## 2. Control Boards and Hubs Wiring Guide
+
+### Chapter Overview Diagram
+![Wiring Detail](https://drive.google.com/uc?export=view&id=1XE3O7h17guDEkzzsTE8ZMLZFj0ecc8tY)
+
+> This chapter focuses on board-to-hub wiring direction, port planning, and labeling rules to prevent RX/TX or port mapping errors.
 
 ### 2.1 Control Board Roles and Interface Map
 - **3611A / 3611C**: zone control/interface boards
@@ -134,9 +138,6 @@ Connector direction rules (per diagram):
 
 These direction rules must match board model specifics. Different boards may have different first-pin orientations.  
 Do not force insertion when uncertain.
-
-#### Wiring Detail and Direction Reference
-![Wiring Detail](https://drive.google.com/uc?export=view&id=1XE3O7h17guDEkzzsTE8ZMLZFj0ecc8tY)
 
 ---
 
@@ -177,6 +178,11 @@ Do not force insertion when uncertain.
 
 ## 3. Robotic Arm and Base Hardware Assembly
 
+### Chapter Overview Diagram
+![Robot Arm Assembly](https://drive.google.com/uc?export=view&id=1z1aUfe4O4kPEcjyr5Lg8QLkneW-JKC36)
+
+> This chapter centers on robotic arm assembly, emphasizing fastening order, flip-over handling, cable slack, and pre-power validation.
+
 ### 3.1 Assembly Preparation
 - Confirm base plate, mounts, tape, and screws are complete
 - Prepare 3611A / 3611C / WF-3534 and all cables
@@ -207,9 +213,6 @@ Do not force insertion when uncertain.
 - Verify movement range, cable slack, and fasteners
 - Apply power only after checks are complete
 
-#### Robotic Arm Assembly Diagram
-![Robot Arm Assembly](https://drive.google.com/uc?export=view&id=1z1aUfe4O4kPEcjyr5Lg8QLkneW-JKC36)
-
 ---
 
 ### 3.3 Mechanical and Cable Safety Notes
@@ -220,6 +223,11 @@ Do not force insertion when uncertain.
 ---
 
 ## 4. Device Spatial Deployment and Positioning
+
+### Chapter Overview Diagram
+![System Layout](https://drive.google.com/uc?export=view&id=1ZMmWd5I4OJ7QmjIPW4ioC2KNTBS-2iXt)
+
+> This chapter defines zone-based placement and spatial constraints to ensure coverage quality, maintainability, and safe cable routing.
 
 ### 4.1 Zoning Strategy
 Deploy by area zones (Zone 1~4):
