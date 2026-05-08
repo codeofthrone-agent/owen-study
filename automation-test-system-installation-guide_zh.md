@@ -1,19 +1,43 @@
 # 自動化測試系統安裝文件  
 **Automation Test System Installation Guide**
 
-> 版本：v1.0（Draft）  
+> 文件類型：Standard Operating Procedure (SOP)  
+> 版本：v1.1（Draft）  
 > 最後更新：2026-05-08  
 > 適用範圍：WFCO PwrPro 自動化測試環境（機械手臂 + 控制板 + Hub + IPCAM + Speaker + Wi‑Fi）
+
+### SOP 文件控制
+| 欄位 | 內容 |
+|---|---|
+| Owner | `<Owner Name>` |
+| Reviewer | `<Reviewer Name>` |
+| 生效日 | `YYYY-MM-DD` |
+| 變更類型 | 章首總覽圖重排 + SOP 格式化 |
+
+### SOP 使用方式
+1. 依章節順序執行，禁止跳過安全檢查。  
+2. 每章完成後，需勾選對應 checklist。  
+3. 若現場條件與文件不符，先停作業並更新變更紀錄。
 
 ---
 
 ## 1. System Overview and Network Architecture
 
-### 章節總覽圖
+### 章節總覽圖（圖1 + 圖2）
+![System Layout](https://drive.google.com/uc?export=view&id=1ZMmWd5I4OJ7QmjIPW4ioC2KNTBS-2iXt)
+
+*圖1：System Layout（空間分區與設備擺位全貌）*
+
 ![Network and Device Topology](https://drive.google.com/uc?export=view&id=1roD82kDBS9iYUXlkyvy0cbKczhOMT1Ts)
 
-> 本章先建立系統整體觀：控制/運算、I/O、感測執行與網路分層關係，作為後續接線與部署基準。
+*圖2：Network and Device Topology（控制板、Hub、相機、手臂與網路關係）*
 
+> 本章建立系統整體觀，先確認「空間佈局 + 網路拓樸」兩層基準，再進入接線與組裝程序。
+
+### SOP 區塊（Chapter 1）
+- **Objective（目的）**：定義系統邊界、網路拓樸與部署前提。
+- **Preconditions（前置條件）**：設備清單、線材與工具齊備，且尚未上電。
+- **Output（產出）**：完成架構確認、命名規範與安全上電規則。
 ### 1.1 Project Scope and Objectives
 本文件用於指導建立一套可重複、可維護的自動化測試系統，目標如下：
 

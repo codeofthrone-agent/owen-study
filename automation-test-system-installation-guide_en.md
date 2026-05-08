@@ -1,18 +1,42 @@
 # Automation Test System Installation Guide
 
-> Version: v1.0 (Draft)  
+> Document Type: Standard Operating Procedure (SOP)  
+> Version: v1.1 (Draft)  
 > Last Updated: 2026-05-08  
 > Scope: WFCO PwrPro automated test environment (Robotic Arm + Control Boards + Hub + IPCAM + Speaker + Wi‑Fi)
+
+### SOP Document Control
+| Field | Content |
+|---|---|
+| Owner | `<Owner Name>` |
+| Reviewer | `<Reviewer Name>` |
+| Effective Date | `YYYY-MM-DD` |
+| Change Type | Chapter-opening diagram restructuring + SOP formatting |
+
+### How to Use This SOP
+1. Execute steps in chapter order; do not skip safety checks.  
+2. Complete the corresponding checklist at the end of each chapter.  
+3. If site conditions differ from this document, stop and log a controlled change.
 
 ---
 
 ## 1. System Overview and Network Architecture
 
-### Chapter Overview Diagram
+### Chapter Overview Diagrams (Figure 1 + Figure 2)
+![System Layout](https://drive.google.com/uc?export=view&id=1ZMmWd5I4OJ7QmjIPW4ioC2KNTBS-2iXt)
+
+*Figure 1: System Layout (zone-based physical placement overview)*
+
 ![Network and Device Topology](https://drive.google.com/uc?export=view&id=1roD82kDBS9iYUXlkyvy0cbKczhOMT1Ts)
 
-> This chapter establishes the end-to-end system view: control/compute, I/O, sensing/actuation, and network layers as the baseline for later wiring and deployment.
+*Figure 2: Network and Device Topology (board/hub/camera/arm/network relationships)*
 
+> This chapter defines the baseline from two dimensions—physical layout and network topology—before wiring and assembly execution.
+
+### SOP Block (Chapter 1)
+- **Objective**: Define system boundary, topology, and deployment prerequisites.
+- **Preconditions**: Hardware, cables, and tools are ready; power remains OFF.
+- **Output**: Architecture baseline, naming conventions, and safe power-on rules are confirmed.
 ### 1.1 Project Scope and Objectives
 This document provides a repeatable and maintainable installation procedure for an automated test system. Objectives:
 
