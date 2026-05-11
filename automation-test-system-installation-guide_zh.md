@@ -35,12 +35,12 @@
 > 本章建立系統整體觀，先確認「空間佈局 + 網路拓樸」兩層基準，再進入接線與組裝程序。
 
 ### SOP 區塊（Chapter 1）
-- **Objective（目的）**：定義系統邊界、網路拓樸與部署前提。
-- **Preconditions（前置條件）**：設備清單、線材與工具齊備，且尚未上電。
-- **Procedure（程序重點）**：完成範圍確認 → 拓樸核對 → 依 System Layout 完成擺設與接線。
-- **Verification（驗證方式）**：以章末規則核對命名、線序與上電前安全條件。
-- **Pass Criteria（通過標準）**：架構、擺設與接線確認完成，且無高風險未決項。
-- **Exceptions（例外處理）**：若現場拓樸或設備與文件不符，立即停作業並更新變更紀錄。
+- **Objective（目的）**：完成 Chapter 1 的現場基礎部署（Wi‑Fi、IPCAM、Speaker/Scarlett 4i4、FP2）並建立可驗收狀態。
+- **Preconditions（前置條件）**：圖1/圖2可對照、設備與線材到位、IPCAM 已可設定 `qa_rpt`、現場電源點已確認。
+- **Procedure（程序重點）**：依序執行 **Wi‑Fi 位置與配線配電 → IPCAM 觀測位擺設與配電 → Speaker 擺放與 Scarlett 4i4 配線 → FP2（Awning + Light4）定位安裝與配電**。
+- **Verification（驗證方式）**：使用 Appendix C 單一總表逐項勾核位置、供電、配線與功能測試結果。
+- **Pass Criteria（通過標準）**：四類設備均完成安裝，且 `qa_rpt`、影像串流、音訊輸出、FP2 觸發測試皆可正常驗證。
+- **Exceptions（例外處理）**：若圖面與現場不一致、電源/配線受限或測試未通過，標記 `Blocked/Rework` 並記錄原因後再進入下一章。
 
 ### 1.1 Project Scope and Objectives
 本文件用於指導建立一套可重複、可維護的自動化測試系統，目標如下：
