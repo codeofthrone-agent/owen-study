@@ -29,9 +29,6 @@
   <rect class="box" x="80" y="510" width="1440" height="360" fill="#f3e5f5"/>
   <text x="96" y="546" class="h">Zone D｜感測區（Awning + Light4）</text>
 
-  <rect class="box" x="120" y="240" width="120" height="70" fill="#90caf9"/>
-  <text x="132" y="282" class="t">Wi‑Fi Router/AP</text>
-
   <rect class="box" x="300" y="235" width="96" height="50" fill="#ffe082"/><text x="312" y="300" class="s">CAM-01</text>
   <rect class="box" x="340" y="330" width="96" height="50" fill="#ffe082"/><text x="352" y="395" class="s">CAM-02</text>
   <rect class="box" x="1120" y="245" width="96" height="50" fill="#ffe082"/><text x="1132" y="310" class="s">CAM-03</text>
@@ -48,10 +45,9 @@
   <text x="1010" y="682" class="h">FP2 Sensor（Awning + Light4）</text>
   <text x="1010" y="718" class="t">磁吸安裝，可快速拆裝</text>
 
-  <line x1="240" y1="275" x2="300" y2="260" stroke="#1565c0" stroke-width="3" marker-end="url(#arrow)"/>
-  <line x1="240" y1="275" x2="340" y2="355" stroke="#1565c0" stroke-width="3" marker-end="url(#arrow)"/>
-  <line x1="240" y1="275" x2="1120" y2="270" stroke="#1565c0" stroke-width="3" marker-end="url(#arrow)"/>
-  <line x1="240" y1="275" x2="1320" y2="345" stroke="#1565c0" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="330" y1="260" x2="340" y2="355" stroke="#1565c0" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="330" y1="260" x2="1120" y2="270" stroke="#1565c0" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="330" y1="260" x2="1320" y2="345" stroke="#1565c0" stroke-width="3" marker-end="url(#arrow)"/>
 
   <line x1="740" y1="620" x2="670" y2="300" stroke="#1565c0" stroke-width="3" marker-end="url(#arrow)"/>
   <line x1="740" y1="620" x2="790" y2="385" stroke="#1565c0" stroke-width="3" marker-end="url(#arrow)"/>

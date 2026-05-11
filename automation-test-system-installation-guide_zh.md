@@ -212,10 +212,13 @@
 
 ## Appendix C — 現場驗收示意圖與填寫表
 
-### C.1 示意圖（依圖一邏輯）
+### C.1 示意圖（依圖一邏輯，不含 Wi‑Fi）
 ![Chapter 1 驗收示意圖](docs/ch1_layout_acceptance_template.svg)
 
-### C.2 現場驗收填寫表（可直接照表填）
+### C.2 一頁紙列印版（大欄位打勾）
+- 檔案：`docs/ch1_onsite_acceptance_onepage_zh.md`
+
+### C.3 現場驗收填寫表（可直接照表填）
 
 #### A. Wi‑Fi 設備（位置 / 配線 / 配電）
 | 項目 | 設備ID | 實際位置 | 配電完成(Y/N) | 配線方式(有線/Extender) | SSID | 驗收結果 | 備註 |
