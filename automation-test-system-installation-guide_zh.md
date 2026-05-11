@@ -210,6 +210,54 @@
 
 ---
 
+## Appendix C — 現場驗收示意圖與填寫表
+
+### C.1 示意圖（依圖一邏輯）
+![Chapter 1 驗收示意圖](docs/ch1_layout_acceptance_template.svg)
+
+### C.2 現場驗收填寫表（可直接照表填）
+
+#### A. Wi‑Fi 設備（位置 / 配線 / 配電）
+| 項目 | 設備ID | 實際位置 | 配電完成(Y/N) | 配線方式(有線/Extender) | SSID | 驗收結果 | 備註 |
+|---|---|---|---|---|---|---|---|
+| Router/AP | WIFI-01 |  |  |  | qa_rpt |  |  |
+| Extender（如有） | WIFI-EXT-01 |  |  |  | qa_rpt |  |  |
+
+#### B. IPCAM（依圖一觀測位置）
+| CAM ID | 圖一觀測區 | 實際安裝位置 | 供電完成(Y/N) | 網路方式(有線/Extender) | 串流正常(Y/N) | 驗收結果 | 備註 |
+|---|---|---|---|---|---|---|---|
+| CAM-01 |  |  |  |  |  |  |  |
+| CAM-02 |  |  |  |  |  |  |  |
+| CAM-03 |  |  |  |  |  |  |  |
+| CAM-04 |  |  |  |  |  |  |  |
+
+#### C. Speaker + Scarlett 4i4
+| 項目 | ID | 圖一區位 | 實際位置 | 配電完成(Y/N) | 配線完成(Y/N) | 對應埠位 | 驗收結果 | 備註 |
+|---|---|---|---|---|---|---|---|---|
+| Speaker | SPK-01 |  |  |  |  |  |  |  |
+| Speaker | SPK-02 |  |  |  |  |  |  |  |
+| Speaker | SPK-03 |  |  |  |  |  |  |  |
+| Audio Interface | Scarlett 4i4 |  |  |  |  |  |  |  |
+
+#### D. FP2 Sensor（Awning + Light4）
+| Sensor ID | 偵測目標 | 圖一區位 | 實際位置 | 磁吸安裝確認(Y/N) | 配電完成(Y/N) | 觸發測試結果 | 驗收結果 | 備註 |
+|---|---|---|---|---|---|---|---|---|
+| SEN-FP2-01 | Awning + Light4 |  |  |  |  |  |  |  |
+
+#### E. Chapter 1 總驗收
+| 檢查項目 | 結果（Pass/Fail） | 備註 |
+|---|---|---|
+| Wi‑Fi 位置/配線/配電完成 |  |  |
+| IPCAM 全部安裝並可串流 |  |  |
+| Speaker/Scarlett 4i4 位置與配線完成 |  |  |
+| FP2 可穩定偵測 Awning + Light4 |  |  |
+
+| Owner | Date | Final Status |
+|---|---|---|
+|  |  | Ready / Blocked / Rework |
+
+---
+
 ## Appendix A — Recommended Naming Convention
 - Device：`CAM-01`, `SPK-01`, `ARM-CTRL-01`
 - Hub Port：`H1-P01`, `H2-P03`
