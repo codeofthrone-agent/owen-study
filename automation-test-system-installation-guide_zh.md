@@ -112,7 +112,9 @@
 ### 1.6 FP2 Sensor 定位、安裝與配電（Awning + Light4）
 1. FP2 主要用於偵測 **Awning + Light4**，先依圖1定位目標偵測區。
 2. 依附圖確認安裝朝向與覆蓋範圍：
-   - https://drive.google.com/file/d/1WTaFEssc_zN6jul7jczow6FFsiC27zGp/view?usp=drive_link
+
+![FP2 安裝朝向與覆蓋範圍](https://drive.google.com/uc?export=view&id=1WTaFEssc_zN6jul7jczow6FFsiC27zGp)
+
 3. 使用 FP2 磁鐵特性進行試貼定位，確認偵測正確後再固定。
 4. 完成配電與線材固定，保留可拆裝維護空間。
 5. 執行 Awning + Light4 觸發測試，記錄觸發成功區域。
@@ -140,6 +142,11 @@
 
 ## 2. 主機位置配置（依現場狀態）
 
+### 章節附圖
+![System Layout](https://drive.google.com/uc?export=view&id=1ZMmWd5I4OJ7QmjIPW4ioC2KNTBS-2iXt)
+
+*圖：System Layout（主機位置應依現場可維護區與走線路徑配置）*
+
 ### 2.1 目的
 根據現場實際空間、散熱、維護動線與線材長度，決定主機最終放置位置。
 
@@ -157,6 +164,11 @@
 ---
 
 ## 3. 燒錄器 / USB 延長線 / USB Hub 配置（連回 PC）
+
+### 章節附圖
+![Wiring Detail](https://drive.google.com/uc?export=view&id=1XE3O7h17guDEkzzsTE8ZMLZFj0ecc8tY)
+
+*圖：Wiring Detail（燒錄器、Hub、延長線回連 PC 參考）*
 
 ### 3.1 目的
 完成燒錄器、USB 延長線與 USB Hub 的拓樸配置，確保可穩定回連 PC。
@@ -176,6 +188,11 @@
 ---
 
 ## 4. 機械手臂及面板配置
+
+### 章節附圖
+![Robot Arm Assembly](https://drive.google.com/uc?export=view&id=1z1aUfe4O4kPEcjyr5Lg8QLkneW-JKC36)
+
+*圖：Robot Arm Assembly（機械手臂與面板安裝參考）*
 
 ### 4.1 目的
 完成機械手臂與面板（控制板）安裝，確保固定、配線與操作安全。
