@@ -63,61 +63,64 @@
 
 ---
 
-### 1.3 IPCAM 擺設與接線（依 System Layout）
-> 依圖1（System Layout）先定點位、再走線，禁止先接線再找位置。
+### 1.3 Setup Wi‑Fi 位置、配線與配電
+1. 先依圖1確認 Wi‑Fi 設備（Router / AP / Extender）放置位置，優先覆蓋主通道與 IPCAM 區域。
+2. 完成電源配置（插座、延長線、固定方式），確保設備有穩定供電。
+3. 完成網路配線（WAN/LAN）並固定線材，避免跨越活動機構。
+4. 依現場需求二選一：
+   - 直接接入網路線（有線回程）
+   - 設定 Wi‑Fi Extender（無線延伸）
+5. 啟用後確認 SSID 為 `qa_rpt`，並記錄設備位置與配線路徑。
 
-1. 依圖1將 IPCAM 分配到對應區位（入口 / 主通道 / 手臂作業區 / 死角補盲區）。
-2. 每台 IPCAM 安裝後，先確認視角覆蓋該區主要路徑，再鎖固。
-3. 線路沿圖1標示的櫃體後方或線槽路徑回收至 Hub，不可跨越活動機構。
-4. 於 Hub 端建立埠位對照：`CAM-xx -> Hx-Pxx`，同步貼標到相機端與 Hub 端。
-5. 依圖2拓樸完成網路接入（SSID：`qa_rpt`），確認主控可讀取串流。
-
-**驗證標準（擺設 + 接線）**
-- [ ] 每台 IPCAM 位置與圖1區位一致
-- [ ] 每台 IPCAM 的線路可追溯到唯一 Hub 埠位
-- [ ] 主控端可讀取全部串流且無明顯掉幀
-
----
-
-### 1.4 Speaker / 分音器 擺設與接線（依 System Layout）
-> Speaker 先依圖1分區擺設，再依圖2拓樸做分音器配線。
-
-1. Speaker 依圖1分區均勻放置，優先覆蓋測試提示可聽區，避免集中單側。
-2. 分音器（Audio Splitter）安裝於主音源與 Speaker 分支之間，固定於可維護區。
-3. 依圖1既有線路通道完成配線：主音源 -> 分音器輸入 -> 各 Speaker 輸出。
-4. 建立配線對照：`AUD-SPLIT-01-OUTx -> SPK-0x`，並將標籤貼於兩端。
-5. 逐路播放測試音（OUT1~OUTn），確認每一路對應正確 Speaker。
-
-**驗證標準（擺設 + 接線）**
-- [ ] Speaker 實際位置與圖1分區一致
-- [ ] 分音器每個輸出埠皆有對應 Speaker 且標籤一致
-- [ ] 任一路測試音都能在預期分區聽到，不串路
+**驗證標準**
+- [ ] Wi‑Fi 設備位置符合圖1覆蓋需求
+- [ ] 配線與配電完成且固定
+- [ ] `qa_rpt` 可穩定連線
 
 ---
 
-### 1.5 FP2（Sensor）擺設與接線（依 System Layout）
-> FP2 安裝需以圖1主要感測區為準，不可只依現場方便位置。
+### 1.4 IPCAM 擺設與配電（依圖1觀測位置）
+> IPCAM 先完成 Wi‑Fi/上電設定，再依圖1觀測位放置。
 
-1. 依圖1將 FP2 安裝在主要感測區可覆蓋位置（避開大型金屬面與強反射面）。
-2. 確認安裝角度可覆蓋對應區域動線，不被櫃體、門片、手臂遮擋。
-3. 依圖1路徑完成供電與通訊線路，並回收到指定 Hub/閘道節點。
-4. 依圖2拓樸完成配對與命名：`SEN-FP2-01`（若多顆依序編號）。
-5. 以區域走動測試驗證觸發結果與圖1感測區一致。
+1. IPCAM 上電後確認已完成 SSID 設定（`qa_rpt`）。
+2. 若現場允許，優先接入網路線；否則使用已配置完成之 Wi‑Fi Extender 區域。
+3. 依圖1觀測位置擺放每台 IPCAM，確認視角覆蓋對應區域。
+4. 完成配電與線材固定，避免壓線、拉扯與高熱區。
+5. 建立標籤與對照（`CAM-xx` + 實際區位）。
 
-**驗證標準（擺設 + 接線）**
-- [ ] FP2 實際位置與圖1感測區規劃一致
-- [ ] FP2 線路可追溯到指定 Hub/閘道節點
-- [ ] 觸發事件可對應到正確區域，無明顯誤報/漏報
+**驗證標準**
+- [ ] 每台 IPCAM 都在圖1指定觀測位置
+- [ ] 每台 IPCAM 供電穩定、可上線
+- [ ] 主控端可讀取全部串流
 
 ---
 
-### 1.6 Network Architecture and Prerequisites
+### 1.5 Speaker 擺放、配電與配線（接 Scarlett 4i4）
+1. 依圖1完成 Speaker 擺放，確保提示音可覆蓋測試區。
+2. 完成每顆 Speaker 的配電與固定。
+3. 依規劃完成配線並接回音訊介面。
+4. 設定 Scarlett 4i4 放置位置（可維護、散熱與走線安全）。
+5. Speaker 輸出線接到 Scarlett 4i4 對應輸出埠，並貼標籤。
 
-#### A. 基本網路設定
-- 測試 Wi‑Fi SSID：`qa_rpt`
-- 測試 Wi‑Fi Password：`12345678`
+**驗證標準**
+- [ ] Speaker 擺位符合圖1
+- [ ] Speaker 配電與配線完成
+- [ ] Scarlett 4i4 位置固定且接線清楚
 
-> 實務建議：部署前建立「正式版」與「Lab版」兩組憑證，避免測試網外流。
+---
+
+### 1.6 FP2 Sensor 定位、安裝與配電（Awning + Light4）
+1. FP2 主要用於偵測 **Awning + Light4**，先依圖1定位目標偵測區。
+2. 依附圖確認安裝朝向與覆蓋範圍：
+   - https://drive.google.com/file/d/1WTaFEssc_zN6jul7jczow6FFsiC27zGp/view?usp=drive_link
+3. 使用 FP2 磁鐵特性進行試貼定位，確認偵測正確後再固定。
+4. 完成配電與線材固定，保留可拆裝維護空間。
+5. 執行 Awning + Light4 觸發測試，記錄觸發成功區域。
+
+**驗證標準**
+- [ ] FP2 位置可穩定偵測 Awning + Light4
+- [ ] 安裝方式可快速拆裝（磁吸）
+- [ ] 配電完成且線材安全
 
 ---
 
@@ -135,259 +138,75 @@
 
 ---
 
-## 2. Control Boards and Hubs Wiring Guide
+## 2. 主機位置配置（依現場狀態）
 
-### 章節總覽圖
-![Wiring Detail](https://drive.google.com/uc?export=view&id=1XE3O7h17guDEkzzsTE8ZMLZFj0ecc8tY)
+### 2.1 目的
+根據現場實際空間、散熱、維護動線與線材長度，決定主機最終放置位置。
 
-> 本章聚焦控制板與 Hub 的接線方向、埠位規劃與標籤規範，避免 RX/TX 與埠位錯接。
+### 2.2 配置原則
+- 優先選擇乾燥、通風、可維護位置
+- 避免高熱區、潮濕區、易碰撞區
+- 需兼顧到 USB Hub、燒錄器、音訊介面、機械手臂控制線之走線長度
+- 可快速觸達電源與網路接口
 
-### SOP 區塊（Chapter 2）
-- **Objective（目的）**：完成板件與 Hub 接線設計，確保通訊與供電穩定。
-- **Preconditions（前置條件）**：板件型號、埠位命名規則與線材規格已確認。
-- **Procedure（程序重點）**：先定義 Hub 分層與埠位，再執行方向規則與接線標籤。
-- **Verification（驗證方式）**：依 2.6 checklist 逐項核對供電、辨識、UART 線序與標籤。
-- **Pass Criteria（通過標準）**：所有節點可辨識、無反插/錯接、線材固定完成。
-- **Exceptions（例外處理）**：若埠位不足或衝突，先更新配線表後再繼續施工。
-
-### 2.1 Control Board Roles and Interface Map
-- **3611A / 3611C**：分區控制/介面板
-- **WF-3534**：板間連接與控制匯流節點
-- **RobotArm board**：手臂控制相關邏輯板
+### 2.3 驗證標準
+- [ ] 主機位置不阻礙操作與維修
+- [ ] 主機電源與網路連接穩定
+- [ ] 關聯線材長度合理且固定完成
 
 ---
 
-### 2.2 Hub Topology and Port Allocation
-建議採「主 Hub -> 子 Hub -> 終端裝置」分層：
+## 3. 燒錄器 / USB 延長線 / USB Hub 配置（連回 PC）
 
-- 主 Hub：連接主控機與主要 I/O
-- 子 Hub A：控制板與串口轉接器（依實際）
-- 子 Hub B：IPCAM / Speaker / RobotArm 相關周邊（依實際）
-- 子 Hub C：影像/其他擴充周邊（依實際）
+### 3.1 目的
+完成燒錄器、USB 延長線與 USB Hub 的拓樸配置，確保可穩定回連 PC。
 
-> 每個埠位請建立唯一標籤：`H1-P01`, `H1-P02`, `H2-P01`...
+### 3.2 配置步驟
+1. 確認燒錄器與 USB Hub 的安裝位置（靠近維護區，避免受拉扯）。
+2. 依現場路徑鋪設 USB 延長線，避開門片、活動機構與高熱區。
+3. 完成連接：`燒錄器 -> USB Hub -> USB 延長線 -> PC`。
+4. 建立埠位標籤（如 `H1-P01`、`USB-EXT-01`、`BURNER-01`）。
+5. 在 PC 端確認裝置可被辨識並維持穩定連線。
 
----
-
-### 2.3 Cable and Connector Standards
-- USB Type‑A：一般資料/周邊連接
-- L-Type C to A：板對板或控制板對介面盒
-- UART：板間通訊，需交叉 RX/TX
-- 延長線：超過 5m 需評估供電與訊號品質
-
----
-
-### 2.4 Wiring Rules and Direction Requirements
-接線方向規則（依圖示）：
-
-- `First Right`
-- `First Top`
-- `First Bottom`
-
-方向規則必須和實際板件型號一致；不同板可能有不同第一腳位方向。  
-如未確認，禁止強插。
+### 3.3 驗證標準
+- [ ] 所有燒錄器都可在 PC 端辨識
+- [ ] USB 延長線與 Hub 配線固定且安全
+- [ ] 長時間連線無間歇斷線
 
 ---
 
-### 2.5 Wiring Labels, Node IDs, and Routing Table
+## 4. 機械手臂及面板配置
 
-#### A. 節點命名（範例）
-- `WF-3611-A`（左側/入口區）
-- `WF-3611-C`（中右/走道區）
-- `WF-3611-B`, `WF-3610-B`, `WF-3511-B`（Pass-thru storage）
+### 4.1 目的
+完成機械手臂與面板（控制板）安裝，確保固定、配線與操作安全。
 
-#### B. 配線表模板（建議）
-| Cable ID | Source | Destination | Connector Type | Route | Label | Status |
-|---|---|---|---|---|---|---|
-| C-001 | WF-3534 | 3611A | USB-C(A角) | 左中櫃後 | WF-3611A-L1 | Installed |
-| C-002 | WF-3534 | 3611C | USB-C(A角) | 中央走道下 | WF-3611C-L1 | Installed |
-| C-003 | UART-01 | Control Header | G/RX/TX | 板間短距離 | UART-X | Verify |
+### 4.2 配置步驟
+1. 依圖面完成機械手臂底座固定，確認活動範圍無干涉。
+2. 安裝面板（如 3611A / 3611C / WF-3534）至指定位置。
+3. 完成對應配線與標籤，保留必要 service loop。
+4. 檢查線材不壓線、不跨越活動件。
+5. 進行上電前最終檢查。
 
----
-
-### 2.6 Verification Checklist for Board-to-Hub Connections
-- [ ] 所有 Hub 有供電
-- [ ] 主控機可識別 Hub 與讀卡裝置
-- [ ] UART 線序正確（G/G，RX/TX 交叉）
-- [ ] 線材標籤已貼妥
-- [ ] 無鬆脫、無過度彎折、無夾線
+### 4.3 驗證標準
+- [ ] 機械手臂固定牢靠、活動範圍正常
+- [ ] 面板安裝位置正確且可維護
+- [ ] 配線完成且符合安全規範
 
 ---
 
-### 2.7 Common Wiring Errors and Quick Recovery
-| 症狀 | 可能原因 | 快速處置 |
-|---|---|---|
-| 裝置無法被辨識 | Hub 埠位接錯/供電不足 | 改接主 Hub、確認電源 |
-| 串口無回應 | RX/TX 沒交叉或接反 | 重新核對線序 |
-| 不穩定斷線 | 延長線過長/訊號衰減 | 改短線、改有源延長器 |
-| 啟動後設備離線 | 網路未入同一 SSID | 重連 `qa_rpt`、檢查 DHCP |
+## 5. Overview Review Status
 
----
+### 5.1 章節總檢查
+- [ ] Chapter 1：Overview + Wi‑Fi/IPCAM/Speaker/Scarlett4i4/FP2 完成
+- [ ] Chapter 2：主機位置確認完成
+- [ ] Chapter 3：燒錄器/USB 延長線/Hub/PC 連接完成
+- [ ] Chapter 4：機械手臂與面板配置完成
 
-## 3. Robotic Arm and Base Hardware Assembly
-
-### 章節總覽圖
-![Robot Arm Assembly](https://drive.google.com/uc?export=view&id=1z1aUfe4O4kPEcjyr5Lg8QLkneW-JKC36)
-
-> 本章以機械手臂組裝為主，強調固定、翻面、線材餘量與上電前檢查。
-
-### SOP 區塊（Chapter 3）
-- **Objective（目的）**：完成機械手臂與底板安裝，並確保機構與線束安全。
-- **Preconditions（前置條件）**：底板、固定件、螺絲、板件與線材已到位。
-- **Procedure（程序重點）**：依 3.2 步驟完成固定、接線、翻面與最終檢查。
-- **Verification（驗證方式）**：確認固定力矩、活動範圍、線材餘量與干涉狀態。
-- **Pass Criteria（通過標準）**：手臂可安全動作且無鬆脫、拉扯、異音風險。
-- **Exceptions（例外處理）**：若翻面或試動出現干涉，立即斷電回退至上一步修正。
-
-### 3.1 Assembly Preparation
-- 確認底板、固定座、雙面膠、螺絲齊全
-- 準備 3611A / 3611C / WF-3534 與線材
-- 確認機械手臂包裝內螺絲規格
-
----
-
-### 3.2 Step-by-Step Assembly
-
-#### Step 1 — 固定座與膠貼定位
-- 撕除膠帶保護層
-- 將固定座貼至指定位置（避開預留孔位）
-
-#### Step 2 — 安裝 3611A / 3611C
-- 將兩片面板插入對應槽位
-- 使用螺絲固定（勿過扭）
-
-#### Step 3 — 板件接線
-- 連接 WF-3534、L 型 Type‑C/Type‑A、UART
-- UART 依 `G/G, RX/TX 交叉` 原則接線
-
-#### Step 4 — 翻面與機械手臂固定
-- 後側線材接妥後翻面
-- 將手臂放上底板，**介面朝外**
-- 鎖附固定螺絲
-
-#### Step 5 — 上電前最終檢查
-- 檢查手臂活動範圍、線材餘量、固定點
-- 完成後才允許接入電源
-
----
-
-### 3.3 Mechanical and Cable Safety Notes
-- 線材需留 service loop，避免手臂運動拉扯
-- 線材不可跨越高熱區（HVAC）與鋒利邊緣
-- 線束與活動件至少保留 20~30mm 安全距離（可依現場調整）
-
----
-
-## 4. Device Spatial Deployment and Positioning
-
-### 章節總覽圖
-![System Layout](https://drive.google.com/uc?export=view&id=1ZMmWd5I4OJ7QmjIPW4ioC2KNTBS-2iXt)
-
-> 本章說明現場分區（Zone）與裝置擺位原則，確保覆蓋率、維護性與走線安全。
-
-### SOP 區塊（Chapter 4）
-- **Objective（目的）**：建立可維護且安全的空間部署與裝置擺位。
-- **Preconditions（前置條件）**：場域分區、設備數量與線路限制條件已確認。
-- **Procedure（程序重點）**：先定義分區，再依設備特性完成擺位與走線約束。
-- **Verification（驗證方式）**：核對覆蓋率、可維護性、走線安全與檢修可達性。
-- **Pass Criteria（通過標準）**：各 Zone 擺位合理、線路安全、維護窗口可用。
-- **Exceptions（例外處理）**：若現場結構限制導致偏差，需註記替代路徑與風險。
-
-### 4.1 Zoning Strategy
-依場域分區部署（Zone 1~4）：
-- Zone 1：客廳/主動線
-- Zone 2：廚房/中段
-- Zone 3：衛浴/過道
-- Zone 4：臥室/前艙
-
----
-
-### 4.2 Device Placement Guidelines
-#### IPCAM
-- 優先覆蓋入口、主通道、手臂作業區
-- 避免逆光、鏡面反射、遮擋死角
-
-#### Speaker
-- 分區部署，避免集中單側
-- 距離控制板與高干擾線束保持間距
-
-#### RobotArm board
-- 優先放在可維護區域（如 pass-thru storage 附近）
-- 需便於檢修與重新插拔
-
----
-
-### 4.3 Routing Constraints
-- 不走潮濕區裸露路徑
-- 不穿越頻繁開合的門片/翻板邊
-- 盡量沿既有櫃體後方、地板下或固定線槽走線
-
----
-
-### 4.4 Maintenance Accessibility
-- 節點標籤朝外
-- 保留測試點可觸達
-- 每個區域至少保留一個可開啟檢修窗口
-
----
-
-## 5. Commissioning, Validation, and Troubleshooting
-
-### SOP 區塊（Chapter 5）
-- **Objective（目的）**：完成上電、功能驗證與異常排除，確認可交付狀態。
-- **Preconditions（前置條件）**：前四章施工與檢查項目已完成。
-- **Procedure（程序重點）**：依序執行上電前檢查 → 上電流程 → 功能驗證 → 異常處置。
-- **Verification（驗證方式）**：依 5.3 功能驗證與 5.5 驗收清單逐項確認。
-- **Pass Criteria（通過標準）**：關鍵設備在線、連續運作測試通過、交接文件齊全。
-- **Exceptions（例外處理）**：若出現高風險異常（過熱/異音/連續掉線），立即停機並回報。
-
-### 5.1 Pre-Power Checklist
-- [ ] 所有螺絲已固定
-- [ ] 線序與方向核對完成
-- [ ] Hub 與控制板連接完成
-- [ ] 網路設定確認（SSID/密碼）
-- [ ] 手臂活動區無干涉
-- [ ] 安全人員已確認可上電
-
----
-
-### 5.2 Power-On Sequence
-1. 啟動路由器與網路設備  
-2. 啟動主控與 Hub  
-3. 啟動控制板與手臂系統  
-4. 確認音訊設備指示燈（綠燈）  
-5. 驗證 IPCAM 與喇叭在線狀態
-
----
-
-### 5.3 Functional Validation
-- **網路**：所有設備可進入 `qa_rpt`
-- **板件**：3611A/3611C/WF-3534 通訊正常
-- **UART**：回應正常，無封包錯誤
-- **影像**：相機串流可讀
-- **音訊**：喇叭可觸發播放/提示
-- **手臂**：可完成基礎動作且無異音/抖動
-
----
-
-### 5.4 Common Failures and Recovery
-| Failure | Checkpoint | Action |
-|---|---|---|
-| Router 正常但設備離線 | SSID/密碼/DHCP | 重新配網、重啟設備 |
-| 板件無通訊 | UART 線序 | 重接 RX/TX |
-| 裝置間歇掉線 | Hub 供電/延長線 | 改善供電、縮短線長 |
-| 手臂動作異常 | 固定點/線束干涉 | 重新理線與校正姿態 |
-
----
-
-### 5.5 Acceptance Criteria and Handover
-驗收完成需達成：
-
-- [ ] 全部關鍵設備在線且可控制
-- [ ] 連續運作測試通過（建議 >= 30 分鐘）
-- [ ] 接線表、埠位表、節點表已更新
-- [ ] 現場照片與版本紀錄已歸檔
-- [ ] 故障排除SOP已交接
+### 5.2 最終狀態標記
+- **Status**：`Ready / Blocked / Rework`
+- **Blocked Reason**：`<若有阻塞請填寫>`
+- **Owner Sign-off**：`<Owner Name>`
+- **Date**：`YYYY-MM-DD`
 
 ---
 
