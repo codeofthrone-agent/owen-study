@@ -32,7 +32,7 @@
 
 *圖2：Network and Device Topology（控制板、Hub、相機、手臂與網路關係）*
 
-> 本章建立系統整體觀，先確認「空間佈局 + 網路拓樸」兩層基準，再進入接線與組裝程序。
+> 本章建立系統整體觀，先確認空間佈局與網路拓樸，並完成 Wi‑Fi、IPCAM、Speaker/Scarlett 4i4、FP2 的安裝與驗收。
 
 ### SOP 區塊（Chapter 1）
 - **Objective（目的）**：完成 Chapter 1 的現場基礎部署（Wi‑Fi、IPCAM、Speaker/Scarlett 4i4、FP2）並建立可驗收狀態。
@@ -56,7 +56,7 @@
 系統由下列子系統構成：
 
 - **控制/運算子系統**：主控設備、控制板（WF-3534 / 3611A / 3611C）
-- **I/O 與資料子系統**：USB Hub、延長線、影像與其他擴充周邊
+- **I/O 與資料子系統**：USB Hub、延長線、燒錄器與其他連接周邊
 - **感測與執行子系統**：IPCAM、Speaker、分音器、FP2、RobotArm board、機械手臂
 - **網路子系統**：Wi‑Fi Router、測試 SSID 與設備網路分群
 - **空間部署子系統**：車體（或場域）分區部署與配線路徑
@@ -76,13 +76,14 @@
 - [ ] Wi‑Fi 設備位置符合圖1覆蓋需求
 - [ ] 配線與配電完成且固定
 - [ ] `qa_rpt` 可穩定連線
+- [ ] IPCAM 與主控端皆可連上 `qa_rpt`（至少抽查 1 台 IPCAM）
 
 ---
 
 ### 1.4 IPCAM 擺設與配電（依圖1觀測位置）
 > IPCAM 先完成 Wi‑Fi/上電設定，再依圖1觀測位放置。
 
-1. IPCAM 上電後確認已完成 SSID 設定（`qa_rpt`）。
+1. IPCAM 上電後確認已載入既有 Wi‑Fi 設定（`qa_rpt`）。
 2. 若現場允許，優先接入網路線；否則使用已配置完成之 Wi‑Fi Extender 區域。
 3. 依圖1觀測位置擺放每台 IPCAM，確認視角覆蓋對應區域。
 4. 完成配電與線材固定，避免壓線、拉扯與高熱區。
@@ -110,11 +111,12 @@
 ---
 
 ### 1.6 FP2 Sensor 定位、安裝與配電（Awning + Light4）
-1. FP2 主要用於偵測 **Awning + Light4**，先依圖1定位目標偵測區。
-2. 依附圖確認安裝朝向與覆蓋範圍：
 
+#### 附圖：安裝朝向與覆蓋範圍
 ![FP2 安裝朝向與覆蓋範圍](https://drive.google.com/uc?export=view&id=1WTaFEssc_zN6jul7jczow6FFsiC27zGp)
 
+1. FP2 主要用於偵測 **Awning + Light4**，先依圖1定位目標偵測區。
+2. 依附圖確認安裝朝向與覆蓋範圍。
 3. 使用 FP2 磁鐵特性進行試貼定位，確認偵測正確後再固定。
 4. 完成配電與線材固定，保留可拆裝維護空間。
 5. 執行 Awning + Light4 觸發測試，記錄觸發成功區域。
