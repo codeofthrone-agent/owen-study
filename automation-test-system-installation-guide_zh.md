@@ -21,7 +21,7 @@
 
 ---
 
-## 1. System Overview and Network Architecture
+## 1. 系統 Overview（System Overview）
 
 ### 章節總覽圖（圖1 + 圖2）
 ![System Layout](https://drive.google.com/uc?export=view&id=1ZMmWd5I4OJ7QmjIPW4ioC2KNTBS-2iXt)
@@ -37,9 +37,9 @@
 ### SOP 區塊（Chapter 1）
 - **Objective（目的）**：定義系統邊界、網路拓樸與部署前提。
 - **Preconditions（前置條件）**：設備清單、線材與工具齊備，且尚未上電。
-- **Procedure（程序重點）**：完成範圍確認 → 拓樸核對 → 物料與網路前提確認。
+- **Procedure（程序重點）**：完成範圍確認 → 拓樸核對 → 依 System Layout 完成擺設與接線。
 - **Verification（驗證方式）**：以章末規則核對命名、線序與上電前安全條件。
-- **Pass Criteria（通過標準）**：架構與前提確認完成，且無高風險未決項。
+- **Pass Criteria（通過標準）**：架構、擺設與接線確認完成，且無高風險未決項。
 - **Exceptions（例外處理）**：若現場拓樸或設備與文件不符，立即停作業並更新變更紀錄。
 
 ### 1.1 Project Scope and Objectives
@@ -57,39 +57,61 @@
 
 - **控制/運算子系統**：主控設備、控制板（WF-3534 / 3611A / 3611C）
 - **I/O 與資料子系統**：USB Hub、延長線、影像與其他擴充周邊
-- **感測與執行子系統**：IPCAM、Speaker、RobotArm board、機械手臂
+- **感測與執行子系統**：IPCAM、Speaker、分音器、FP2、RobotArm board、機械手臂
 - **網路子系統**：Wi‑Fi Router、測試 SSID 與設備網路分群
 - **空間部署子系統**：車體（或場域）分區部署與配線路徑
 
 ---
 
-### 1.3 Hardware, Tools, and Cable Requirements
+### 1.3 IPCAM 擺設與接線（依 System Layout）
+> 依圖1（System Layout）先定點位、再走線，禁止先接線再找位置。
 
-#### A. 主要硬體
-- 控制板：3611A、3611C、WF-3534
-- USB Hub（多埠）
-- IPCAM（x5，依專案需求可調整）
-- Speaker（x4）
-- RobotArm board（依配置點位）
-- 機械手臂本體與底座木板
-- 路由器（Wi‑Fi AP）
+1. 依圖1將 IPCAM 分配到對應區位（入口 / 主通道 / 手臂作業區 / 死角補盲區）。
+2. 每台 IPCAM 安裝後，先確認視角覆蓋該區主要路徑，再鎖固。
+3. 線路沿圖1標示的櫃體後方或線槽路徑回收至 Hub，不可跨越活動機構。
+4. 於 Hub 端建立埠位對照：`CAM-xx -> Hx-Pxx`，同步貼標到相機端與 Hub 端。
+5. 依圖2拓樸完成網路接入（SSID：`qa_rpt`），確認主控可讀取串流。
 
-#### B. 線材與配件
-- USB Type‑A 線材
-- L 型 Type‑C to Type‑A 線材
-- UART 線材（G / RX / TX）
-- USB 延長線（如 10m，需評估供電與訊號衰減）
-- 雙面膠、理線固定座、螺絲、束帶、標籤貼紙
-
-#### C. 工具
-- 螺絲起子（對應規格）
-- 線材標籤機（建議）
-- 萬用電表（通電前 continuity/短路檢查）
-- 筆電（安裝、配置、驗證）
+**驗證標準（擺設 + 接線）**
+- [ ] 每台 IPCAM 位置與圖1區位一致
+- [ ] 每台 IPCAM 的線路可追溯到唯一 Hub 埠位
+- [ ] 主控端可讀取全部串流且無明顯掉幀
 
 ---
 
-### 1.4 Network Architecture and Prerequisites
+### 1.4 Speaker / 分音器 擺設與接線（依 System Layout）
+> Speaker 先依圖1分區擺設，再依圖2拓樸做分音器配線。
+
+1. Speaker 依圖1分區均勻放置，優先覆蓋測試提示可聽區，避免集中單側。
+2. 分音器（Audio Splitter）安裝於主音源與 Speaker 分支之間，固定於可維護區。
+3. 依圖1既有線路通道完成配線：主音源 -> 分音器輸入 -> 各 Speaker 輸出。
+4. 建立配線對照：`AUD-SPLIT-01-OUTx -> SPK-0x`，並將標籤貼於兩端。
+5. 逐路播放測試音（OUT1~OUTn），確認每一路對應正確 Speaker。
+
+**驗證標準（擺設 + 接線）**
+- [ ] Speaker 實際位置與圖1分區一致
+- [ ] 分音器每個輸出埠皆有對應 Speaker 且標籤一致
+- [ ] 任一路測試音都能在預期分區聽到，不串路
+
+---
+
+### 1.5 FP2（Sensor）擺設與接線（依 System Layout）
+> FP2 安裝需以圖1主要感測區為準，不可只依現場方便位置。
+
+1. 依圖1將 FP2 安裝在主要感測區可覆蓋位置（避開大型金屬面與強反射面）。
+2. 確認安裝角度可覆蓋對應區域動線，不被櫃體、門片、手臂遮擋。
+3. 依圖1路徑完成供電與通訊線路，並回收到指定 Hub/閘道節點。
+4. 依圖2拓樸完成配對與命名：`SEN-FP2-01`（若多顆依序編號）。
+5. 以區域走動測試驗證觸發結果與圖1感測區一致。
+
+**驗證標準（擺設 + 接線）**
+- [ ] FP2 實際位置與圖1感測區規劃一致
+- [ ] FP2 線路可追溯到指定 Hub/閘道節點
+- [ ] 觸發事件可對應到正確區域，無明顯誤報/漏報
+
+---
+
+### 1.6 Network Architecture and Prerequisites
 
 #### A. 基本網路設定
 - 測試 Wi‑Fi SSID：`qa_rpt`
@@ -97,10 +119,9 @@
 
 > 實務建議：部署前建立「正式版」與「Lab版」兩組憑證，避免測試網外流。
 
-
 ---
 
-### 1.5 Safety, Power Isolation, and Power-On Rules
+### 1.7 Safety, Power Isolation, and Power-On Rules
 
 1. **接線與鎖附期間不得上電**
 2. 所有線材插接完成後，先做方向與端子檢查再上電
