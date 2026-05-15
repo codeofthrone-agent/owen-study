@@ -24,7 +24,7 @@
 ## 1. 系統 Overview（System Overview）
 
 ### 章節總覽圖（圖1 + 圖2）
-![System Layout](https://drive.google.com/uc?export=view&id=1ZMmWd5I4OJ7QmjIPW4ioC2KNTBS-2iXt)
+![System Layout](https://drive.google.com/uc?export=view&id=1_xDdE393fwM6hEDepC55_PjGOVfhiuoX)
 
 *圖1：System Layout（空間分區與設備擺位全貌）*
 
@@ -63,36 +63,41 @@
 
 ---
 
-### 1.3 Setup Wi‑Fi 位置、配線與配電
-1. 先依圖1確認 Wi‑Fi 設備（Router / AP / Extender）放置位置，優先覆蓋主通道與 IPCAM 區域。
-2. 完成電源配置（插座、延長線、固定方式），確保設備有穩定供電。
-3. 完成網路配線（WAN/LAN）並固定線材，避免跨越活動機構。
-4. 依現場需求二選一：
-   - 直接接入網路線（有線回程）
-   - 設定 Wi‑Fi Extender（無線延伸）
-5. 啟用後確認 SSID 為 `qa_rpt`，並記錄設備位置與配線路徑。
+### 1.3 Wi‑Fi 位置評估與配電配線規劃
+1. 先依圖1確認 Wi‑Fi 設備（Router / AP / Extender）候選位置，優先覆蓋主通道與 IPCAM 區域。
+2. 針對每個候選位置，同步評估：
+   - 配電可行性（插座距離、延長線路徑、固定方式）
+   - 配線可行性（是否可拉 LAN 網路線、走線是否安全）
+3. 依現場條件選擇連線方案（擇一）：
+   - **LAN 有線回程**：可拉線且路徑安全時優先採用。
+   - **Wi‑Fi Extender 無線延伸**：不易拉線或需跨區延伸時採用。
+4. 完成設備定位、供電與線材固定，避免跨越活動機構與高風險區域。
+5. 啟用後確認 SSID 為 `qa_rpt`，並記錄最終位置、供電點與連線方案（LAN / Extender）。
 
 **驗證標準**
 - [ ] Wi‑Fi 設備位置符合圖1覆蓋需求
+- [ ] 已完成「LAN 或 Extender」方案選擇並記錄原因
 - [ ] 配線與配電完成且固定
 - [ ] `qa_rpt` 可穩定連線
 - [ ] IPCAM 與主控端皆可連上 `qa_rpt`（至少抽查 1 台 IPCAM）
 
 ---
 
-### 1.4 IPCAM 擺設與配電（依圖1觀測位置）
-> IPCAM 先完成 Wi‑Fi/上電設定，再依圖1觀測位放置。
+### 1.4 IPCAM 定位與配電（出貨前已完成 Wi‑Fi 設定）
+> 送場機器之 IPCAM 已預先完成 Wi‑Fi 設定，現場僅需定位、配電與連線確認。
 
-1. IPCAM 上電後確認已載入既有 Wi‑Fi 設定（`qa_rpt`）。
-2. 若現場允許，優先接入網路線；否則使用已配置完成之 Wi‑Fi Extender 區域。
+1. IPCAM 上電後，先確認可載入既有 Wi‑Fi 設定（`qa_rpt`）。
+2. 依 1.3 的網路方案執行：可拉線則優先 LAN；否則使用已規劃完成之 Wi‑Fi Extender 區域。
 3. 依圖1觀測位置擺放每台 IPCAM，確認視角覆蓋對應區域。
 4. 完成配電與線材固定，避免壓線、拉扯與高熱區。
 5. 建立標籤與對照（`CAM-xx` + 實際區位）。
+6. **當 1.3 與 1.4 全部完成後，請通知台北團隊，安排遠端連入監看並協助位置微調。**
 
 **驗證標準**
 - [ ] 每台 IPCAM 都在圖1指定觀測位置
 - [ ] 每台 IPCAM 供電穩定、可上線
 - [ ] 主控端可讀取全部串流
+- [ ] 已通知台北並完成遠端監看連入
 
 ---
 
@@ -131,7 +136,7 @@
 ## 2. 主機位置配置（依現場狀態）
 
 ### 章節附圖
-![System Layout](https://drive.google.com/uc?export=view&id=1ZMmWd5I4OJ7QmjIPW4ioC2KNTBS-2iXt)
+![System Layout](https://drive.google.com/uc?export=view&id=1_xDdE393fwM6hEDepC55_PjGOVfhiuoX)
 
 *圖：System Layout（主機位置應依現場可維護區與走線路徑配置）*
 
