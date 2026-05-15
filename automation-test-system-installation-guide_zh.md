@@ -2,8 +2,8 @@
 **Automation Test System Installation Guide**
 
 > 文件類型：Standard Operating Procedure (SOP)  
-> 版本：v1.1（Draft）  
-> 最後更新：2026-05-08  
+> 版本：v1.2（Draft）  
+> 最後更新：2026-05-15  
 > 適用範圍：WFCO PwrPro 自動化測試環境（機械手臂 + 控制板 + Hub + IPCAM + Speaker + Wi‑Fi）
 
 ### SOP 文件控制
@@ -12,7 +12,7 @@
 | Owner | `<Owner Name>` |
 | Reviewer | `<Reviewer Name>` |
 | 生效日 | `YYYY-MM-DD` |
-| 變更類型 | 章首總覽圖重排 + SOP 格式化 |
+| 變更類型 | Chapter 2~5 SOP 區塊補齊 + Wi‑Fi/IPCAM/FP2/機械手臂步驟修訂 + 英文版同步 |
 
 ### SOP 使用方式
 1. 依章節順序執行，禁止跳過安全檢查。  
