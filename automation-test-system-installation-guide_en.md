@@ -8,15 +8,16 @@
 ### SOP Document Control
 | Field | Content |
 |---|---|
-| Owner | `<Owner Name>` |
-| Reviewer | `<Reviewer Name>` |
-| Effective Date | `YYYY-MM-DD` |
-| Change Type | Added SOP blocks for Chapters 2–5 + revised Wi‑Fi/IPCAM/FP2/robotic-arm steps + synced EN with latest ZH |
+| Owner | `Owen ke` |
+| Version | `1.1` |
+| Last Updated | `2026-05-15` |
+| Change Summary | `Initial version` |
 
 ### How to Use This SOP
-1. Execute steps in chapter order; do not skip safety checks.  
-2. Complete the corresponding checklist at the end of each chapter.  
-3. If site conditions differ from this document, stop and log a controlled change.
+1. Follow the chapters in order — please don’t skip safety checks.  
+2. After each chapter, tick off the matching checklist.  
+3. If real site conditions differ from this document, pause first and update the change log.  
+4. If anything needs adjustment, contact me and I’ll help update it as soon as possible.
 
 ---
 
