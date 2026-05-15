@@ -140,6 +140,14 @@
 
 *圖：System Layout（主機位置應依現場可維護區與走線路徑配置）*
 
+### SOP 區塊（Chapter 2）
+- **Objective（目的）**：依現場條件確認主機最終位置，兼顧散熱、維護性與線材可達性。
+- **Preconditions（前置條件）**：Chapter 1 完成、圖1可對照、主機/電源/網路接口可用。
+- **Procedure（程序重點）**：依序執行 **候選位置評估 → 電源與網路可達性確認 → 關聯設備走線檢查 → 主機固定與標記**。
+- **Verification（驗證方式）**：依 2.3 勾核主機可維護性、電源網路穩定性、線材固定狀態。
+- **Pass Criteria（通過標準）**：主機位置不阻礙作業，且供電/網路/關聯走線皆穩定。
+- **Exceptions（例外處理）**：若受空間、散熱或走線限制，標記 `Blocked/Rework`，記錄替代位置與原因。
+
 ### 2.1 目的
 根據現場實際空間、散熱、維護動線與線材長度，決定主機最終放置位置。
 
@@ -162,6 +170,14 @@
 ![Wiring Detail](https://drive.google.com/uc?export=view&id=1XE3O7h17guDEkzzsTE8ZMLZFj0ecc8tY)
 
 *圖：Wiring Detail（燒錄器、Hub、延長線回連 PC 參考）*
+
+### SOP 區塊（Chapter 3）
+- **Objective（目的）**：完成燒錄器、USB 延長線與 USB Hub 的穩定拓樸，確保可持續回連 PC。
+- **Preconditions（前置條件）**：主機位置已確定、Hub 與燒錄器可上電、PC 端可執行裝置辨識。
+- **Procedure（程序重點）**：依序執行 **設備定位 → USB 路徑鋪設 → 拓樸連接（燒錄器→Hub→延長線→PC）→（Optional）標籤建立 → PC 端辨識確認**。
+- **Verification（驗證方式）**：依 3.3 勾核辨識率、連線穩定性與配線安全。
+- **Pass Criteria（通過標準）**：所有目標裝置可被 PC 穩定辨識，且長時間無間歇斷線。
+- **Exceptions（例外處理）**：若延長線長度/品質不足或訊號不穩，標記 `Rework` 並更換路徑或線材。
 
 ### 3.1 目的
 完成燒錄器、USB 延長線與 USB Hub 的拓樸配置，確保可穩定回連 PC。
@@ -186,6 +202,14 @@
 ![Robot Arm Assembly](https://drive.google.com/uc?export=view&id=1z1aUfe4O4kPEcjyr5Lg8QLkneW-JKC36)
 
 *圖：Robot Arm Assembly（機械手臂與面板安裝參考）*
+
+### SOP 區塊（Chapter 4）
+- **Objective（目的）**：完成機械手臂與面板安裝，確保固定可靠、線材正確連接且可安全上電。
+- **Preconditions（前置條件）**：底座安裝面可用、相關線材齊備、上電前安全規範已確認。
+- **Procedure（程序重點）**：依序執行 **初次 USB-A ↔ USB-C 連接 → 手臂底座固定 → 面板安裝 → 線材全連接檢查 → 上電前最終檢查**。
+- **Verification（驗證方式）**：依 4.3 與 4.4 勾核固定狀態、配線安全與上電規範。
+- **Pass Criteria（通過標準）**：機械手臂活動範圍正常、面板位置正確、配線符合安全規範。
+- **Exceptions（例外處理）**：若活動干涉、接頭鬆動或線材受壓，標記 `Blocked/Rework`，修正後再上電。
 
 ### 4.1 目的
 完成機械手臂與面板（控制板）安裝，確保固定、配線與操作安全。
@@ -217,6 +241,14 @@
 ---
 
 ## 5. Overview Review Status
+
+### SOP 區塊（Chapter 5）
+- **Objective（目的）**：完成全章節最終驗收與狀態判定，形成可交付結果。
+- **Preconditions（前置條件）**：Chapter 1~4 皆已完成並有對應勾核紀錄。
+- **Procedure（程序重點）**：依序執行 **章節結果回顧 → 缺失項目補正/標記 → 最終狀態填報 → Owner 簽核**。
+- **Verification（驗證方式）**：檢查 5.1 與 5.2 欄位是否完整（Status、Blocked Reason、Sign-off、Date）。
+- **Pass Criteria（通過標準）**：所有必填欄位完整且狀態可追溯（Ready/Blocked/Rework）。
+- **Exceptions（例外處理）**：若資料缺漏，暫標 `Rework` 並回補後再結案。
 
 ### 5.1 章節總檢查
 - [ ] Chapter 1：Overview + Wi‑Fi/IPCAM/Speaker/Scarlett4i4/FP2 完成
