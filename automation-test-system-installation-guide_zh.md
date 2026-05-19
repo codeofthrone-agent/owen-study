@@ -74,32 +74,28 @@
 
 *圖2：Network and Device Topology（控制板、Hub、相機、手臂與網路關係）*
 
-> 本章建立系統整體觀，先確認空間佈局與網路拓樸，並完成 Wi‑Fi、IPCAM、Speaker/Scarlett 4i4、FP2 的安裝。
-
-> 【本章範圍說明】  
-> Chapter 1 僅為「安裝階段」：完成定位、配線、配電、固定與標記。  
-> 功能驗證、長時間穩定性測試、整體聯調與故障排查，於後續章節執行。
+> 本章建立系統整體觀，先確認空間佈局與網路拓樸，作為後續安裝章節的閱讀基礎。
 
 ### SOP 區塊（Chapter 1）
-- **Objective（目的）**：完成 Chapter 1 的現場基礎部署（Wi‑Fi、IPCAM、Speaker/Scarlett 4i4、FP2）並建立可進入後續驗證的安裝基線。
-- **Preconditions（前置條件）**：圖1/圖2可對照、設備與線材到位、IPCAM 已可設定 `qa_rpt`、現場電源點已確認。
-- **Procedure（程序重點）**：依序執行 **Wi‑Fi 位置與配線配電 → IPCAM 觀測位擺設與配電 → Speaker 擺放與 Scarlett 4i4 配線 → FP2（Awning + Light4）定位安裝與配電**。
-- **Verification（驗證方式）**：使用 Appendix C 單一總表逐項勾核位置、供電、配線與安裝完成檢核結果（非最終驗收）。
-- **Pass Criteria（通過標準）**：四類設備均完成安裝，且 `qa_rpt`、影像串流、音訊輸出、FP2 具備基本可用條件，可進入後續章節驗證。
-- **Exceptions（例外處理）**：若圖面與現場不一致、電源/配線受限或測試未通過，標記 `Blocked/Rework` 並記錄原因後再進入下一章。
+- **Objective（目的）**：建立閱讀者對系統、元件與章節流程的一致理解。
+- **Preconditions（前置條件）**：圖1/圖2可對照，且讀者已完成 Chapter 0 開工前準備。
+- **Procedure（程序重點）**：先看圖面與元件邊界，再確認章節導讀。
+- **Verification（驗證方式）**：確認讀者可指出本章與安裝章（Chapter 2）之差異。
+- **Pass Criteria（通過標準）**：讀者清楚 Chapter 1 僅為 overview，不含實體安裝。
+- **Exceptions（例外處理）**：若現場人員仍有章節混淆，先口頭對齊後再進入 Chapter 2。
 
-### 1.1 本章目的（安裝階段）
-本章僅聚焦「安裝完成」：
+### 1.1 本章目的（Overview）
+本章提供系統背景與閱讀地圖，協助安裝人員先理解整體架構，再進入後續實作章節：
 
-- 完成 Wi‑Fi、IPCAM、Speaker/Scarlett 4i4、FP2 的定位與固定
-- 完成必要配電與配線，並建立標籤對照
-- 完成基本可用確認（可上電、可連線、可被辨識）
-- 不含完整功能驗證與長時間穩定性測試（後續章節處理）
+- 說明本文件用途與使用邏輯
+- 說明本次安裝會接觸到的元件邊界
+- 提供章節導讀（先看哪章、做完要去哪章）
+- 本章不執行實體安裝動作
 
 ---
 
-### 1.2 本章涉及元件與邊界（安裝視角）
-本章只處理下列「與安裝直接相關」項目：
+### 1.2 系統元件與邊界（閱讀理解）
+本節用於理解系統，非現場操作步驟。
 
 - **網路佈建**：Wi‑Fi Router / AP / Extender（僅到可連線）
 - **影像設備**：IPCAM（僅到定位、供電、串流可開）
@@ -108,13 +104,34 @@
 - **空間與走線**：安全固定、避開活動件與高風險區
 
 不在本章範圍：
-- 全系統聯調
-- 長時間穩定性測試
+- 現場安裝動作
+- 功能驗證與長時間穩定性測試
 - 完整故障排查流程
 
 ---
 
-### 1.3 Wi‑Fi 位置評估與配電配線規劃
+### 1.3 章節導讀（先看再做）
+- **Chapter 2：安裝作業（Wi‑Fi / IPCAM / Speaker / FP2）**
+- **Chapter 3：主機位置配置**
+- **Chapter 4：燒錄器 / USB 延長線 / USB Hub 配置**
+- **Chapter 5：機械手臂及面板配置**
+- **Chapter 6：最終驗收與交付狀態**
+
+---
+
+## 2. 安裝作業（Wi‑Fi / IPCAM / Speaker / FP2）
+
+### SOP 區塊（Chapter 2）
+- **Objective（目的）**：完成 Chapter 2 的現場基礎安裝（Wi‑Fi、IPCAM、Speaker/Scarlett 4i4、FP2）。
+- **Preconditions（前置條件）**：Chapter 1 已閱讀完成，圖1/圖2可對照，設備與線材到位。
+- **Procedure（程序重點）**：依序執行 **Wi‑Fi → IPCAM → Speaker/Scarlett 4i4 → FP2**。
+- **Verification（驗證方式）**：逐項完成安裝檢核（非最終驗收）。
+- **Pass Criteria（通過標準）**：四類設備安裝完成並具備基本可用條件。
+- **Exceptions（例外處理）**：若現場受限或測試未通過，標記 `Blocked/Rework` 並記錄原因。
+
+---
+
+### 2.1 Wi‑Fi 位置評估與配電配線規劃
 1. 先依圖1確認 Wi‑Fi 設備（Router / AP / Extender）候選位置，優先覆蓋「人員主要操作動線」與「IPCAM 實際安裝區位」。
 2. 針對每個候選位置，同步評估：
    - 配電可行性（插座距離、延長線路徑、固定方式）
@@ -134,15 +151,15 @@
 
 ---
 
-### 1.4 IPCAM 定位與配電（出貨前已完成 Wi‑Fi 設定）
+### 2.2 IPCAM 定位與配電（出貨前已完成 Wi‑Fi 設定）
 > 送場機器之 IPCAM 已預先完成 Wi‑Fi 設定，現場僅需定位、配電與連線確認。
 
 1. IPCAM 上電後，先確認可載入既有 Wi‑Fi 設定（`qa_rpt`）。
-2. 依 1.3 的網路方案執行：可拉線則優先 LAN；否則使用已規劃完成之 Wi‑Fi Extender 區域。
+2. 依 2.1 的網路方案執行：可拉線則優先 LAN；否則使用已規劃完成之 Wi‑Fi Extender 區域。
 3. 依圖1觀測位置擺放每台 IPCAM，確認視角覆蓋對應區域。
 4. 完成配電與線材固定，避免壓線、拉扯與高熱區。
 5. 建立標籤與對照（`CAM-xx` + 實際區位）。
-6. **當 1.3 與 1.4 全部完成後，請通知台北團隊，安排遠端連入監看並協助位置微調。**
+6. **當 2.1 與 2.2 全部完成後，請通知台北團隊，安排遠端連入監看並協助位置微調。**
 
 **驗證標準**
 - [ ] 每台 IPCAM 都在圖1指定觀測位置
@@ -152,7 +169,7 @@
 
 ---
 
-### 1.5 Speaker 擺放、配電與配線（接 Scarlett 4i4）
+### 2.3 Speaker 擺放、配電與配線（接 Scarlett 4i4）
 1. 依圖1完成 Speaker 擺放，確保提示音可覆蓋測試區。
 2. 完成每顆 Speaker 的配電與固定。
 3. 依規劃完成配線並接回音訊介面。
@@ -166,7 +183,7 @@
 
 ---
 
-### 1.6 FP2 Sensor 定位、安裝與配電（Awning + Light4）
+### 2.4 FP2 Sensor 定位、安裝與配電（Awning + Light4）
 
 #### 附圖：安裝朝向與覆蓋範圍
 ![FP2 安裝朝向與覆蓋範圍](https://drive.google.com/uc?export=view&id=1WVI5SHkc_YI7gLS-H1U6NgtyR1xQtuyX)
@@ -184,100 +201,100 @@
 
 ---
 
-## 2. 主機位置配置（依現場狀態）
+## 3. 主機位置配置（依現場狀態）
 
 ### 章節附圖
 ![System Layout](https://drive.google.com/uc?export=view&id=1_xDdE393fwM6hEDepC55_PjGOVfhiuoX)
 
 *圖：System Layout（主機位置應依現場可維護區與走線路徑配置）*
 
-### SOP 區塊（Chapter 2）
+### SOP 區塊（Chapter 3）
 - **Objective（目的）**：依現場條件確認主機最終位置，兼顧散熱、維護性與線材可達性。
 - **Preconditions（前置條件）**：Chapter 1 完成、圖1可對照、主機/電源/網路接口可用。
 - **Procedure（程序重點）**：依序執行 **候選位置評估 → 電源與網路可達性確認 → 關聯設備走線檢查 → 主機固定與標記**。
-- **Verification（驗證方式）**：依 2.3 勾核主機可維護性、電源網路穩定性、線材固定狀態。
+- **Verification（驗證方式）**：依 3.3 勾核主機可維護性、電源網路穩定性、線材固定狀態。
 - **Pass Criteria（通過標準）**：主機位置不阻礙作業，且供電/網路/關聯走線皆穩定。
 - **Exceptions（例外處理）**：若受空間、散熱或走線限制，標記 `Blocked/Rework`，記錄替代位置與原因。
 
-### 2.1 目的
+### 3.1 目的
 根據現場實際空間、散熱、維護動線與線材長度，決定主機最終放置位置。
 
-### 2.2 配置原則
+### 3.2 配置原則
 - 優先選擇乾燥、通風、可維護位置
 - 避免高熱區、潮濕區、易碰撞區
 - 需兼顧到 USB Hub、燒錄器、音訊介面、機械手臂控制線之走線長度
 - 可快速觸達電源與網路接口
 
-### 2.3 驗證標準
+### 3.3 驗證標準
 - [ ] 主機位置不阻礙操作與維修
 - [ ] 主機電源與網路連接穩定
 - [ ] 關聯線材長度合理且固定完成
 
 ---
 
-## 3. 燒錄器 / USB 延長線 / USB Hub 配置（連回 PC）
+## 4. 燒錄器 / USB 延長線 / USB Hub 配置（連回 PC）
 
 ### 章節附圖
 ![Wiring Detail](https://drive.google.com/uc?export=view&id=1XE3O7h17guDEkzzsTE8ZMLZFj0ecc8tY)
 
 *圖：Wiring Detail（燒錄器、Hub、延長線回連 PC 參考）*
 
-### SOP 區塊（Chapter 3）
+### SOP 區塊（Chapter 4）
 - **Objective（目的）**：完成燒錄器、USB 延長線與 USB Hub 的穩定拓樸，確保可持續回連 PC。
 - **Preconditions（前置條件）**：主機位置已確定、Hub 與燒錄器可上電、PC 端可執行裝置辨識。
 - **Procedure（程序重點）**：依序執行 **設備定位 → USB 路徑鋪設 → 拓樸連接（燒錄器→Hub→延長線→PC）→（Optional）標籤建立 → PC 端辨識確認**。
-- **Verification（驗證方式）**：依 3.3 勾核辨識率、連線穩定性與配線安全。
+- **Verification（驗證方式）**：依 4.3 勾核辨識率、連線穩定性與配線安全。
 - **Pass Criteria（通過標準）**：所有目標裝置可被 PC 穩定辨識，且長時間無間歇斷線。
 - **Exceptions（例外處理）**：若延長線長度/品質不足或訊號不穩，標記 `Rework` 並更換路徑或線材。
 
-### 3.1 目的
+### 4.1 目的
 完成燒錄器、USB 延長線與 USB Hub 的拓樸配置，確保可穩定回連 PC。
 
-### 3.2 配置步驟
+### 4.2 配置步驟
 1. 確認燒錄器與 USB Hub 的安裝位置（靠近維護區，避免受拉扯）。
 2. 依現場路徑鋪設 USB 延長線，避開門片、活動機構與高熱區。
 3. 完成連接：`燒錄器 -> USB Hub -> USB 延長線 -> PC`。
 4. （Optional）可依需求建立連接線與連接口標籤（如 `H1-P01`、`USB-EXT-01`、`BURNER-01`）。
 5. 在 PC 端確認裝置可被辨識並維持穩定連線。
 
-### 3.3 驗證標準
+### 4.3 驗證標準
 - [ ] 所有燒錄器都可在 PC 端辨識
 - [ ] USB 延長線與 Hub 配線固定且安全
 - [ ] 長時間連線無間歇斷線（觀察 10 分鐘）
 
 ---
 
-## 4. 機械手臂及面板配置
+## 5. 機械手臂及面板配置
 
 ### 章節附圖
 ![Robot Arm Assembly](https://drive.google.com/uc?export=view&id=1z1aUfe4O4kPEcjyr5Lg8QLkneW-JKC36)
 
 *圖：Robot Arm Assembly（機械手臂與面板安裝參考）*
 
-### SOP 區塊（Chapter 4）
+### SOP 區塊（Chapter 5）
 - **Objective（目的）**：完成機械手臂與面板安裝，確保固定可靠、線材正確連接且可安全上電。
 - **Preconditions（前置條件）**：底座安裝面可用、相關線材齊備、上電前安全規範已確認。
 - **Procedure（程序重點）**：依序執行 **初次 USB-A ↔ USB-C 連接 → 手臂底座固定 → 面板安裝 → 線材全連接檢查 → 上電前最終檢查**。
-- **Verification（驗證方式）**：依 4.3 與 4.4 勾核固定狀態、配線安全與上電規範。
+- **Verification（驗證方式）**：依 5.3 與 5.4 勾核固定狀態、配線安全與上電規範。
 - **Pass Criteria（通過標準）**：機械手臂活動範圍正常、面板位置正確、配線符合安全規範。
 - **Exceptions（例外處理）**：若活動干涉、接頭鬆動或線材受壓，標記 `Blocked/Rework`，修正後再上電。
 
-### 4.1 目的
+### 5.1 目的
 完成機械手臂與面板（控制板）安裝，確保固定、配線與操作安全。
 
-### 4.2 配置步驟
+### 5.2 配置步驟
 1. 初次安裝時，先連接手臂後方 **USB‑A** 到手臂末端 **USB‑C**。
 2. 依圖面完成機械手臂底座固定，確認活動範圍無干涉。
 3. 安裝面板（如 3611A / 3611C / WF-3534）至指定位置。
 4. 檢查線材是否都已連接完成，並確認不壓線、不跨越活動件。
 5. 進行上電前最終檢查。
 
-### 4.3 驗證標準
+### 5.3 驗證標準
 - [ ] 機械手臂固定牢靠、活動範圍正常
 - [ ] 面板安裝位置正確且可維護
 - [ ] 配線完成且符合安全規範
 
-### 4.4 Safety, Power Isolation, and Power-On Rules
+### 5.4 Safety, Power Isolation, and Power-On Rules
 
 1. **接線與鎖附期間不得上電**
 2. 所有線材插接完成後，先做方向與端子檢查再上電
@@ -291,23 +308,24 @@
 
 ---
 
-## 5. 最終驗收與交付狀態（Final Acceptance & Handover）
+## 6. 最終驗收與交付狀態（Final Acceptance & Handover）
 
-### SOP 區塊（Chapter 5）
+### SOP 區塊（Chapter 6）
 - **Objective（目的）**：完成全章節最終驗收與狀態判定，形成可交付結果。
-- **Preconditions（前置條件）**：Chapter 1~4 皆已完成並有對應勾核紀錄。
+- **Preconditions（前置條件）**：Chapter 1~5 皆已完成並有對應勾核紀錄。
 - **Procedure（程序重點）**：依序執行 **章節結果回顧 → 缺失項目補正/標記 → 最終狀態填報 → Owner 簽核**。
-- **Verification（驗證方式）**：檢查 5.1 與 5.2 欄位是否完整（Status、Blocked Reason、Sign-off、Date）。
+- **Verification（驗證方式）**：檢查 6.1 與 6.2 欄位是否完整（Status、Blocked Reason、Sign-off、Date）。
 - **Pass Criteria（通過標準）**：所有必填欄位完整且狀態可追溯（Ready/Blocked/Rework）。
 - **Exceptions（例外處理）**：若資料缺漏，暫標 `Rework` 並回補後再結案。
 
-### 5.1 章節總檢查
-- [ ] Chapter 1：Overview + Wi‑Fi/IPCAM/Speaker/Scarlett4i4/FP2 完成
-- [ ] Chapter 2：主機位置確認完成
-- [ ] Chapter 3：燒錄器/USB 延長線/Hub/PC 連接完成
-- [ ] Chapter 4：機械手臂與面板配置完成
+### 6.1 章節總檢查
+- [ ] Chapter 1：Overview（說明）完成
+- [ ] Chapter 2：Wi‑Fi/IPCAM/Speaker/Scarlett4i4/FP2 安裝完成
+- [ ] Chapter 3：主機位置確認完成
+- [ ] Chapter 4：燒錄器/USB 延長線/Hub/PC 連接完成
+- [ ] Chapter 5：機械手臂與面板配置完成
 
-### 5.2 最終狀態標記
+### 6.2 最終狀態標記
 - **Status**：`Ready / Blocked / Rework`
 - **Blocked Reason**：`<若有阻塞請填寫>`
 - **Owner Sign-off**：`<Owner Name>`
@@ -316,7 +334,7 @@
 ---
 
 
-## 6. 新手常見問題與快速排除（Troubleshooting）
+## 7. 新手常見問題與快速排除（Troubleshooting）
 
 | 症狀 | 可能原因 | 先做這 1 步 | 若仍失敗 |
 |---|---|---|---|
@@ -334,7 +352,7 @@
 （已移除圖片，現場請以 Chapter 1 的圖1：System Layout 為主）
 
 ### C.2 一頁紙列印版（大欄位打勾）
-- 檔案：`docs/ch1_onsite_acceptance_onepage_zh.md`
+- 檔案：`docs/ch2_onsite_acceptance_onepage_zh.md`（若尚未改名，請先沿用既有 ch1 檔名）
 
 ### C.3 現場驗收完整表（單一總表）
 
