@@ -384,13 +384,6 @@
 ---
 
 
-## 圖片檔案管理規範（Google Drive）
-- 圖片統一存放資料夾：`https://drive.google.com/drive/folders/19WStCTgjHVjyXp4307Cg0Wr7u1iBVmKF`
-- 新增圖片時，請檔名採用：`ch{章節}-step{步驟}-v{版本}`（例：`ch2-step2.2.1-v1`）
-- 文件引用圖片前，先確認分享權限為「持有連結可檢視」（避免現場打不開）
-
----
-
 ## Appendix C — 現場驗收示意圖與填寫表
 
 ### C.1 示意圖（依圖一邏輯，不含 Wi‑Fi）
