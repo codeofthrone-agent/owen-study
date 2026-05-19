@@ -231,6 +231,7 @@ Not included here:
 ---
 
 ## 3. Host Placement (site-based)
+<div style="page-break-after: always;"></div>
 
 > **Done state for this chapter:** host is in maintainable position, cables fixed, PC logged in and connected to `qa_rpt` with internet access.
 
@@ -261,6 +262,7 @@ Determine final host position based on space, cooling, maintenance path, and cab
 ---
 
 ## 4. Burner / USB Extension / USB Hub Configuration (to PC)
+<div style="page-break-after: always;"></div>
 
 ### 4.1 Purpose
 Complete stable topology for burner, hub, extension, and PC.
@@ -280,6 +282,7 @@ Complete stable topology for burner, hub, extension, and PC.
 ---
 
 ## 5. Robotic Arm and Panel Configuration
+<div style="page-break-after: always;"></div>
 
 > **Done state for this chapter:** arm fixed, panel placement correct, cabling safe, RobotArm controller logged in and connected to `qa_rpt`.
 
@@ -322,6 +325,7 @@ Complete robotic arm and panel installation with safe fixation and wiring.
 ---
 
 ## 6. Final Acceptance and Delivery Status
+<div style="page-break-after: always;"></div>
 
 ### 6.1 Chapter checklist
 - [ ] Chapter 1 overview complete
@@ -340,6 +344,7 @@ Complete robotic arm and panel installation with safe fixation and wiring.
 ---
 
 ## 7. New Installer Quick Troubleshooting
+<div style="page-break-after: always;"></div>
 
 | Symptom | Possible cause | First action | If still failing | Notify |
 |---|---|---|---|---|
@@ -351,6 +356,7 @@ Complete robotic arm and panel installation with safe fixation and wiring.
 ---
 
 ## Appendix C — On-site Acceptance Forms
+<div style="page-break-after: always;"></div>
 
 ### C.2 One-page printable checklist
 - File: `docs/ch2_onsite_acceptance_onepage_zh.md`

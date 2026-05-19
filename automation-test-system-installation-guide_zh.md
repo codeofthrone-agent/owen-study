@@ -259,6 +259,7 @@
 ---
 
 ## 3. 主機位置配置（依現場狀態）
+<div style="page-break-after: always;"></div>
 
 > **本章做完你應該看到（完成樣貌）**：主機放在可維護位置、線材固定完成、PC 已登入並確認連線 `qa_rpt` 可上網。
 
@@ -299,6 +300,7 @@
 ---
 
 ## 4. 燒錄器〔Burner〕 / USB 延長線 / USB Hub〔集線器〕配置（連回 PC）
+<div style="page-break-after: always;"></div>
 
 ### 章節附圖
 ![Wiring Detail](https://drive.google.com/uc?export=view&id=1XE3O7h17guDEkzzsTE8ZMLZFj0ecc8tY)
@@ -331,6 +333,7 @@
 ---
 
 ## 5. 機械手臂及面板配置
+<div style="page-break-after: always;"></div>
 
 > **本章做完你應該看到（完成樣貌）**：機械手臂固定完成、面板位置正確、線材無干涉、RobotArm 控制端登入桌面且已連 `qa_rpt`。
 
@@ -390,6 +393,7 @@
 ---
 
 ## 6. 最終驗收與交付狀態（Final Acceptance & Handover）
+<div style="page-break-after: always;"></div>
 
 ### SOP 區塊（Chapter 6）
 - **Objective（目的）**：完成全章節最終驗收與狀態判定，形成可交付結果。
@@ -417,6 +421,7 @@
 
 
 ## 7. 新手常見問題與快速排除（Troubleshooting）
+<div style="page-break-after: always;"></div>
 
 | 症狀 | 可能原因 | 先做這 1 步 | 若仍失敗 | 通知對象 |
 |---|---|---|---|---|
@@ -429,6 +434,7 @@
 
 
 ## Appendix C — 現場驗收示意圖與填寫表
+<div style="page-break-after: always;"></div>
 
 ### C.2 一頁紙列印版（大欄位打勾）
 - 檔案：`docs/ch2_onsite_acceptance_onepage_zh.md`（若尚未改名，請先沿用既有 ch1 檔名）
