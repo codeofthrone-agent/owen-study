@@ -1,17 +1,14 @@
 # Automation Test System Installation Guide  
 **Automation Test System Installation Guide**
 
-> Document Type: Standard Operating Procedure (SOP)  
-> Version: v1.2 (Draft)  
-> Last Updated: 2026-05-15  
-> Scope: WFCO PwrPro automated test environment (Robotic Arm + Control Boards + Hub + IPCAM + Speaker + Wi‑Fi)
-
 ### SOP Document Control
 | Field | Content |
 |---|---|
+| Document Type | `Standard Operating Procedure (SOP)` |
 | Owner | `Owen ke` |
-| Version | `v1.2` |
+| Version | `v1.2 (Draft)` |
 | Last Updated | `2026-05-15` |
+| Scope | `WFCO PwrPro automated test environment (Robotic Arm + Control Boards + Hub + IPCAM + Speaker + Wi‑Fi)` |
 | Change Summary | `v1.2: synced with latest Chinese structure; improved readability for non-technical installers` |
 
 ### How to Use This SOP
@@ -183,6 +180,12 @@ Not included here:
 
 ### 2.2.1 IPCAM app install and member join (SwitchBot)
 1. Install **SwitchBot App** on site phone (iOS/Android).
+
+   **iOS App QRCode**
+   ![SwitchBot iOS App QRCode](https://drive.google.com/uc?export=view&id=17n35QZWyTbHJy0GDqlHboSMO4687_RNg)
+
+   **Android App QRCode**
+   ![SwitchBot Android App QRCode](https://drive.google.com/uc?export=view&id=1Q0BiGCnpj7GSRbQi1v3ywKmp8nkmkEaA)
 2. Log in and confirm home page access.
 3. Open family member invitation from owner device.
 4. Use invitation code method (current code: `UDQ9TN`).
@@ -235,6 +238,10 @@ Not included here:
 
 > **Done state for this chapter:** host is in maintainable position, cables fixed, PC logged in and connected to `qa_rpt` with internet access.
 
+![System Layout](https://drive.google.com/uc?export=view&id=1NMFMvyxQza_j-wfTMYb3aPwnLLS1jNVp)
+
+*Figure: System Layout (host position should follow maintainability and cable-routing constraints)*
+
 ### SOP Block (Chapter 3)
 - Objective/preconditions/procedure follow Chinese version structure.
 
@@ -264,6 +271,10 @@ Determine final host position based on space, cooling, maintenance path, and cab
 ## 4. Burner / USB Extension / USB Hub Configuration (to PC)
 <div style="page-break-after: always;"></div>
 
+![Wiring Detail](https://drive.google.com/uc?export=view&id=1XE3O7h17guDEkzzsTE8ZMLZFj0ecc8tY)
+
+*Figure: Wiring Detail (burner, hub, extension, and PC back-link reference)*
+
 ### 4.1 Purpose
 Complete stable topology for burner, hub, extension, and PC.
 
@@ -285,6 +296,10 @@ Complete stable topology for burner, hub, extension, and PC.
 <div style="page-break-after: always;"></div>
 
 > **Done state for this chapter:** arm fixed, panel placement correct, cabling safe, RobotArm controller logged in and connected to `qa_rpt`.
+
+![Robot Arm Assembly](https://drive.google.com/uc?export=view&id=1z1aUfe4O4kPEcjyr5Lg8QLkneW-JKC36)
+
+*Figure: Robot Arm Assembly (robotic arm and panel installation reference)*
 
 ### 5.1 Purpose
 Complete robotic arm and panel installation with safe fixation and wiring.
@@ -355,34 +370,7 @@ Complete robotic arm and panel installation with safe fixation and wiring.
 
 ---
 
-## Appendix C — On-site Acceptance Forms
-<div style="page-break-after: always;"></div>
-
-### C.2 One-page printable checklist
-- File: `docs/ch2_onsite_acceptance_onepage_zh.md`
-
-### C.3 Full acceptance table (unified)
-> New installers can fill only minimum fields first: `Item ID/Name`, `Power Done`, `Wiring/Connection`, `Notes (including Blocked reason)`.
-
-(Use the same table structure as Chinese version.)
-
----
-
-## Appendix A — Naming Convention
-- Device: `CAM-01`, `SPK-01`, `ARM-CTRL-01`
-- Hub Port: `H1-P01`, `H2-P03`
-- Cable: `C-001`, `UART-01`, `USB-EXT-01`
-- Node: `WF-3611-A`, `WF-3611-C`, `WF-3611-B`
-
-## Appendix B — Document Control
-- Author: `<Owner Name>`
-- Reviewer: `<Reviewer Name>`
-- Effective Date: `YYYY-MM-DD`
-- Revision History:
-  - v1.0 initial draft
-  - v1.2 synced with latest Chinese version
-
-## Appendix D — Plain-language Terms
+## Appendix A — Plain-language Terms
 - **Backhaul**: connection path from extender back to core network
 - **Extender**: Wi‑Fi signal extender
 - **IPCAM**: network camera for live view

@@ -1,17 +1,14 @@
 # 自動化測試系統安裝文件  
 **Automation Test System Installation Guide**
 
-> 文件類型：Standard Operating Procedure (SOP)  
-> 版本：v1.2（Draft）  
-> 最後更新：2026-05-15  
-> 適用範圍：WFCO PwrPro 自動化測試環境（機械手臂 + 控制板 + Hub + IPCAM + Speaker + Wi‑Fi）
-
 ### SOP 文件控制
 | 欄位 | 內容 |
 |---|---|
+| 文件類型 | `Standard Operating Procedure (SOP)` |
 | Owner | `Owen ke` |
-| Version | `v1.2` |
+| Version | `v1.2（Draft）` |
 | Last Updated | `2026-05-15` |
+| 適用範圍 | `WFCO PwrPro 自動化測試環境（機械手臂 + 控制板 + Hub + IPCAM + Speaker + Wi‑Fi）` |
 | Change Summary | `v1.2：同步中英版架構，補強新手安裝指引與驗收標準` |
 
 ### SOP 使用方式
@@ -433,52 +430,7 @@
 ---
 
 
-## Appendix C — 現場驗收示意圖與填寫表
-<div style="page-break-after: always;"></div>
-
-### C.2 一頁紙列印版（大欄位打勾）
-- 檔案：`docs/ch2_onsite_acceptance_onepage_zh.md`（若尚未改名，請先沿用既有 ch1 檔名）
-
-### C.3 現場驗收完整表（單一總表）
-> 新手先填「最小必要欄位」即可：`項目ID/名稱`、`配電完成(Y/N)`、`配線/連接狀態`、`備註（含Blocked原因）`。
-
-| 類別 | 項目ID/名稱 | 圖一區位 | 實際位置 | 配電完成(Y/N) | 配線/連接狀態 | 功能測試結果 | 驗收結果(Pass/Fail) | 備註 |
-|---|---|---|---|---|---|---|---|---|
-| Wi‑Fi | WIFI-01 Router/AP |  |  |  | 有線/Extender | SSID `qa_rpt` 連線：正常/異常 |  |  |
-| Wi‑Fi | WIFI-EXT-01 Extender（如有） |  |  |  | 有線/Extender | 訊號延伸：正常/異常 |  |  |
-| IPCAM | CAM-01 |  |  |  | 有線/Extender | 串流：正常/異常 |  |  |
-| IPCAM | CAM-02 |  |  |  | 有線/Extender | 串流：正常/異常 |  |  |
-| IPCAM | CAM-03 |  |  |  | 有線/Extender | 串流：正常/異常 |  |  |
-| IPCAM | CAM-04 |  |  |  | 有線/Extender | 串流：正常/異常 |  |  |
-| Speaker | SPK-01 |  |  |  | 接至 Scarlett 4i4 埠位： | 播放：正常/異常 |  |  |
-| Speaker | SPK-02 |  |  |  | 接至 Scarlett 4i4 埠位： | 播放：正常/異常 |  |  |
-| Speaker | SPK-03 |  |  |  | 接至 Scarlett 4i4 埠位： | 播放：正常/異常 |  |  |
-| Audio Interface | Scarlett 4i4 |  |  |  | 輸入/輸出配線完成(Y/N) | 音訊路由：正常/異常 |  |  |
-| Sensor | SEN-FP2-01（Awning + Light4） |  |  |  | 磁吸安裝(Y/N) | 觸發：正常/異常 |  |  |
-| 主機 | Host PC |  |  |  | Hub/燒錄器回連完成(Y/N) | 裝置辨識：正常/異常 |  |  |
-| 機械手臂/面板 | Robot Arm + Panels |  |  |  | 線材安全檢查(Y/N) | 動作/通訊：正常/異常 |  |  |
-
-| Owner | Date | Final Status |
-|---|---|---|
-|  |  | Ready / Blocked / Rework |
-
----
-
-## Appendix A — Recommended Naming Convention
-- Device：`CAM-01`, `SPK-01`, `ARM-CTRL-01`
-- Hub Port：`H1-P01`, `H2-P03`
-- Cable：`C-001`, `UART-01`, `USB-EXT-01`
-- Node：`WF-3611-A`, `WF-3611-C`, `WF-3611-B`
-
-## Appendix B — Document Control
-- 作者：`<Owner Name>`
-- 審核：`<Reviewer Name>`
-- 生效日：`YYYY-MM-DD`
-- 版本歷程：  
-  - v1.0 初版
-
-
-## Appendix D — 術語白話解釋（給第一次安裝的人）
+## Appendix A — 術語白話解釋（給第一次安裝的人）
 - **Backhaul（回程）**：主網路回到核心設備的連線方式，可是有線 LAN 或無線延伸。
 - **Extender**：Wi‑Fi 延伸器，用來把訊號帶到較遠區域。
 - **IPCAM**：網路攝影機，可透過網路看即時畫面。
