@@ -74,34 +74,43 @@
 
 *圖2：Network and Device Topology（控制板、Hub、相機、手臂與網路關係）*
 
-> 本章建立系統整體觀，先確認空間佈局與網路拓樸，並完成 Wi‑Fi、IPCAM、Speaker/Scarlett 4i4、FP2 的安裝與驗收。
+> 本章建立系統整體觀，先確認空間佈局與網路拓樸，並完成 Wi‑Fi、IPCAM、Speaker/Scarlett 4i4、FP2 的安裝。
+
+> 【本章範圍說明】  
+> Chapter 1 僅為「安裝階段」：完成定位、配線、配電、固定與標記。  
+> 功能驗證、長時間穩定性測試、整體聯調與故障排查，於後續章節執行。
 
 ### SOP 區塊（Chapter 1）
-- **Objective（目的）**：完成 Chapter 1 的現場基礎部署（Wi‑Fi、IPCAM、Speaker/Scarlett 4i4、FP2）並建立可驗收狀態。
+- **Objective（目的）**：完成 Chapter 1 的現場基礎部署（Wi‑Fi、IPCAM、Speaker/Scarlett 4i4、FP2）並建立可進入後續驗證的安裝基線。
 - **Preconditions（前置條件）**：圖1/圖2可對照、設備與線材到位、IPCAM 已可設定 `qa_rpt`、現場電源點已確認。
 - **Procedure（程序重點）**：依序執行 **Wi‑Fi 位置與配線配電 → IPCAM 觀測位擺設與配電 → Speaker 擺放與 Scarlett 4i4 配線 → FP2（Awning + Light4）定位安裝與配電**。
-- **Verification（驗證方式）**：使用 Appendix C 單一總表逐項勾核位置、供電、配線與功能測試結果。
-- **Pass Criteria（通過標準）**：四類設備均完成安裝，且 `qa_rpt`、影像串流、音訊輸出、FP2 觸發測試皆可正常驗證。
+- **Verification（驗證方式）**：使用 Appendix C 單一總表逐項勾核位置、供電、配線與安裝完成檢核結果（非最終驗收）。
+- **Pass Criteria（通過標準）**：四類設備均完成安裝，且 `qa_rpt`、影像串流、音訊輸出、FP2 具備基本可用條件，可進入後續章節驗證。
 - **Exceptions（例外處理）**：若圖面與現場不一致、電源/配線受限或測試未通過，標記 `Blocked/Rework` 並記錄原因後再進入下一章。
 
-### 1.1 Project Scope and Objectives
-本文件用於指導建立一套可重複、可維護的自動化測試系統，目標如下：
+### 1.1 本章目的（安裝階段）
+本章僅聚焦「安裝完成」：
 
-- 建立穩定的硬體安裝與接線流程
-- 讓控制板、Hub、機械手臂、相機與音訊設備可協同運作
-- 建立標準化的驗收與故障排查流程
-- 降低部署時間與重工風險
+- 完成 Wi‑Fi、IPCAM、Speaker/Scarlett 4i4、FP2 的定位與固定
+- 完成必要配電與配線，並建立標籤對照
+- 完成基本可用確認（可上電、可連線、可被辨識）
+- 不含完整功能驗證與長時間穩定性測試（後續章節處理）
 
 ---
 
-### 1.2 System Topology and Architecture Overview
-系統由下列子系統構成：
+### 1.2 本章涉及元件與邊界（安裝視角）
+本章只處理下列「與安裝直接相關」項目：
 
-- **控制/運算子系統**：主控設備、控制板（WF-3534 / 3611A / 3611C）
-- **I/O 與資料子系統**：USB Hub、延長線、燒錄器與其他連接周邊
-- **感測與執行子系統**：IPCAM、Speaker、分音器、FP2、RobotArm board、機械手臂
-- **網路子系統**：Wi‑Fi Router、測試 SSID 與設備網路分群
-- **空間部署子系統**：車體（或場域）分區部署與配線路徑
+- **網路佈建**：Wi‑Fi Router / AP / Extender（僅到可連線）
+- **影像設備**：IPCAM（僅到定位、供電、串流可開）
+- **音訊設備**：Speaker + Scarlett 4i4（僅到配線完成）
+- **感測設備**：FP2（僅到定位、供電、可觸發）
+- **空間與走線**：安全固定、避開活動件與高風險區
+
+不在本章範圍：
+- 全系統聯調
+- 長時間穩定性測試
+- 完整故障排查流程
 
 ---
 
