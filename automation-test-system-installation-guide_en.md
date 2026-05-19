@@ -6,10 +6,10 @@
 |---|---|
 | Document Type | `Standard Operating Procedure (SOP)` |
 | Owner | `Owen ke` |
-| Version | `v1.2 (Draft)` |
-| Last Updated | `2026-05-15` |
+| Version | `v1.3` |
+| Last Updated | `2026-05-19` |
 | Scope | `WFCO PwrPro automated test environment (Robotic Arm + Control Boards + Hub + IPCAM + Speaker + Wi‑Fi)` |
-| Change Summary | `v1.2: synced with latest Chinese structure; improved readability for non-technical installers` |
+| Change Summary | `v1.3: removed Draft status, consolidated document control, and simplified appendices` |
 
 ### How to Use This SOP
 1. Follow chapters in order. Do not skip safety checks.  

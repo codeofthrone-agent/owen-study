@@ -6,10 +6,10 @@
 |---|---|
 | 文件類型 | `Standard Operating Procedure (SOP)` |
 | Owner | `Owen ke` |
-| Version | `v1.2（Draft）` |
-| Last Updated | `2026-05-15` |
+| Version | `v1.3` |
+| Last Updated | `2026-05-19` |
 | 適用範圍 | `WFCO PwrPro 自動化測試環境（機械手臂 + 控制板 + Hub + IPCAM + Speaker + Wi‑Fi）` |
-| Change Summary | `v1.2：同步中英版架構，補強新手安裝指引與驗收標準` |
+| Change Summary | `v1.3：移除 Draft 狀態，整併文件控制資訊並精簡附錄` |
 
 ### SOP 使用方式
 1. 請照章節順序做，不要跳過安全檢查。  
