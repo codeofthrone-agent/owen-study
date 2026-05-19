@@ -141,7 +141,7 @@
 ---
 
 ### 2.1 Wi‑Fi 位置評估與配電配線規劃
-1. 先依圖1確認 Wi‑Fi 設備（Router / AP / Extender）候選位置，優先覆蓋「人員主要操作動線」與「IPCAM 實際安裝區位」。
+1. 先依圖1確認 Wi‑Fi 設備（Router / AP〔無線基地台〕/ Extender〔訊號延伸器〕）候選位置，優先覆蓋「人員主要操作動線」與「IPCAM〔網路攝影機〕實際安裝區位」。
 2. 針對每個候選位置，同步評估：
    - 配電可行性（插座距離、延長線路徑、固定方式）
    - 配線可行性（是否可拉 LAN 網路線、走線是否安全）
@@ -178,7 +178,7 @@
 
 ---
 
-### 2.3 Speaker 擺放、配電與配線（接 Scarlett 4i4）
+### 2.3 Speaker 擺放、配電與配線（接 Scarlett 4i4〔音訊介面〕）
 1. 依圖1完成 Speaker 擺放，確保提示音可覆蓋測試區。
 2. 完成每顆 Speaker 的配電與固定。
 3. 依規劃完成配線並接回音訊介面。
@@ -192,7 +192,7 @@
 
 ---
 
-### 2.4 FP2 Sensor 定位、安裝與配電（Awning + Light4）
+### 2.4 FP2 Sensor〔感測器〕定位、安裝與配電（Awning + Light4）
 
 #### 附圖：安裝朝向與覆蓋範圍
 ![FP2 安裝朝向與覆蓋範圍](https://drive.google.com/uc?export=view&id=1WVI5SHkc_YI7gLS-H1U6NgtyR1xQtuyX)
@@ -241,7 +241,7 @@
 
 ---
 
-## 4. 燒錄器 / USB 延長線 / USB Hub 配置（連回 PC）
+## 4. 燒錄器〔Burner〕 / USB 延長線 / USB Hub〔集線器〕配置（連回 PC）
 
 ### 章節附圖
 ![Wiring Detail](https://drive.google.com/uc?export=view&id=1XE3O7h17guDEkzzsTE8ZMLZFj0ecc8tY)
