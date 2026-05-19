@@ -1,4 +1,5 @@
 # Automation Test System Installation Guide  
+**Automation Test System Installation Guide**
 
 > Document Type: Standard Operating Procedure (SOP)  
 > Version: v1.2 (Draft)  
@@ -9,294 +10,359 @@
 | Field | Content |
 |---|---|
 | Owner | `Owen ke` |
-| Version | `1.1` |
+| Version | `v1.2` |
 | Last Updated | `2026-05-15` |
-| Change Summary | `Initial version` |
+| Change Summary | `v1.2: synced with latest Chinese structure; improved readability for non-technical installers` |
 
 ### How to Use This SOP
-1. Follow the chapters in order — please don’t skip safety checks.  
-2. After each chapter, tick off the matching checklist.  
-3. If real site conditions differ from this document, pause first and update the change log.  
-4. If anything needs adjustment, contact me and I’ll help update it as soon as possible.
+1. Follow chapters in order. Do not skip safety checks.  
+2. After each chapter, tick the corresponding checklist.  
+3. If site conditions differ from this document, pause and mark the change.  
+4. If anything is unclear, contact the owner and update the document.
+
+### Safety First (Read Before Work)
+- **Do not power on during wiring and mechanical fastening.**
+- Before power-on, always check cable direction, terminal mapping, and moving-part clearance.
+- If unsure at any step, stop and mark `Blocked`.
+
+---
+
+## 0. Pre-Work Preparation (Recommended for New Installers)
+
+### 0.1 What You Will Complete
+Complete device/tool inventory, role confirmation, and risk checks before installation to avoid mid-process blockers.
+
+### 0.2 Device and Tool Checklist (Tick before starting)
+- [ ] Host PC
+- [ ] Wi‑Fi devices (Router/AP/Extender; choose as needed)
+- [ ] IPCAM: 5 units shipped this time (CAM1~CAM5)
+  - CAM1~CAM3: fixed for environment monitoring
+  - CAM4~CAM5: install if needed; if not used, mark and store properly
+- [ ] Speaker + Scarlett 4i4
+- [ ] FP2 Sensor
+- [ ] Robotic Arm and control boards (WF-3534 / 3611A / 3611C)
+- [ ] USB Hub, USB extension cable, Burner
+- [ ] USB cables (USB-A / USB-C as required)
+- [ ] UART cables (spares recommended)
+- [ ] Keyboard, mouse, external monitor (for PC/RobotArm network checks)
+- [ ] Cable labels, ties, mounts, insulation tape
+- [ ] Basic tools (screwdriver, cutter, multimeter)
+
+### 0.3 Roles and Contacts
+- On-site installation owner: `<fill>`
+- Acceptance sign-off owner: `<fill>`
+- Taipei support contact: `<owen.ke>`
+
+### 0.4 Estimated Time (Reference)
+- Chapter 1 (Overview): 15~25 min
+- Chapter 2 (Installation): 90~150 min
+- Chapter 3 (Host placement): 20~40 min
+- Chapter 4 (Burner/USB/Hub): 30~50 min
+- Chapter 5 (Robotic arm/panels): 45~75 min
+- Chapter 6 (Final acceptance): 15~30 min
+- **Total (single operator):** ~3.5~6 hours (depends on routing complexity/rework)
+
+### 0.5 Start Conditions (all must be met)
+- [ ] Figure 1 and Figure 2 are accessible
+- [ ] `qa_rpt` existing setup is confirmed (reuse existing setup, no reset)
+- [ ] Work area is clear and safe
+- [ ] Confirmed power is OFF before work
+
+### 0.6 Accounts and Passwords (Installation Use)
+> Keep this section in internal version only; remove/mask for external sharing.
+
+- Common password: `thortron`
+- Wi‑Fi test credentials: `SSID: qa_rpt / Password: 12345678`
+- PC login ID: `thortron`
+- PC login password: `thortron`
+- RobotArm login ID: `er`
+- RobotArm login password: `thortron`
+- Scope: on-site install/maintenance, login to PC and RobotArm controller, and network checks
+- Rule: **Do not change account/password values**, otherwise Taipei may lose remote maintenance access. If change is unavoidable, owner approval and document update are required.
 
 ---
 
 ## 1. System Overview
 
-### Chapter Overview Diagrams (Figure 1 + Figure 2)
-![System Layout](https://drive.google.com/uc?export=view&id=1_xDdE393fwM6hEDepC55_PjGOVfhiuoX)
+> **Done state for this chapter:** installer understands system boundaries and chapter flow. No physical installation is performed here.
 
-*Figure 1: System Layout (overall zoning and device placement)*
+### Overview Diagrams (Figure 1 + Figure 2)
+![System Layout](https://drive.google.com/uc?export=view&id=1NMFMvyxQza_j-wfTMYb3aPwnLLS1jNVp)
+
+*Figure 1: System Layout (overall zone and device placement)*
 
 ![Network and Device Topology](https://drive.google.com/uc?export=view&id=1roD82kDBS9iYUXlkyvy0cbKczhOMT1Ts)
 
-*Figure 2: Network and Device Topology (relationships among boards, hub, camera, arm, and network)*
-
-> This chapter establishes the system baseline, then completes installation and acceptance of Wi‑Fi, IPCAM, Speaker/Scarlett 4i4, and FP2.
+*Figure 2: Network and Device Topology (board/hub/camera/arm/network relationships)*
 
 ### SOP Block (Chapter 1)
-- **Objective**: Complete Chapter 1 on-site baseline deployment (Wi‑Fi, IPCAM, Speaker/Scarlett 4i4, FP2) and make it acceptance-ready.
-- **Preconditions**: Figure 1/2 available for reference, devices and cables ready, IPCAM can use `qa_rpt`, on-site power points confirmed.
-- **Procedure**: Execute in order: **Wi‑Fi location + cabling/power -> IPCAM placement + power -> Speaker placement + Scarlett 4i4 cabling -> FP2 (Awning + Light4) placement + power**.
-- **Verification**: Use Appendix C unified checklist to verify location, power, cabling, and functional tests.
-- **Pass Criteria**: All four device categories installed; `qa_rpt`, video streaming, audio output, and FP2 trigger test are all verified.
-- **Exceptions**: If site differs from diagrams, or power/cabling constraints or failed tests occur, mark `Blocked/Rework` and record reason before moving on.
+- **Objective:** align understanding of system, components, and chapter flow.
+- **Preconditions:** Figure 1/2 available and Chapter 0 completed.
+- **Procedure:** review diagrams, component boundaries, and chapter map.
+- **Verification:** installer can explain the difference between Chapter 1 and Chapter 2.
+- **Pass Criteria:** installer clearly understands Chapter 1 is overview only.
+- **Exceptions:** if chapter boundaries are still mixed up, align verbally before entering Chapter 2.
 
-### 1.1 Project Scope and Objectives
-This document defines a repeatable and maintainable installation process for an automated test system. Objectives:
+### 1.1 Purpose of this Chapter
+This chapter provides system context and reading map only:
+- document usage logic
+- component boundaries
+- chapter guidance
+- no physical install action
 
-- Build a stable hardware installation and wiring workflow
-- Ensure coordinated operation across control boards, hub, robotic arm, cameras, and audio devices
-- Establish standardized acceptance and troubleshooting procedures
-- Reduce deployment time and rework risk
+### 1.2 System Components and Boundaries (Reading only)
+**Quick terms**
+- **AP**: wireless access point
+- **Extender**: Wi‑Fi range extender
+- **Backhaul**: link from extender back to core network (wired/wireless)
+- **IPCAM**: network camera
+- **Scarlett 4i4**: audio interface
 
----
+Included in install scope:
+- network setup to “connectable”
+- camera positioning/power/basic stream access
+- audio wiring complete
+- FP2 positioning/power/triggerable
+- safe cable routing
 
-### 1.2 System Topology and Architecture Overview
-The system includes the following subsystems:
+Not included here:
+- physical install steps
+- full functional verification/stability tests
+- full troubleshooting workflows
 
-- **Control/Compute Subsystem**: main controller, control boards (WF-3534 / 3611A / 3611C)
-- **I/O and Data Subsystem**: USB hub, extension cables, burner, and related peripherals
-- **Sensing and Actuation Subsystem**: IPCAM, speaker, crossover, FP2, RobotArm board, robotic arm
-- **Network Subsystem**: Wi‑Fi router, test SSID, and network grouping
-- **Spatial Deployment Subsystem**: zone-based placement and cable paths
-
----
-
-### 1.3 Wi‑Fi Location Evaluation and Power/Cabling Planning
-1. Based on Figure 1, identify candidate locations for Wi‑Fi equipment (Router / AP / Extender), prioritizing coverage of **main operator pathways** and **actual IPCAM installation areas**.
-2. For each candidate location, evaluate:
-   - Power feasibility (distance to outlets, extension route, fixation)
-   - Cabling feasibility (whether LAN cable can be routed safely)
-3. Choose one network backhaul option based on site conditions:
-   - **LAN wired backhaul**: preferred when cabling path is safe and feasible.
-   - **Wi‑Fi Extender wireless extension**: used when routing LAN is difficult or cross-zone extension is needed.
-4. Finalize device placement, power, and cable fixation; avoid moving mechanisms and high-risk areas.
-5. After enablement, confirm SSID is `qa_rpt`, and record final placement, power points, and chosen link method (LAN / Extender).
-
-**Acceptance Criteria**
-- [ ] Wi‑Fi device placement satisfies Figure 1 coverage requirements
-- [ ] LAN or Extender option selected and rationale recorded
-- [ ] Power and cabling completed and fixed
-- [ ] `qa_rpt` connection is stable
-- [ ] IPCAM and host can both connect to `qa_rpt` (sample at least 1 IPCAM)
+### 1.3 Chapter Guide
+- **Chapter 2:** Installation (Wi‑Fi / IPCAM / Speaker / FP2)
+- **Chapter 3:** Host placement
+- **Chapter 4:** Burner / USB extension / USB hub
+- **Chapter 5:** Robotic arm and panel setup
+- **Chapter 6:** Final acceptance and delivery status
 
 ---
 
-### 1.4 IPCAM Positioning and Power (Wi‑Fi Preconfigured Before Shipment)
-> IPCAM units are preconfigured with Wi‑Fi before shipment; on site, only positioning, power, and connectivity checks are required.
+## 2. Installation (Wi‑Fi / IPCAM / Speaker / FP2)
 
-1. After power-on, confirm IPCAM can load existing Wi‑Fi setting (`qa_rpt`).
-2. Follow the network approach selected in 1.3: prefer LAN if feasible; otherwise use planned Wi‑Fi Extender coverage.
-3. Place each IPCAM at the Figure 1 observation position and confirm view coverage.
-4. Complete power and cable fixation; avoid pinching, tension, and high-heat zones.
-5. Apply labels/mapping (`CAM-xx` + actual zone).
-6. **After both 1.3 and 1.4 are completed, notify the Taipei team to remotely connect for monitoring and fine-tune camera positions.**
-
-**Acceptance Criteria**
-- [ ] All IPCAM units are at Figure 1 designated positions
-- [ ] All IPCAM units have stable power and are online
-- [ ] Host can access all streams
-- [ ] Taipei team has been notified and remote monitoring session completed
-
----
-
-### 1.5 Speaker Placement, Power, and Cabling (to Scarlett 4i4)
-1. Place speakers according to Figure 1 so prompt tones cover the test area.
-2. Complete power and fixation for each speaker.
-3. Complete cabling and route back to the audio interface.
-4. Position Scarlett 4i4 in a maintainable, cool, and cable-safe location.
-5. Connect speaker output lines to Scarlett 4i4 ports and apply labels.
-
-**Acceptance Criteria**
-- [ ] Speaker placement matches Figure 1
-- [ ] Speaker power and cabling complete
-- [ ] Scarlett 4i4 fixed in place with clear wiring
-
----
-
-### 1.6 FP2 Sensor Positioning, Installation, and Power (Awning + Light4)
-
-#### Figure: Installation Orientation and Coverage
-![FP2 installation orientation and coverage](https://drive.google.com/uc?export=view&id=1WVI5SHkc_YI7gLS-H1U6NgtyR1xQtuyX)
-
-1. FP2 is mainly used to detect **Awning + Light4**; first locate the target detection zone based on Figure 1.
-2. Confirm installation orientation and coverage based on the figure, then adjust to a suitable position according to real site conditions.
-3. Use FP2 magnetic mounting for trial placement; secure it after trigger behavior is verified.
-4. Complete power and cable fixation while keeping maintainability space.
-5. Run Awning + Light4 trigger tests and record successful trigger zones.
-
-**Acceptance Criteria**
-- [ ] FP2 can stably detect Awning + Light4
-- [ ] Installation is quickly removable (magnetic mount)
-- [ ] Power is complete and cabling is safe
-
----
-
-## 2. Host Placement (Site-Based)
-
-### Chapter Figure
-![System Layout](https://drive.google.com/uc?export=view&id=1_xDdE393fwM6hEDepC55_PjGOVfhiuoX)
-
-*Figure: System Layout (host location should follow maintainability and routing constraints)*
+> **Done state for this chapter:** phone can use `qa_rpt` internet, PC can use `qa_rpt`, RobotArm controller can use `qa_rpt`, and at least one IPCAM stream is viewable.
 
 ### SOP Block (Chapter 2)
-- **Objective**: Determine final host location based on site conditions, balancing cooling, maintainability, and cable reachability.
-- **Preconditions**: Chapter 1 complete, Figure 1 available, host/power/network interfaces available.
-- **Procedure**: Execute in order: **candidate evaluation -> power/network reachability check -> related cable path check -> host fixation and marking**.
-- **Verification**: Use 2.3 to verify maintainability, stable power/network, and cable fixation.
-- **Pass Criteria**: Host position does not obstruct operations; power/network/related routing are all stable.
-- **Exceptions**: If blocked by space/cooling/routing constraints, mark `Blocked/Rework` and record alternative location and reason.
+- **Objective:** complete baseline on-site installation for Wi‑Fi, IPCAM, Speaker/Scarlett 4i4, and FP2.
+- **Preconditions:** Chapter 1 reviewed, Figure 1/2 available, equipment/cables ready.
+- **Procedure:** Wi‑Fi → IPCAM → Speaker/Scarlett 4i4 → FP2.
+- **Verification:** complete per-item install checks (not final full validation).
+- **Pass Criteria:** four device categories installed with basic usability.
+- **Exceptions:** if constrained or failed, mark `Blocked/Rework` with reason.
+- **Handoff:** after Chapter 2, update installation records and proceed to next chapter.
 
-### 2.1 Purpose
-Based on actual site space, cooling, maintenance path, and cable length, determine the final host location.
+### 2.0.1 Chapter 2 completion records (simple)
+1. **[Required]** Tick all Chapter 2 verification items.
+2. **[Required]** Add required photos (overall/cabling/host screen).
+3. **[Required]** Mark incomplete items as `Blocked/Rework` with reason.
 
-### 2.2 Placement Principles
-- Prioritize dry, ventilated, and maintainable locations
-- Avoid high-heat, humid, or collision-prone zones
-- Consider routing lengths for USB hub, burner, audio interface, and robotic-arm control cables
-- Ensure quick access to power and network interfaces
+### 2.1 Wi‑Fi location, power, and cabling planning
+1. Use Figure 1 to choose Router/AP/Extender candidate positions.
+2. Evaluate power and cable feasibility for each position.
+3. Choose LAN backhaul or Extender based on site constraints.
+4. Fix placement/power/cables safely.
+5. Connect with `SSID: qa_rpt / Password: 12345678`, confirm internet and internal reachability, record final setup.
+6. **[Required]** Installer must verify internet on phone connected to `qa_rpt`.
 
-### 2.3 Acceptance Criteria
-- [ ] Host placement does not obstruct operation/maintenance
-- [ ] Host power and network are stable
-- [ ] Related cable lengths are reasonable and fixed
+**Verification Criteria**
+- [ ] Wi‑Fi placement matches Figure 1 coverage need
+- [ ] LAN/Extender option selected with reason
+- [ ] Power/cabling complete and fixed
+- [ ] `qa_rpt` stable for 5 minutes
+- [ ] Installer phone on `qa_rpt` can access internet
+- [ ] IPCAM and host both can connect to `qa_rpt` (sample at least 1 IPCAM)
+
+### 2.2 IPCAM positioning and power (Wi‑Fi preconfigured before shipment)
+1. Power on IPCAM and confirm existing `qa_rpt` settings load.
+2. Follow network method from 2.1 (LAN preferred if possible).
+3. Place each IPCAM by Figure 1 view targets.
+4. Complete safe power/cable fixation.
+5. Create label mapping (`CAM-xx` + actual zone).
+6. Update installation/position records (CAM IDs and zones).
+
+### 2.2.1 IPCAM app install and member join (SwitchBot)
+1. Install **SwitchBot App** on site phone (iOS/Android).
+2. Log in and confirm home page access.
+3. Open family member invitation from owner device.
+4. Use invitation code method (current code: `UDQ9TN`).
+5. Confirm view access to CAM1~CAM3 (and CAM4~CAM5 if needed).
+6. If devices not visible, confirm correct family/group and retry with latest code.
+
+> ⚠️ Invitation code expiry reminder  
+> Current code: `UDQ9TN`  
+> If expired, contact: `owen.ke@thortron.com`
+
+**Verification Criteria**
+- [ ] All IPCAMs are at required positions
+- [ ] IPCAM power/online stable (5 min)
+- [ ] Host can read all required streams
+- [ ] CAM1~CAM5 install/position records complete (or reason if not installed)
+- [ ] Installer joined app and can view required camera feeds
+
+### 2.3 Speaker placement, power, wiring (to Scarlett 4i4)
+1. Place speakers per Figure 1 with maintainability priority.
+2. Complete power and fixation for each speaker.
+3. Complete wiring back to audio interface.
+4. Place Scarlett 4i4 at maintainable and cool location.
+5. Connect/label speaker outputs to Scarlett 4i4 ports.
+
+> Note: this is an installation chapter. No full audio correctness testing here.
+
+**Verification Criteria**
+- [ ] Speaker placement matches Figure 1
+- [ ] Speaker power/wiring complete
+- [ ] Scarlett 4i4 fixed and clearly wired
+
+### 2.4 FP2 sensor positioning and power (Awning + Light4)
+![FP2 orientation and coverage](https://drive.google.com/uc?export=view&id=1WVI5SHkc_YI7gLS-H1U6NgtyR1xQtuyX)
+
+1. Locate target detection area per Figure 1.
+2. Adjust orientation/coverage based on figure and site.
+3. Trial place with magnetic mount; fix after detection confirms.
+4. Complete power/cable fixation.
+5. Run Awning + Light4 trigger check and record successful zone.
+
+**Verification Criteria**
+- [ ] FP2 stably detects Awning + Light4
+- [ ] Installation remains quickly removable
+- [ ] Power/cabling complete and safe
 
 ---
 
-## 3. Burner / USB Extension / USB Hub Configuration (Back to PC)
+## 3. Host Placement (site-based)
 
-### Chapter Figure
-![Wiring Detail](https://drive.google.com/uc?export=view&id=1XE3O7h17guDEkzzsTE8ZMLZFj0ecc8tY)
-
-*Figure: Wiring Detail (reference for burner, hub, extension routing to PC)*
+> **Done state for this chapter:** host is in maintainable position, cables fixed, PC logged in and connected to `qa_rpt` with internet access.
 
 ### SOP Block (Chapter 3)
-- **Objective**: Complete stable topology for burner, USB extension, and USB hub, ensuring sustainable connection to PC.
-- **Preconditions**: Host location fixed; hub and burner can be powered; PC device detection available.
-- **Procedure**: Execute in order: **device positioning -> USB path routing -> topology connection (burner->hub->extension->PC) -> (Optional) labeling -> PC detection verification**.
-- **Verification**: Use 3.3 to verify detection rate, link stability, and cabling safety.
-- **Pass Criteria**: All target devices can be stably detected by PC with no intermittent disconnects over time.
-- **Exceptions**: If extension length/quality is insufficient or signal unstable, mark `Rework` and change route/cable.
+- Objective/preconditions/procedure follow Chinese version structure.
 
 ### 3.1 Purpose
-Complete topology for burner, USB extension cable, and USB hub to ensure stable back-connection to PC.
+Determine final host position based on space, cooling, maintenance path, and cable lengths.
 
-### 3.2 Configuration Steps
-1. Confirm installation locations for burner and USB hub (near maintenance area, avoid cable tension).
-2. Route USB extension cable along site path, avoiding doors, moving mechanisms, and high-heat areas.
-3. Connect: `Burner -> USB Hub -> USB Extension -> PC`.
-4. (Optional) Create labels for cables and interfaces as needed (e.g., `H1-P01`, `USB-EXT-01`, `BURNER-01`).
-5. On PC, confirm devices are recognized and remain stable.
+### 3.2 Principles
+- dry/ventilated/maintainable
+- avoid heat/humidity/collision zones
+- consider cable lengths to hub/burner/audio/arm
+- quick access to power/network
 
-### 3.3 Acceptance Criteria
-- [ ] All burners can be recognized by PC
-- [ ] USB extension and hub cabling is fixed and safe
-- [ ] No intermittent disconnects during long-run connection
+### 3.2.1 PC boot and network check (`qa_rpt`)
+1. **[Required]** Connect monitor/keyboard/mouse.
+2. **[Required]** Log in with installer account (see 0.6).
+3. **[Required]** Confirm Wi‑Fi SSID is `qa_rpt`.
+4. **[Required]** Confirm internet access via browser.
+
+### 3.3 Verification Criteria
+- [ ] Host position does not block operation/maintenance
+- [ ] Host power/network stable
+- [ ] Related cabling fixed safely
+- [ ] PC logged in on `qa_rpt` with internet access
 
 ---
 
-## 4. Robotic Arm and Panel Configuration
-
-### Chapter Figure
-![Robot Arm Assembly](https://drive.google.com/uc?export=view&id=1z1aUfe4O4kPEcjyr5Lg8QLkneW-JKC36)
-
-*Figure: Robot Arm Assembly (reference for robotic arm and panel installation)*
-
-### SOP Block (Chapter 4)
-- **Objective**: Complete robotic arm and panel installation with reliable fixation, correct cable connections, and safe power-on readiness.
-- **Preconditions**: Base mounting surface is available; required cables are ready; pre-power safety rules confirmed.
-- **Procedure**: Execute in order: **initial USB-A ↔ USB-C connection -> arm base fixation -> panel installation -> full cable connection check -> final pre-power inspection**.
-- **Verification**: Use 4.3 and 4.4 to verify fixation status, cable safety, and power-on rules.
-- **Pass Criteria**: Arm movement range is normal, panel location is correct, and cabling meets safety requirements.
-- **Exceptions**: If interference, loose connectors, or cable compression occurs, mark `Blocked/Rework` and fix before power-on.
+## 4. Burner / USB Extension / USB Hub Configuration (to PC)
 
 ### 4.1 Purpose
-Complete installation of robotic arm and panels (control boards), ensuring safe fixation, cabling, and operation.
+Complete stable topology for burner, hub, extension, and PC.
 
-### 4.2 Configuration Steps
-1. During first installation, connect rear-arm **USB‑A** to end-effector **USB‑C** first.
-2. Fix robotic arm base according to the diagram and confirm movement range has no interference.
-3. Install panels (e.g., 3611A / 3611C / WF-3534) at designated positions.
-4. Verify all cables are connected, and ensure no cable pinching or crossing over moving parts.
-5. Perform final pre-power inspection.
+### 4.2 Steps
+1. Confirm burner and hub positions.
+2. Route extension cable safely.
+3. Connect `Burner -> USB Hub -> USB Extension -> PC`.
+4. (Optional) Add labels.
+5. Verify device detection at PC.
 
-### 4.3 Acceptance Criteria
-- [ ] Robotic arm is firmly fixed and movement range is normal
-- [ ] Panel positions are correct and maintainable
-- [ ] Cabling is complete and compliant with safety rules
-
-### 4.4 Safety, Power Isolation, and Power-On Rules
-
-1. **Do not power on during wiring and mechanical fastening**
-2. After all cable insertion is complete, verify orientation and terminal mapping before power-on
-3. UART mapping must follow:
-   - `G -> G`
-   - `RX -> TX`
-   - `TX -> RX`
-4. Cables must not be routed under moving mechanisms, steps, doors, or flip panels
-5. After arm fixation, ensure interface faces outward and movement range is unobstructed
-6. Connect main power and boot only as the final step
+### 4.3 Verification Criteria
+- [ ] All burners recognized by PC
+- [ ] Hub/extension cabling fixed safely
+- [ ] No intermittent disconnects in 10-minute observation
 
 ---
 
-## 5. Overview Review Status
+## 5. Robotic Arm and Panel Configuration
 
-### SOP Block (Chapter 5)
-- **Objective**: Complete final whole-document acceptance and status decision for handover.
-- **Preconditions**: Chapters 1–4 are complete with corresponding check records.
-- **Procedure**: Execute in order: **chapter result review -> gap fix/marking -> final status reporting -> owner sign-off**.
-- **Verification**: Check completeness of 5.1 and 5.2 fields (Status, Blocked Reason, Sign-off, Date).
-- **Pass Criteria**: All required fields complete and status traceable (Ready/Blocked/Rework).
-- **Exceptions**: If records are incomplete, temporarily mark `Rework` and close only after backfill.
+> **Done state for this chapter:** arm fixed, panel placement correct, cabling safe, RobotArm controller logged in and connected to `qa_rpt`.
 
-### 5.1 Chapter Summary Checklist
-- [ ] Chapter 1: Overview + Wi‑Fi/IPCAM/Speaker/Scarlett4i4/FP2 completed
-- [ ] Chapter 2: Host placement confirmed
-- [ ] Chapter 3: Burner/USB extension/Hub/PC connection completed
-- [ ] Chapter 4: Robotic arm and panel configuration completed
+### 5.1 Purpose
+Complete robotic arm and panel installation with safe fixation and wiring.
 
-### 5.2 Final Status
-- **Status**: `Ready / Blocked / Rework`
-- **Blocked Reason**: `<fill if blocked>`
-- **Owner Sign-off**: `<Owner Name>`
-- **Date**: `YYYY-MM-DD`
+### 5.2 Steps
+1. Connect rear USB‑A to end USB‑C (first install).
+2. Fix arm base and confirm no motion interference.
+3. Install panels (3611A/3611C/WF-3534).
+4. Confirm all cables connected and no pinch/crossing moving parts.
+5. Final pre-power check.
 
----
+### 5.2.1 RobotArm controller boot and network check (`qa_rpt`)
+1. **[Required]** Connect monitor/keyboard/mouse to RobotArm controller PC.
+2. **[Required]** Boot and log in (see 0.6).
+3. **[Required]** Confirm Wi‑Fi SSID is `qa_rpt`.
+4. **[Required]** Confirm internet access via browser.
+5. **[Only if needed]** If not on `qa_rpt`, fix network before continuing.
 
-## Appendix C — On-Site Acceptance Diagram and Forms
+### 5.3 Verification Criteria
+- [ ] Arm fixed and movement range normal
+- [ ] Panel positions correct and maintainable
+- [ ] Cabling complete and safe
+- [ ] RobotArm controller logged in and connected to `qa_rpt`
 
-### C.1 Diagram (follow Figure 1 logic, Wi‑Fi excluded)
-(Diagram removed. On site, use Chapter 1 Figure 1: System Layout.)
+### 5.4 Safety / Power-on Rules
+1. No power during wiring/fastening.
+2. Check orientation/terminal mapping before power-on.
+3. UART mapping: `G->G`, `RX->TX`, `TX->RX`.
+4. No cables under moving/stepping/door/flip areas.
+5. Confirm outward-facing interfaces and clear movement.
+6. Main power connection is last step.
 
-### C.2 One-Page Printable Checklist (large checkbox fields)
-- File: `docs/ch1_onsite_acceptance_onepage_zh.md`
-
-### C.3 Full On-Site Acceptance Table (Unified)
-
-| Category | Item ID/Name | Figure-1 Zone | Actual Position | Power Done (Y/N) | Wiring/Connection | Functional Test Result | Acceptance (Pass/Fail) | Notes |
-|---|---|---|---|---|---|---|---|---|
-| Wi‑Fi | WIFI-01 Router/AP |  |  |  | Wired/Extender | SSID `qa_rpt` link: Normal/Abnormal |  |  |
-| Wi‑Fi | WIFI-EXT-01 Extender (if used) |  |  |  | Wired/Extender | Signal extension: Normal/Abnormal |  |  |
-| IPCAM | CAM-01 |  |  |  | Wired/Extender | Stream: Normal/Abnormal |  |  |
-| IPCAM | CAM-02 |  |  |  | Wired/Extender | Stream: Normal/Abnormal |  |  |
-| IPCAM | CAM-03 |  |  |  | Wired/Extender | Stream: Normal/Abnormal |  |  |
-| IPCAM | CAM-04 |  |  |  | Wired/Extender | Stream: Normal/Abnormal |  |  |
-| Speaker | SPK-01 |  |  |  | Scarlett 4i4 port: | Playback: Normal/Abnormal |  |  |
-| Speaker | SPK-02 |  |  |  | Scarlett 4i4 port: | Playback: Normal/Abnormal |  |  |
-| Speaker | SPK-03 |  |  |  | Scarlett 4i4 port: | Playback: Normal/Abnormal |  |  |
-| Audio Interface | Scarlett 4i4 |  |  |  | I/O cabling done (Y/N) | Audio routing: Normal/Abnormal |  |  |
-| Sensor | SEN-FP2-01 (Awning + Light4) |  |  |  | Magnetic mount (Y/N) | Trigger: Normal/Abnormal |  |  |
-| Host | Host PC |  |  |  | Hub/burner back-link done (Y/N) | Device detection: Normal/Abnormal |  |  |
-| Arm/Panels | Robot Arm + Panels |  |  |  | Cable safety check (Y/N) | Motion/communication: Normal/Abnormal |  |  |
-
-| Owner | Date | Final Status |
-|---|---|---|
-|  |  | Ready / Blocked / Rework |
+### 5.5 3611A/3511A position switching (by test purpose)
+1. Voice test: move back to wall position.
+2. Arm click test: mount 3611A to arm base after arm setup.
+3. Update label/photo each switch.
 
 ---
 
-## Appendix A — Recommended Naming Convention
+## 6. Final Acceptance and Delivery Status
+
+### 6.1 Chapter checklist
+- [ ] Chapter 1 overview complete
+- [ ] Chapter 2 Wi‑Fi/IPCAM/Speaker/Scarlett4i4/FP2 installation complete
+- [ ] Chapter 3 host placement complete
+- [ ] Chapter 4 burner/USB/hub/PC connection complete
+- [ ] Chapter 5 robotic arm/panel setup complete
+- [ ] Chapter 2 records and photos updated
+
+### 6.2 Final status
+- Status: `Ready / Blocked / Rework`
+- Blocked reason: `<fill if blocked>`
+- Owner sign-off: `<Owner Name>`
+- Date: `YYYY-MM-DD`
+
+---
+
+## 7. New Installer Quick Troubleshooting
+
+| Symptom | Possible cause | First action | If still failing | Notify |
+|---|---|---|---|---|
+| Cannot find `qa_rpt` | Wi‑Fi not powered/too far | Check Router/AP power/LED | Use Extender or adjust location | On-site installation owner |
+| IPCAM no stream | Network/power unstable | Replug power and confirm `qa_rpt` | Record CAM ID, mark `Blocked`, move to later testing chapter | On-site installation owner |
+| PC cannot detect burner | USB path/connector loose | Replug `Burner -> Hub -> Extension -> PC` | Replace extension or hub port | On-site installation owner |
+| Robotic arm abnormal | Cable interference/wrong mapping | Power off and check UART and movement range | Mark `Blocked`, fix then power on | On-site installation owner |
+
+---
+
+## Appendix C — On-site Acceptance Forms
+
+### C.2 One-page printable checklist
+- File: `docs/ch2_onsite_acceptance_onepage_zh.md`
+
+### C.3 Full acceptance table (unified)
+> New installers can fill only minimum fields first: `Item ID/Name`, `Power Done`, `Wiring/Connection`, `Notes (including Blocked reason)`.
+
+(Use the same table structure as Chinese version.)
+
+---
+
+## Appendix A — Naming Convention
 - Device: `CAM-01`, `SPK-01`, `ARM-CTRL-01`
 - Hub Port: `H1-P01`, `H2-P03`
 - Cable: `C-001`, `UART-01`, `USB-EXT-01`
@@ -306,6 +372,17 @@ Complete installation of robotic arm and panels (control boards), ensuring safe 
 - Author: `<Owner Name>`
 - Reviewer: `<Reviewer Name>`
 - Effective Date: `YYYY-MM-DD`
-- Revision History:  
-  - v1.0 Initial draft
-  - v1.2 Synced with latest Chinese version
+- Revision History:
+  - v1.0 initial draft
+  - v1.2 synced with latest Chinese version
+
+## Appendix D — Plain-language Terms
+- **Backhaul**: connection path from extender back to core network
+- **Extender**: Wi‑Fi signal extender
+- **IPCAM**: network camera for live view
+- **Scarlett 4i4**: audio interface for speaker output
+- **FP2**: sensor for Awning + Light4 trigger behavior
+- **Burner**: USB device for flashing/board connection
+- **Blocked / Rework**:
+  - `Blocked`: cannot proceed without external support
+  - `Rework`: can proceed after redo/fix
