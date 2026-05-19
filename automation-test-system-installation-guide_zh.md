@@ -186,9 +186,13 @@
 ### 2.2.1 IPCAM 管理 App 安裝與成員加入（SwitchBot）
 > 目的：讓現場安裝者也能在管理 App 看到 IPCAM，協助定位、角度調整與後續維護。
 
-1. 先於現場手機安裝 **SwitchBot App**（iOS App Store / Android Google Play），可用下列 QRCode 或直接於商店搜尋 `SwitchBot`：
-   - iOS App QRCode：`https://drive.google.com/file/d/17n35QZWyTbHJy0GDqlHboSMO4687_RNg/view?usp=drive_link`
-   - Android App QRCode：`https://drive.google.com/file/d/1Q0BiGCnpj7GSRbQi1v3ywKmp8nkmkEaA/view?usp=drive_link`
+1. 先於現場手機安裝 **SwitchBot App**（iOS App Store / Android Google Play），可掃描下列 QRCode，或直接於商店搜尋 `SwitchBot`：
+
+   **iOS App QRCode**
+   ![SwitchBot iOS App QRCode](https://drive.google.com/uc?export=view&id=17n35QZWyTbHJy0GDqlHboSMO4687_RNg)
+
+   **Android App QRCode**
+   ![SwitchBot Android App QRCode](https://drive.google.com/uc?export=view&id=1Q0BiGCnpj7GSRbQi1v3ywKmp8nkmkEaA)
 2. 以現場可用帳號登入 App，確認可進入「家庭」頁面。
 3. 由管理者手機進入 SwitchBot「家庭成員邀請」頁面（選擇邀請方式）。
 4. 優先使用 **訊息邀請** 或 **邀請碼邀請**（適合多人、可留文字紀錄）。
