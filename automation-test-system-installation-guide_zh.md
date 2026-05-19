@@ -80,7 +80,7 @@
 ## 1. 系統 Overview（System Overview）
 
 ### 章節總覽圖（圖1 + 圖2）
-![System Layout](https://drive.google.com/uc?export=view&id=1_xDdE393fwM6hEDepC55_PjGOVfhiuoX)
+![System Layout](https://drive.google.com/uc?export=view&id=1NMFMvyxQza_j-wfTMYb3aPwnLLS1jNVp)
 
 *圖1：System Layout（空間分區與設備擺位全貌）*
 
@@ -192,6 +192,7 @@
    - 若要邀請下一位，需退出目前頁面後重新產生新的邀請。
 4. 受邀者加入後，請立即確認可查看 CAM1~CAM3 影像（必要時含 CAM4~CAM5）。
 5. 若受邀者看不到裝置，先檢查是否加入到正確「家庭/群組」，再重邀一次。
+6. 目前邀請碼：`UDQ9TN`。若邀請碼因時效性過期，請聯繫 `owen.ke@thortron.com` 更新邀請資訊。
 
 **驗證標準**
 - [ ] 每台 IPCAM 都在圖1指定觀測位置
@@ -237,7 +238,7 @@
 ## 3. 主機位置配置（依現場狀態）
 
 ### 章節附圖
-![System Layout](https://drive.google.com/uc?export=view&id=1_xDdE393fwM6hEDepC55_PjGOVfhiuoX)
+![System Layout](https://drive.google.com/uc?export=view&id=1NMFMvyxQza_j-wfTMYb3aPwnLLS1jNVp)
 
 *圖：System Layout（主機位置應依現場可維護區與走線路徑配置）*
 
