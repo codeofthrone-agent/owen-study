@@ -430,9 +430,6 @@
 
 ## Appendix C — 現場驗收示意圖與填寫表
 
-### C.1 示意圖（依圖一邏輯，不含 Wi‑Fi）
-（已移除圖片，現場請以 Chapter 1 的圖1：System Layout 為主）
-
 ### C.2 一頁紙列印版（大欄位打勾）
 - 檔案：`docs/ch2_onsite_acceptance_onepage_zh.md`（若尚未改名，請先沿用既有 ch1 檔名）
 
